@@ -1,17 +1,10 @@
 "use client"
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { 
-  User, 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  signOut, 
-  onAuthStateChanged 
-} from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { MockUser, findUserByCredentials, getUserById } from '@/lib/mock-users';
 
 interface AuthContextType {
-  user: User | null;
+  user: MockUser | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
@@ -29,22 +22,31 @@ export const useAuth = () => {
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<MockUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      setLoading(false);
-    });
-
-    return unsubscribe;
+    // Check if user is stored in localStorage
+    const storedUserId = localStorage.getItem('nexticket_user_id');
+    if (storedUserId) {
+      const storedUser = getUserById(storedUserId);
+      if (storedUser) {
+        setUser(storedUser);
+      }
+    }
+    setLoading(false);
   }, []);
 
   const signIn = async (email: string, password: string) => {
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const foundUser = findUserByCredentials(email, password);
+      if (foundUser) {
+        setUser(foundUser);
+        localStorage.setItem('nexticket_user_id', foundUser.id);
+      } else {
+        throw new Error('Invalid credentials');
+      }
     } finally {
       setLoading(false);
     }
@@ -53,14 +55,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signUp = async (email: string, password: string) => {
     setLoading(true);
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
+      // For now, just throw an error since we're using hardcoded users
+      throw new Error('Sign up is not available in demo mode. Please use existing credentials.');
     } finally {
       setLoading(false);
     }
   };
 
   const logout = async () => {
-    await signOut(auth);
+    setUser(null);
+    localStorage.removeItem('nexticket_user_id');
   };
 
   const value = {

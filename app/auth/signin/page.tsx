@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/components/auth/auth-provider';
+import { getDefaultRouteForRole } from '@/lib/auth-utils';
 import { Eye, EyeOff, Mail, Lock, ArrowLeft } from 'lucide-react';
 
 export default function SignInPage() {
@@ -24,6 +25,7 @@ export default function SignInPage() {
 
     try {
       await signIn(email, password);
+      // Simple redirect - the auth provider will handle user state
       router.push('/');
     } catch (err) {
       setError('Invalid email or password');
@@ -46,6 +48,25 @@ export default function SignInPage() {
             Sign in to your NexTicket account
           </p>
         </div>
+
+        {/* Demo Credentials
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+          <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-3">Demo Credentials</h3>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="font-medium">Admin:</span>
+              <span>admin@nexticket.com / admin123</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="font-medium">Customer:</span>
+              <span>customer@nexticket.com / customer123</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="font-medium">Organizer:</span>
+              <span>organizer@nexticket.com / organizer123</span>
+            </div>
+          </div>
+        </div> */}
 
         {/* Form */}
         <div className="bg-card border rounded-lg p-8">
@@ -124,6 +145,43 @@ export default function SignInPage() {
               {loading ? 'Signing in...' : 'Sign In'}
             </Button>
           </form>
+
+          {/* Quick Login Buttons */}
+          <div className="mt-6 pt-6 border-t">
+            <h4 className="text-sm font-medium text-foreground mb-3">Quick Login (Demo)</h4>
+            <div className="space-y-2">
+              <Button 
+                variant="outline" 
+                className="w-full justify-start"
+                onClick={() => {
+                  setEmail('admin@nexticket.com');
+                  setPassword('admin123');
+                }}
+              >
+                Login as Admin
+              </Button>
+              <Button 
+                variant="outline" 
+                className="w-full justify-start"
+                onClick={() => {
+                  setEmail('customer@nexticket.com');
+                  setPassword('customer123');
+                }}
+              >
+                Login as Customer
+              </Button>
+              <Button 
+                variant="outline" 
+                className="w-full justify-start"
+                onClick={() => {
+                  setEmail('organizer@nexticket.com');
+                  setPassword('organizer123');
+                }}
+              >
+                Login as Organizer
+              </Button>
+            </div>
+          </div>
 
           <div className="mt-6">
             <div className="relative">

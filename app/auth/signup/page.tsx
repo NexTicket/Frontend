@@ -66,7 +66,19 @@ export default function SignUpPage() {
           </Link>
           <h1 className="text-3xl font-bold">Create Account</h1>
           <p className="text-muted-foreground mt-2">
-            Join NexTicket and start discovering amazing events
+            Join NexTicket and start exploring events
+          </p>
+        </div>
+
+        {/* Demo Mode Notice */}
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+          <h3 className="font-semibold text-yellow-900 dark:text-yellow-100 mb-2">Demo Mode</h3>
+          <p className="text-sm text-yellow-800 dark:text-yellow-200">
+            Sign up is disabled in demo mode. Please use the existing demo credentials on the{' '}
+            <Link href="/auth/signin" className="underline font-medium">
+              Sign In page
+            </Link>
+            .
           </p>
         </div>
 

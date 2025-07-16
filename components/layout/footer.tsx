@@ -67,14 +67,14 @@ export function Footer() {
               </div>
               <div className="flex items-center space-x-2">
                 <Phone className="w-4 h-4 text-muted-foreground" />
-                <span className="text-muted-foreground">+1 (555) 123-4567</span>
+                <span className="text-muted-foreground">+94 1234 5678</span>
               </div>
             </div>
           </div>
         </div>
 
         <div className="mt-8 pt-8 border-t text-center text-muted-foreground">
-          <p>&copy; 2024 NexTicket. All rights reserved.</p>
+            <p>&copy; {new Date().getFullYear()} NexTicket. All rights reserved.</p>
         </div>
       </div>
     </footer>

@@ -49,14 +49,25 @@ export function Navbar() {
             
             {user ? (
               <div className="flex items-center space-x-4">
+                <span className="text-sm text-muted-foreground">
+                  Welcome, {user.firstName} ({user.role})
+                </span>
                 <Link href="/profile" className="text-foreground hover:text-primary transition-colors">
                   <User className="w-4 h-4 inline mr-2" />
                   Profile
                 </Link>
-                <Link href="/organizer/dashboard" className="text-foreground hover:text-primary transition-colors">
-                  <Settings className="w-4 h-4 inline mr-2" />
-                  Dashboard
-                </Link>
+                {user.role === 'admin' && (
+                  <Link href="/admin/dashboard" className="text-foreground hover:text-primary transition-colors">
+                    <Settings className="w-4 h-4 inline mr-2" />
+                    Admin Dashboard
+                  </Link>
+                )}
+                {user.role === 'organizer' && (
+                  <Link href="/organizer/dashboard" className="text-foreground hover:text-primary transition-colors">
+                    <Settings className="w-4 h-4 inline mr-2" />
+                    Organizer Dashboard
+                  </Link>
+                )}
                 <Button onClick={handleLogout} variant="ghost" size="sm">
                   <LogOut className="w-4 h-4 mr-2" />
                   Logout
@@ -104,14 +115,25 @@ export function Navbar() {
               
               {user ? (
                 <>
+                  <div className="text-sm text-muted-foreground py-2">
+                    Welcome, {user.firstName} ({user.role})
+                  </div>
                   <Link href="/profile" className="text-foreground hover:text-primary transition-colors">
                     <User className="w-4 h-4 inline mr-2" />
                     Profile
                   </Link>
-                  <Link href="/organizer/dashboard" className="text-foreground hover:text-primary transition-colors">
-                    <Settings className="w-4 h-4 inline mr-2" />
-                    Dashboard
-                  </Link>
+                  {user.role === 'admin' && (
+                    <Link href="/admin/dashboard" className="text-foreground hover:text-primary transition-colors">
+                      <Settings className="w-4 h-4 inline mr-2" />
+                      Admin Dashboard
+                    </Link>
+                  )}
+                  {user.role === 'organizer' && (
+                    <Link href="/organizer/dashboard" className="text-foreground hover:text-primary transition-colors">
+                      <Settings className="w-4 h-4 inline mr-2" />
+                      Organizer Dashboard
+                    </Link>
+                  )}
                   <Button onClick={handleLogout} variant="ghost" size="sm" className="justify-start">
                     <LogOut className="w-4 h-4 mr-2" />
                     Logout

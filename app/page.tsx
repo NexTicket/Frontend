@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/components/auth/auth-provider';
+import { getWelcomeMessage } from '@/lib/auth-utils';
 import { 
   Calendar, 
   MapPin, 
@@ -22,6 +24,7 @@ import { mockEvents } from '@/lib/mock-data';
 
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
+  const { user } = useAuth();
   
   const featuredEvents = mockEvents.slice(0, 6);
   
@@ -56,6 +59,15 @@ export default function Home() {
       <section className="relative bg-gradient-to-r from-primary to-primary/80 text-primary-foreground">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <div className="text-center">
+            {/* User Welcome Message */}
+            {user && (
+              <div className="mb-6 p-4 bg-background/10 backdrop-blur-sm rounded-lg">
+                <p className="text-lg text-primary-foreground/90">
+                  {getWelcomeMessage(user)}
+                </p>
+              </div>
+            )}
+            
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
               Discover Amazing Events
             </h1>
