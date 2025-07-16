@@ -7,6 +7,7 @@ export interface MockUser {
   displayName: string;
   firstName: string;
   lastName: string;
+  profilePicture?: string;
 }
 
 export const mockUsers: MockUser[] = [
@@ -17,7 +18,8 @@ export const mockUsers: MockUser[] = [
     role: 'admin',
     displayName: 'Admin User',
     firstName: 'Admin',
-    lastName: 'User'
+    lastName: 'User',
+    profilePicture: '/Images/profile-avatar-account-icon.png'
   },
   {
     id: '2',
@@ -26,7 +28,8 @@ export const mockUsers: MockUser[] = [
     role: 'customer',
     displayName: 'John Customer',
     firstName: 'John',
-    lastName: 'Customer'
+    lastName: 'Customer',
+    profilePicture: '/Images/profile-avatar-account-icon.png'
   },
   {
     id: '3',
@@ -35,7 +38,8 @@ export const mockUsers: MockUser[] = [
     role: 'organizer',
     displayName: 'Jane Organizer',
     firstName: 'Jane',
-    lastName: 'Organizer'
+    lastName: 'Organizer',
+    profilePicture: '/Images/profile-avatar-account-icon.png'
   }
 ];
 
