@@ -37,3 +37,20 @@ export const getWelcomeMessage = (user: MockUser): string => {
       return `Welcome back, ${user.firstName}!`;
   }
 };
+
+// Helper function to set authentication cookies
+export const setAuthCookies = (user: MockUser) => {
+  if (typeof document !== 'undefined') {
+    const maxAge = 60 * 60 * 24 * 7; // 7 days
+    document.cookie = `user-role=${user.role}; path=/; max-age=${maxAge}`;
+    document.cookie = `auth-token=authenticated; path=/; max-age=${maxAge}`;
+  }
+};
+
+// Helper function to clear authentication cookies
+export const clearAuthCookies = () => {
+  if (typeof document !== 'undefined') {
+    document.cookie = 'user-role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    document.cookie = 'auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+  }
+};

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/components/auth/auth-provider';
 import { getDefaultRouteForRole } from '@/lib/auth-utils';
+import { findUserByCredentials } from '@/lib/mock-users';
 import { Eye, EyeOff, Mail, Lock, ArrowLeft } from 'lucide-react';
 
 export default function SignInPage() {
@@ -25,8 +26,15 @@ export default function SignInPage() {
 
     try {
       await signIn(email, password);
-      // Simple redirect - the auth provider will handle user state
-      router.push('/');
+      
+      // Get the user role and redirect to appropriate dashboard
+      const user = findUserByCredentials(email, password);
+      if (user) {
+        const defaultRoute = getDefaultRouteForRole(user.role);
+        router.push(defaultRoute);
+      } else {
+        router.push('/');
+      }
     } catch (err) {
       setError('Invalid email or password');
     } finally {
@@ -153,33 +161,40 @@ export default function SignInPage() {
               <Button 
                 variant="outline" 
                 className="w-full justify-start"
-                onClick={() => {
-                  setEmail('admin@nexticket.com');
-                  setPassword('admin123');
+                onClick={async () => {
+                  setLoading(true);
+                  try {
+                    await signIn('admin@nexticket.com', 'admin123');
+                    router.push('/admin/dashboard');
+                  } catch (err) {
+                    setError('Login failed');
+                  } finally {
+                    setLoading(false);
+                  }
                 }}
+                disabled={loading}
               >
                 Login as Admin
               </Button>
               <Button 
                 variant="outline" 
                 className="w-full justify-start"
-                onClick={() => {
-                  setEmail('customer@nexticket.com');
-                  setPassword('customer123');
+                onClick={async () => {
+                  setLoading(true);
+                  try {
+                    await signIn('customer@nexticket.com', 'customer123');
+                    router.push('/');
+                  } catch (err) {
+                    setError('Login failed');
+                  } finally {
+                    setLoading(false);
+                  }
                 }}
+                disabled={loading}
               >
                 Login as Customer
               </Button>
-              <Button 
-                variant="outline" 
-                className="w-full justify-start"
-                onClick={() => {
-                  setEmail('organizer@nexticket.com');
-                  setPassword('organizer123');
-                }}
-              >
-                Login as Organizer
-              </Button>
+              
             </div>
           </div>
 

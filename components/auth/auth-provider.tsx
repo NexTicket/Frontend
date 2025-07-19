@@ -1,7 +1,9 @@
 "use client"
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { MockUser, findUserByCredentials, getUserById } from '@/lib/mock-users';
+import { setAuthCookies, clearAuthCookies } from '@/lib/auth-utils';
 
 interface AuthContextType {
   user: MockUser | null;
@@ -24,6 +26,7 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<MockUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     // Check if user is stored in localStorage
@@ -32,6 +35,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const storedUser = getUserById(storedUserId);
       if (storedUser) {
         setUser(storedUser);
+        setAuthCookies(storedUser);
       }
     }
     setLoading(false);
@@ -44,6 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (foundUser) {
         setUser(foundUser);
         localStorage.setItem('nexticket_user_id', foundUser.id);
+        setAuthCookies(foundUser);
       } else {
         throw new Error('Invalid credentials');
       }
@@ -65,6 +70,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     setUser(null);
     localStorage.removeItem('nexticket_user_id');
+    clearAuthCookies();
+    router.push('/'); 
   };
 
   const value = {
