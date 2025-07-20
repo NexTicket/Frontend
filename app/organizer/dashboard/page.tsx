@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
+import { useAuth } from '@/components/auth/auth-provider';
 import { 
   Plus, 
   Calendar, 
