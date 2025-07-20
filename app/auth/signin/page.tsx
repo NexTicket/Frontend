@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import type { LinkProps } from 'next/link';
+import MuiLink from '@mui/material/Link';
 import { 
   Box, 
   TextField, 
@@ -33,6 +35,7 @@ import {
 import { useAuth } from '@/components/auth/auth-provider';
 import { useEffect } from 'react';
 //import { useEffect } from 'react';
+
 
 
 export default function SignInPage() {
@@ -199,14 +202,16 @@ export default function SignInPage() {
       >
         {/* Header */}
         <Box sx={{ textAlign: 'center', mb: 3 }}>
-          <Link href="/" style={{ textDecoration: 'none' }}>
+          
             <Button 
-              startIcon={<ArrowBack />} 
+              component={Link}
+              href="/"
+              startIcon={<ArrowBack />}
               sx={{ mb: 2, color: 'text.secondary' }}
             >
               Back to Home
             </Button>
-          </Link>
+          
           
           <Typography variant="h4" fontWeight="bold" color="primary" gutterBottom>
             Welcome Back
@@ -434,15 +439,12 @@ export default function SignInPage() {
             </Button>
           </Box>
 
-          {/* Sign Up Link */}
           <Box sx={{ textAlign: 'center' }}>
             <Typography variant="body2" color="text.secondary">
-              Don't have an account?{' '}
-              <Link href="/auth/signup" style={{ textDecoration: 'none' }}>
-                <Typography component="span" color="primary" fontWeight="bold">
-                  Create one now
-                </Typography>
-              </Link>
+              Don&apos;t have an account?{' '}
+              <MuiLink href="/auth/signup" underline="hover" fontWeight="bold">
+                Create one now
+              </MuiLink>
             </Typography>
           </Box>
         </Box>
