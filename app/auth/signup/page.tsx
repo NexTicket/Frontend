@@ -29,8 +29,12 @@ import {
   Warning
 } from '@mui/icons-material';
 import { useAuth } from '@/components/auth/auth-provider';
+import MuiLink from '@mui/material/Link';
+import NextLink from 'next/link';
+import { getAuth } from 'firebase/auth';
 
 export default function SignupPage() {
+  const auth = getAuth();
   const { signUp, userProfile, firebaseUser, isLoading: authLoading } = useAuth();
   const router = useRouter();
 
@@ -55,10 +59,14 @@ export default function SignupPage() {
       // Redirect based on user role
       switch (userProfile.role) {
         case 'admin':
+          console.log('Redirecting to admin dashboard from signup');
           router.push('/admin/dashboard');
           break;
         case 'organizer':
           router.push('/organizer/dashboard');
+          break;
+        case 'customer':
+          router.push('/dashboard');
           break;
         default:
           router.push('/auth/signin');
@@ -226,14 +234,14 @@ export default function SignupPage() {
       >
         {/* Header */}
         <Box sx={{ textAlign: 'center', mb: 3 }}>
-          <Link href="/" style={{ textDecoration: 'none' }}>
-            <Button 
-              startIcon={<ArrowBack />} 
+          <Button 
+              component={Link}
+              href="/"
+              startIcon={<ArrowBack />}
               sx={{ mb: 2, color: 'text.secondary' }}
             >
               Back to Home
             </Button>
-          </Link>
           
           <Typography variant="h4" fontWeight="bold" color="primary" gutterBottom>
             Create Account
@@ -251,9 +259,9 @@ export default function SignupPage() {
         >
           <Typography variant="body2">
             <strong>Demo Mode:</strong> You can create a new account or use existing demo credentials on the{' '}
-            <Link href="/auth/signin" style={{ textDecoration: 'none' }}>
-              <strong>Sign In page</strong>
-            </Link>
+            <MuiLink component={NextLink} href="/auth/signin" underline="none" fontWeight="bold">
+              Sign In page
+            </MuiLink>
           </Typography>
         </Alert>
 
@@ -320,6 +328,22 @@ export default function SignupPage() {
               ),
             }}
           />
+          
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              Please verify your email to continue. Check your inbox.
+            </Typography>
+            {/* <Button 
+              onClick={() => firebaseUser && sendEmailVerification(firebaseUser)}
+              disabled={!firebaseUser}
+              size="small"
+              sx={{ mt: 1 }}
+              variant="outlined"
+            >
+              Resend Verification Email
+            </Button> */}
+          </Box>
+          
 
           {/* Password Field */}
           <TextField
@@ -478,11 +502,15 @@ export default function SignupPage() {
           <Box sx={{ textAlign: 'center' }}>
             <Typography variant="body2" color="text.secondary">
               Already have an account?{' '}
-              <Link href="/auth/signin" style={{ textDecoration: 'none' }}>
-                <Typography component="span" color="primary" fontWeight="bold">
-                  Sign in here
-                </Typography>
-              </Link>
+              <MuiLink 
+                component={NextLink} 
+                href="/auth/signin" 
+                underline="none" 
+                fontWeight="bold" 
+                color="primary"
+              >
+                Sign in here
+              </MuiLink>
             </Typography>
           </Box>
         </Box>

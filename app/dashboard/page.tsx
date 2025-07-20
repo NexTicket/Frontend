@@ -28,6 +28,7 @@ import {
   ExitToApp
 } from '@mui/icons-material';
 import { useAuth } from '@/components/auth/auth-provider';
+import { sendEmailVerification } from 'firebase/auth';
 
 export default function DashboardPage() {
   const { userProfile, firebaseUser, isLoading, logout } = useAuth();
@@ -211,6 +212,18 @@ export default function DashboardPage() {
                 <Typography variant="h5" fontWeight="bold">
                   Welcome back, {userProfile.firstName || userProfile.displayName || 'User'}!
                 </Typography>
+                <Box sx={{ mb: 2 }}>
+                  
+                  <Button 
+                    onClick={() => firebaseUser && sendEmailVerification(firebaseUser)}
+                    disabled={!firebaseUser}
+                    size="small"
+                    sx={{ mt: 1 }}
+                    variant="outlined"
+                  >
+                    Resend Verification Email
+                  </Button>
+                </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
                   <Chip 
                     label={userProfile.role.charAt(0).toUpperCase() + userProfile.role.slice(1)}

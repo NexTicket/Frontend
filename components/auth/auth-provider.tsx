@@ -1,7 +1,7 @@
 'use client';
 
-import { createContext, use, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, User } from 'firebase/auth';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { onAuthStateChanged, User, sendEmailVerification, createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { 
   getDoc, 
@@ -32,13 +32,13 @@ interface AuthContextProps {
   userProfile: UserProfile | null;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, additionalData?: Partial<UserProfile>) => Promise<void>;
+  signUp: (email: string, password: string, additionalData?: Partial<UserProfile>) => Promise<User>;
   logout: () => Promise<void>;
   updateProfile: (data: Partial<UserProfile>) => Promise<void>;
   signInAndRedirect: (email: string, password: string, router: AppRouterInstance) => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextProps | null>(null);
+const AuthContext = createContext<AuthContextProps | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
@@ -170,18 +170,60 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   // Sign up function
-  const signUp = async (email: string, password: string, additionalData?: Partial<UserProfile>) => {
-    try {
-      const { createUserWithEmailAndPassword } = await import('firebase/auth');
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      
-      if (userCredential.user) {
-        await createUserProfile(userCredential.user, additionalData);
-      }
-    } catch (error) {
-      throw error;
-    }
-  };
+  const signUp = async (
+  email: string,
+  password: string,
+  additionalData?: Partial<UserProfile>
+) => {
+  try {
+    // Step 1: Create account
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+
+    if (!user) throw new Error('User creation failed.');
+
+    // Step 2: Save additional profile info to Firestore
+    await createUserProfile(user, additionalData);
+
+    // Step 3: Send email verification
+    await sendEmailVerification(user);
+    console.log('✅ Verification email sent to', user.email);
+
+    return user;
+  } catch (error: any) {
+    console.error('❌ Sign up failed:', error.message);
+    throw error;
+  }
+};
+
+  // onAuthStateChanged(auth, async (firebaseUser) => {
+  //   if (firebaseUser) {
+  //     await firebaseUser.reload(); // refresh user info
+
+  //     if (firebaseUser.emailVerified) {
+  //       // ✅ Proceed normally
+  //       setFirebaseUser(firebaseUser);
+
+  //       const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+  //       if (userDoc.exists()) {
+  //         setUserProfile(userDoc.data() as UserProfile);
+  //       } else {
+  //         setUserProfile(null);
+  //       }
+  //     } else {
+  //       // ❌ Not verified
+  //       console.warn('Email not verified');
+  //       setFirebaseUser(null);
+  //       setUserProfile(null);
+  //     }
+  //   } else {
+  //   setIsLoading(false);
+  //     setUserProfile(null);
+  //   }
+
+  //   setIsLoading(false);
+  // });
+
 
   // Update profile function
   const updateProfile = async (data: Partial<UserProfile>) => {
@@ -232,8 +274,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.log('Redirecting to organizer dashboard');
         router.push('/organizer/dashboard');
         break;
-      default:
+      case 'customer':
+        console.log('Redirecting to customers dashboard');
         router.push('/dashboard');
+        break;
+      // default:
+      //   router.push('/dashboard');
     }
   } else {
     console.error('No user profile found in Firestore!');
@@ -274,7 +320,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useAuth must be used within AuthProvider');
   }
   return context;
