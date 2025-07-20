@@ -2,6 +2,7 @@
 
 import { useState,  useRef, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { 
@@ -17,12 +18,62 @@ import {
   Clock,
   Ticket,
   BarChart3,
-  PieChart
+  PieChart,
+  LogOut,
+  ArrowLeft
 } from 'lucide-react';
 import { mockEvents, mockVenues } from '@/lib/mock-data';
+import RouteGuard from '@/components/auth/routeGuard';
 
 export default function OrganizerDashboard() {
+  const { userProfile, firebaseUser, logout, isLoading } = useAuth();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState('overview');
+
+  // Check authentication and organizer role
+  useEffect(() => {
+    if (!isLoading && (!firebaseUser || !userProfile)) {
+      router.push('/auth/signin');
+    } else if (!isLoading && userProfile && userProfile.role !== 'organizer') {
+      router.push('/dashboard'); // Redirect non-organizer users
+    }
+  }, [isLoading, firebaseUser, userProfile, router]);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.push('/');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
+
+  // Show loading if auth is still loading
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+          <p className="mt-4 text-muted-foreground">Loading organizer dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show access denied if not authenticated or not organizer
+  if (!firebaseUser || !userProfile || userProfile.role !== 'organizer') {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
+          <p className="text-muted-foreground mb-6">You need organizer privileges to access this page.</p>
+          <Button onClick={() => router.push('/auth/signin')}>
+            Sign In
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   // Mock organizer data
   const organizer = {

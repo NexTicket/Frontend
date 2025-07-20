@@ -12,7 +12,7 @@ interface ProfileDropdownProps {
 }
 
 export function ProfileDropdown({ size = 'md' }: ProfileDropdownProps) {
-  const { user, logout } = useAuth();
+  const { userProfile, firebaseUser, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -42,7 +42,7 @@ export function ProfileDropdown({ size = 'md' }: ProfileDropdownProps) {
     }
   };
 
-  if (user) {
+  if (firebaseUser && userProfile) {
     return (
       <div className="relative" ref={dropdownRef}>
         <button
@@ -51,8 +51,8 @@ export function ProfileDropdown({ size = 'md' }: ProfileDropdownProps) {
         >
           <div className={`${sizeClasses[size]} rounded-full overflow-hidden border-2 border-primary/20 hover:border-primary/40 transition-colors`}>
             <Image
-              src={user.profilePicture || "/Images/profile-avatar-account-icon.png"}
-              alt={`${user.firstName} ${user.lastName}`}
+              src="/Images/profile-avatar-account-icon.png"
+              alt={`${userProfile.firstName || 'User'} ${userProfile.lastName || ''}`}
               width={size === 'sm' ? 32 : size === 'md' ? 40 : 48}
               height={size === 'sm' ? 32 : size === 'md' ? 40 : 48}
               className="w-full h-full object-cover"
@@ -64,9 +64,11 @@ export function ProfileDropdown({ size = 'md' }: ProfileDropdownProps) {
         {isOpen && (
           <div className="absolute right-0 mt-2 w-56 bg-card border rounded-lg shadow-lg py-2 z-50">
             <div className="px-4 py-3 border-b">
-              <p className="text-sm font-medium text-card-foreground">{user.firstName} {user.lastName}</p>
-              <p className="text-xs text-muted-foreground">{user.email}</p>
-              <p className="text-xs text-primary capitalize font-medium">{user.role}</p>
+              <p className="text-sm font-medium text-card-foreground">
+                {userProfile.firstName || userProfile.displayName || 'User'} {userProfile.lastName || ''}
+              </p>
+              <p className="text-xs text-muted-foreground">{userProfile.email}</p>
+              <p className="text-xs text-primary capitalize font-medium">{userProfile.role}</p>
             </div>
             
             <div className="py-2">
@@ -79,7 +81,7 @@ export function ProfileDropdown({ size = 'md' }: ProfileDropdownProps) {
                 Profile
               </Link>
               
-              {user.role === 'admin' && (
+              {userProfile.role === 'admin' && (
                 <Link 
                   href="/admin/dashboard" 
                   className="flex items-center px-4 py-2 text-sm hover:bg-secondary transition-colors"
@@ -90,7 +92,7 @@ export function ProfileDropdown({ size = 'md' }: ProfileDropdownProps) {
                 </Link>
               )}
               
-              {user.role === 'organizer' && (
+              {userProfile.role === 'organizer' && (
                 <Link 
                   href="/organizer/dashboard" 
                   className="flex items-center px-4 py-2 text-sm hover:bg-secondary transition-colors"

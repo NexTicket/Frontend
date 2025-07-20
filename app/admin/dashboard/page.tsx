@@ -1,440 +1,598 @@
-"use client"
+'use client';
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/components/auth/auth-provider';
 import { 
-  Users, 
-  Calendar, 
-  MapPin, 
-  DollarSign, 
+  Box, 
+  Typography, 
+  Paper, 
+  Card, 
+  CardContent, 
+  Avatar, 
+  Chip, 
+  LinearProgress,
+  IconButton,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemAvatar,
+  Divider,
+  Alert,
+  Fab,
+  Badge,
+  Container
+} from '@mui/material';
+import {
   TrendingUp,
-  Shield,
+  TrendingDown,
+  Users,
+  Calendar,
+  DollarSign,
+  Activity,
+  MapPin,
+  Clock,
+  Star,
   AlertTriangle,
-  CheckCircle,
-  XCircle,
-  Eye,
-  Edit,
-  Trash2,
-  Ban,
-  BarChart3,
-  PieChart,
-  Activity
+  RefreshCw,
+  Settings,
+  Plus,
+  Bell,
+  Download,
+  LogOut,
+  ArrowLeft
 } from 'lucide-react';
-import { mockEvents, mockVenues } from '@/lib/mock-data';
+import {
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
+} from 'recharts';
+import { format, subDays, startOfWeek, endOfWeek } from 'date-fns';
+import RouteGuard from '@/components/auth/routeGuard';
+
+// Mock data for analytics
+const revenueData = [
+  { name: 'Jan', revenue: 45000, tickets: 120, events: 8 },
+  { name: 'Feb', revenue: 52000, tickets: 145, events: 12 },
+  { name: 'Mar', revenue: 48000, tickets: 132, events: 10 },
+  { name: 'Apr', revenue: 61000, tickets: 168, events: 15 },
+  { name: 'May', revenue: 58000, tickets: 155, events: 13 },
+  { name: 'Jun', revenue: 67000, tickets: 189, events: 18 },
+  { name: 'Jul', revenue: 74000, tickets: 210, events: 22 }
+];
+
+const categoryData = [
+  { name: 'Concerts', value: 35, color: '#8884d8' },
+  { name: 'Sports', value: 25, color: '#82ca9d' },
+  { name: 'Theater', value: 20, color: '#ffc658' },
+  { name: 'Comedy', value: 12, color: '#ff7300' },
+  { name: 'Other', value: 8, color: '#00ff88' }
+];
+
+const weeklyData = [
+  { day: 'Mon', sales: 45, users: 12 },
+  { day: 'Tue', sales: 52, users: 19 },
+  { day: 'Wed', sales: 48, users: 15 },
+  { day: 'Thu', sales: 61, users: 25 },
+  { day: 'Fri', sales: 58, users: 22 },
+  { day: 'Sat', sales: 67, users: 31 },
+  { day: 'Sun', sales: 74, users: 28 }
+];
+
+const recentActivities = [
+  { id: 1, user: 'John Doe', action: 'Purchased ticket', event: 'Rock Concert 2025', time: '2 min ago', avatar: '/Images/profile-avatar-account-icon.png' },
+  { id: 2, user: 'Jane Smith', action: 'Created event', event: 'Theater Night', time: '5 min ago', avatar: '/Images/profile-avatar-account-icon.png' },
+  { id: 3, user: 'Mike Johnson', action: 'Cancelled booking', event: 'Sports Match', time: '10 min ago', avatar: '/Images/profile-avatar-account-icon.png' },
+  { id: 4, user: 'Sarah Wilson', action: 'Updated profile', event: '', time: '15 min ago', avatar: '/Images/profile-avatar-account-icon.png' },
+  { id: 5, user: 'Tom Brown', action: 'Purchased VIP ticket', event: 'Music Festival', time: '20 min ago', avatar: '/Images/profile-avatar-account-icon.png' }
+];
+
+const topEvents = [
+  { id: 1, name: 'Summer Music Festival', tickets: 1250, revenue: 125000, growth: 15.2 },
+  { id: 2, name: 'Comedy Night Special', tickets: 890, revenue: 89000, growth: 8.7 },
+  { id: 3, name: 'Tech Conference 2025', tickets: 650, revenue: 195000, growth: 22.1 },
+  { id: 4, name: 'Basketball Championship', tickets: 2100, revenue: 210000, growth: -3.2 },
+  { id: 5, name: 'Art Exhibition', tickets: 320, revenue: 32000, growth: 12.5 }
+];
+
+interface StatCardProps {
+  title: string;
+  value: string | number;
+  icon: React.ReactNode;
+  trend?: number;
+  color: string;
+  subtitle?: string;
+}
+
+const StatCard: React.FC<StatCardProps> = ({ title, value, icon, trend, color, subtitle }) => {
+  const TrendIcon = trend && trend > 0 ? TrendingUp : TrendingDown;
+  const trendColor = trend && trend > 0 ? '#10b981' : '#ef4444';
+
+  return (
+    <RouteGuard requiredRole="admin">
+    <Card elevation={2} sx={{ height: '100%', position: 'relative', overflow: 'visible' }}>
+      <CardContent>
+        <Box display="flex" justifyContent="space-between" alignItems="flex-start">
+          <Box>
+            <Typography variant="body2" color="text.secondary" gutterBottom>
+              {title}
+            </Typography>
+            <Typography variant="h4" fontWeight="bold" color={color}>
+              {value}
+            </Typography>
+            {subtitle && (
+              <Typography variant="body2" color="text.secondary" mt={0.5}>
+                {subtitle}
+              </Typography>
+            )}
+            {trend && (
+              <Box display="flex" alignItems="center" mt={1}>
+                <TrendIcon size={16} color={trendColor} />
+                <Typography variant="body2" color={trendColor} ml={0.5}>
+                  {Math.abs(trend)}% from last month
+                </Typography>
+              </Box>
+            )}
+          </Box>
+          <Box
+            sx={{
+              backgroundColor: `${color}20`,
+              borderRadius: 2,
+              p: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            {icon}
+          </Box>
+        </Box>
+      </CardContent>
+    </Card>
+    </RouteGuard>
+  );
+};
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState('overview');
+  const { userProfile, firebaseUser, logout, isLoading } = useAuth();
+  const router = useRouter();
+  const [refreshing, setRefreshing] = useState(false);
+  const [activityDialogOpen, setActivityDialogOpen] = useState(false);
+  const [notifications, setNotifications] = useState(3);
+  console.log('User profile after admin redirectory:', userProfile);
 
-  // Mock admin data
-  const adminStats = {
-    totalUsers: 12500,
-    totalEvents: 450,
-    totalVenues: 125,
-    totalRevenue: 2450000,
-    pendingApprovals: 15,
-    reportedIssues: 8,
-    activeOrganizers: 89,
-    systemHealth: 98.5
+  // Check authentication and admin role
+  useEffect(() => {
+    if (!isLoading && (!firebaseUser || !userProfile)) {
+      router.push('/auth/signin');
+    } else if (!isLoading && userProfile && userProfile.role !== 'admin') {
+      router.push('/dashboard'); // Redirect non-admin users
+    }
+  }, [isLoading, firebaseUser, userProfile, router]);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.push('/');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
   };
 
-  const recentEvents = mockEvents.slice(0, 5);
-  const recentVenues = mockVenues.slice(0, 3);
+  const handleRefresh = () => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 2000);
+  };
 
-  const tabs = [
-    { id: 'overview', label: 'Overview' },
-    { id: 'users', label: 'Users' },
-    { id: 'events', label: 'Events' },
-    { id: 'venues', label: 'Venues' },
-    { id: 'reports', label: 'Reports' },
-    { id: 'settings', label: 'Settings' }
-  ];
+  // Show loading if auth is still loading
+  if (isLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+        <Typography variant="h6">Loading admin dashboard...</Typography>
+      </Box>
+    );
+  }
 
-  const statCards = [
+  // Show access denied if not authenticated or not admin
+  if (!firebaseUser || !userProfile || userProfile.role !== 'admin') {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+        <Paper sx={{ p: 4, textAlign: 'center' }}>
+          <Typography variant="h5" gutterBottom>Access Denied</Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+            You need admin privileges to access this page.
+          </Typography>
+          <Button variant="contained" onClick={() => router.push('/auth/signin')}>
+            Sign In
+          </Button>
+        </Paper>
+      </Box>
+    );
+  }
+
+  const stats = [
     {
       title: 'Total Users',
-      value: adminStats.totalUsers.toLocaleString(),
-      icon: Users,
-      color: 'bg-blue-500',
-      change: '+12%'
+      value: '2,847',
+      icon: <Users size={24} color="#3b82f6" />,
+      trend: 12.5,
+      color: '#3b82f6',
+      subtitle: '145 new this week'
     },
     {
-      title: 'Total Events',
-      value: adminStats.totalEvents.toLocaleString(),
-      icon: Calendar,
-      color: 'bg-green-500',
-      change: '+8%'
+      title: 'Active Events',
+      value: '186',
+      icon: <Calendar size={24} color="#10b981" />,
+      trend: 8.2,
+      color: '#10b981',
+      subtitle: '23 ending soon'
     },
     {
-      title: 'Total Venues',
-      value: adminStats.totalVenues.toLocaleString(),
-      icon: MapPin,
-      color: 'bg-purple-500',
-      change: '+5%'
+      title: 'Monthly Revenue',
+      value: 'LKR 847K',
+      icon: <DollarSign size={24} color="#f59e0b" />,
+      trend: 15.8,
+      color: '#f59e0b',
+      subtitle: 'Target: LKR 1M'
     },
     {
-      title: 'Total Revenue',
-      value: `$${(adminStats.totalRevenue / 1000000).toFixed(1)}M`,
-      icon: DollarSign,
-      color: 'bg-orange-500',
-      change: '+15%'
+      title: 'Tickets Sold',
+      value: '12,493',
+      icon: <Activity size={24} color="#8b5cf6" />,
+      trend: 23.1,
+      color: '#8b5cf6',
+      subtitle: '1,847 today'
+    },
+    {
+      title: 'Active Venues',
+      value: '67',
+      icon: <MapPin size={24} color="#ef4444" />,
+      trend: 5.4,
+      color: '#ef4444',
+      subtitle: '12 pending approval'
+    },
+    {
+      title: 'Avg. Rating',
+      value: '4.8',
+      icon: <Star size={24} color="#f97316" />,
+      trend: 2.1,
+      color: '#f97316',
+      subtitle: 'From 2,847 reviews'
     }
   ];
 
-  const mockUsers = [
-    { id: 1, name: 'John Doe', email: 'john@example.com', role: 'User', status: 'Active', joined: '2024-01-15' },
-    { id: 2, name: 'Jane Smith', email: 'jane@example.com', role: 'Organizer', status: 'Active', joined: '2024-02-20' },
-    { id: 3, name: 'Mike Johnson', email: 'mike@example.com', role: 'User', status: 'Suspended', joined: '2024-03-10' },
-    { id: 4, name: 'Event Corp', email: 'contact@eventcorp.com', role: 'Organizer', status: 'Pending', joined: '2024-07-15' },
-  ];
-
-  const mockReports = [
-    { id: 1, type: 'Event', subject: 'Inappropriate Content', reporter: 'user123', status: 'Open' },
-    { id: 2, type: 'User', subject: 'Spam Messages', reporter: 'user456', status: 'Resolved' },
-    { id: 3, type: 'Venue', subject: 'Incorrect Information', reporter: 'user789', status: 'Open' },
-  ];
-
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <Box sx={{ backgroundColor: '#f8fafc', minHeight: '100vh' }}>
+      <Container maxWidth="xl" sx={{ py: 4 }}>
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-          <p className="text-muted-foreground">System overview and management</p>
-        </div>
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
+          <Box>
+            <Typography variant="h4" fontWeight="bold" color="#1e293b">
+              Admin Dashboard
+            </Typography>
+            <Typography variant="body1" color="text.secondary" mt={0.5}>
+              Welcome back, {userProfile.firstName || 'Admin'}! Here's what's happening with NexTicket today.
+            </Typography>
+          </Box>
+          <Box display="flex" gap={2} alignItems="center">
+            <Button
+              variant="outlined"
+              startIcon={<ArrowLeft />}
+              onClick={() => router.push('/dashboard')}
+              sx={{ mr: 1 }}
+            >
+              Dashboard
+            </Button>
+            <IconButton 
+              onClick={handleRefresh} 
+              disabled={refreshing}
+              sx={{ backgroundColor: 'white', boxShadow: 1 }}
+            >
+              <RefreshCw className={refreshing ? 'animate-spin' : ''} size={20} />
+            </IconButton>
+            <Badge badgeContent={notifications} color="error">
+              <IconButton sx={{ backgroundColor: 'white', boxShadow: 1 }}>
+                <Bell size={20} />
+              </IconButton>
+            </Badge>
+            <Button
+              variant="contained"
+              startIcon={<Download size={16} />}
+              sx={{ textTransform: 'none' }}
+            >
+              Export Report
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<LogOut size={16} />}
+              onClick={handleLogout}
+              sx={{ 
+                textTransform: 'none',
+                color: '#dc2626',
+                borderColor: '#dc2626',
+                '&:hover': {
+                  borderColor: '#b91c1c',
+                  backgroundColor: 'rgba(220, 38, 38, 0.04)'
+                }
+              }}
+            >
+              Logout
+            </Button>
+          </Box>
+        </Box>
 
-        {/* Alert Banner */}
-        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-8">
-          <div className="flex items-center">
-            <AlertTriangle className="h-5 w-5 text-orange-600 mr-2" />
-            <div>
-              <h3 className="font-medium text-orange-800">Attention Required</h3>
-              <p className="text-sm text-orange-700">
-                {adminStats.pendingApprovals} pending approvals and {adminStats.reportedIssues} reported issues need review
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          {statCards.map((stat, index) => {
-            const Icon = stat.icon;
-            return (
-              <div key={index} className="bg-card rounded-lg border p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
-                    <p className="text-2xl font-bold">{stat.value}</p>
-                    <p className="text-sm text-green-600">{stat.change} from last month</p>
-                  </div>
-                  <div className={`${stat.color} p-3 rounded-full`}>
-                    <Icon className="h-6 w-6 text-white" />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Navigation Tabs */}
-        <div className="border-b mb-8">
-          <nav className="flex space-x-8">
-            {tabs.map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === tab.id
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </nav>
-        </div>
-
-        {/* Tab Content */}
-        {activeTab === 'overview' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-6">
-              {/* System Health */}
-              <div className="bg-card rounded-lg border p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold">System Health</h3>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                    <span className="text-sm font-medium">{adminStats.systemHealth}% Uptime</span>
-                  </div>
-                </div>
-                <div className="h-32 bg-muted rounded-lg flex items-center justify-center">
-                  <div className="text-center">
-                    <Activity className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                    <p className="text-muted-foreground">System metrics visualization</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Recent Activity */}
-              <div className="bg-card rounded-lg border p-6">
-                <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-3">
-                    <CheckCircle className="h-5 w-5 text-green-500" />
-                    <div>
-                      <p className="text-sm font-medium">New venue approved</p>
-                      <p className="text-xs text-muted-foreground">Madison Square Garden - 2 hours ago</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <XCircle className="h-5 w-5 text-red-500" />
-                    <div>
-                      <p className="text-sm font-medium">Event reported</p>
-                      <p className="text-xs text-muted-foreground">Inappropriate content - 4 hours ago</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <CheckCircle className="h-5 w-5 text-green-500" />
-                    <div>
-                      <p className="text-sm font-medium">Organizer verified</p>
-                      <p className="text-xs text-muted-foreground">Event Corp - 6 hours ago</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Sidebar */}
-            <div className="space-y-6">
-              {/* Quick Actions */}
-              <div className="bg-card rounded-lg border p-6">
-                <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
-                <div className="space-y-3">
-                  <Button className="w-full justify-start">
-                    <Shield className="mr-2 h-4 w-4" />
-                    Review Pending Approvals
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start">
-                    <AlertTriangle className="mr-2 h-4 w-4" />
-                    Handle Reports
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start">
-                    <Users className="mr-2 h-4 w-4" />
-                    Manage Users
-                  </Button>
-                </div>
-              </div>
-
-              {/* System Stats */}
-              <div className="bg-card rounded-lg border p-6">
-                <h3 className="text-lg font-semibold mb-4">System Stats</h3>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Active Users</span>
-                    <span className="font-medium">8,234</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Online Now</span>
-                    <span className="font-medium">423</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Server Load</span>
-                    <span className="font-medium">34%</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Database Size</span>
-                    <span className="font-medium">2.3 GB</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'users' && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">User Management</h2>
-              <Button>
-                <Users className="mr-2 h-4 w-4" />
-                Add User
+        {/* System Alerts */}
+        <Box mb={3}>
+          <Alert 
+            severity="warning" 
+            icon={<AlertTriangle size={20} />}
+            action={
+              <Button color="inherit" size="small">
+                Review
               </Button>
-            </div>
+            }
+          >
+            <strong>System Maintenance:</strong> Scheduled maintenance on July 25, 2025 from 2:00 AM - 4:00 AM LKT
+          </Alert>
+        </Box>
 
-            <div className="bg-card rounded-lg border">
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold">All Users</h3>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="text"
-                      placeholder="Search users..."
-                      className="px-3 py-2 border rounded-md bg-background text-sm"
-                    />
-                    <Button variant="outline" size="sm">Filter</Button>
-                  </div>
-                </div>
-                
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left py-3 font-medium">Name</th>
-                        <th className="text-left py-3 font-medium">Email</th>
-                        <th className="text-left py-3 font-medium">Role</th>
-                        <th className="text-left py-3 font-medium">Status</th>
-                        <th className="text-left py-3 font-medium">Joined</th>
-                        <th className="text-left py-3 font-medium">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {mockUsers.map(user => (
-                        <tr key={user.id} className="border-b">
-                          <td className="py-3 font-medium">{user.name}</td>
-                          <td className="py-3 text-muted-foreground">{user.email}</td>
-                          <td className="py-3">
-                            <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                              {user.role}
-                            </span>
-                          </td>
-                          <td className="py-3">
-                            <span className={`px-2 py-1 text-xs rounded-full ${
-                              user.status === 'Active' ? 'bg-green-100 text-green-800' :
-                              user.status === 'Suspended' ? 'bg-red-100 text-red-800' :
-                              'bg-yellow-100 text-yellow-800'
-                            }`}>
-                              {user.status}
-                            </span>
-                          </td>
-                          <td className="py-3 text-muted-foreground">
-                            {new Date(user.joined).toLocaleDateString()}
-                          </td>
-                          <td className="py-3">
-                            <div className="flex items-center space-x-2">
-                              <Button variant="outline" size="sm">
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              <Button variant="outline" size="sm">
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button variant="outline" size="sm">
-                                <Ban className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Stats Grid */}
+        <Box display="grid" 
+             gridTemplateColumns={{ 
+               xs: '1fr', 
+               sm: 'repeat(2, 1fr)', 
+               md: 'repeat(3, 1fr)', 
+               lg: 'repeat(6, 1fr)' 
+             }} 
+             gap={3} 
+             mb={4}>
+          {stats.map((stat, index) => (
+            <StatCard key={index} {...stat} />
+          ))}
+        </Box>
 
-        {activeTab === 'events' && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Event Management</h2>
-              <div className="flex items-center space-x-2">
-                <Button variant="outline">Export</Button>
-                <Button>Create Event</Button>
-              </div>
-            </div>
+        {/* Charts Section */}
+        <Box display="grid" 
+             gridTemplateColumns={{ xs: '1fr', lg: '2fr 1fr' }} 
+             gap={3} 
+             mb={4}>
+          {/* Revenue Trend */}
+          <Paper elevation={2} sx={{ p: 3, height: 400 }}>
+            <Typography variant="h6" fontWeight="bold" mb={2}>
+              Revenue Trend
+            </Typography>
+            <ResponsiveContainer width="100%" height="90%">
+              <AreaChart data={revenueData}>
+                <defs>
+                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip 
+                  formatter={(value: any, name: string) => [
+                    name === 'revenue' ? `LKR ${value.toLocaleString()}` : value,
+                    name === 'revenue' ? 'Revenue' : name
+                  ]}
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="revenue" 
+                  stroke="#3b82f6" 
+                  fillOpacity={1} 
+                  fill="url(#colorRevenue)" 
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </Paper>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {recentEvents.map(event => (
-                <div key={event.id} className="bg-card rounded-lg border p-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-                      Approved
-                    </span>
-                    <span className="text-sm text-muted-foreground">{event.category}</span>
-                  </div>
-                  
-                  <h3 className="font-semibold mb-2">{event.title}</h3>
-                  <div className="space-y-1 text-sm text-muted-foreground mb-4">
-                    <div className="flex items-center">
-                      <Calendar className="h-4 w-4 mr-2" />
-                      {new Date(event.date).toLocaleDateString()}
-                    </div>
-                    <div className="flex items-center">
-                      <MapPin className="h-4 w-4 mr-2" />
-                      {event.venue}
-                    </div>
-                    <div className="flex items-center">
-                      <Users className="h-4 w-4 mr-2" />
-                      {event.availableTickets} / {event.capacity}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-lg font-bold text-primary">${event.price}</span>
-                    <div className="flex items-center space-x-2">
-                      <Button variant="outline" size="sm">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'reports' && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Reports & Issues</h2>
-              <div className="flex items-center space-x-2">
-                <Button variant="outline">Export</Button>
-                <Button>Generate Report</Button>
-              </div>
-            </div>
-
-            <div className="bg-card rounded-lg border">
-              <div className="p-6">
-                <h3 className="text-lg font-semibold mb-4">Recent Reports</h3>
-                <div className="space-y-4">
-                  {mockReports.map(report => (
-                    <div key={report.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center space-x-4">
-                        <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                          <AlertTriangle className="h-5 w-5 text-red-600" />
-                        </div>
-                        <div>
-                          <h4 className="font-medium">{report.subject}</h4>
-                          <p className="text-sm text-muted-foreground">
-                            {report.type} • Reported by {report.reporter}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <span className={`px-2 py-1 text-xs rounded-full ${
-                          report.status === 'Open' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
-                        }`}>
-                          {report.status}
-                        </span>
-                        <Button variant="outline" size="sm">
-                          Review
-                        </Button>
-                      </div>
-                    </div>
+          {/* Event Categories */}
+          <Paper elevation={2} sx={{ p: 3, height: 400 }}>
+            <Typography variant="h6" fontWeight="bold" mb={2}>
+              Event Categories
+            </Typography>
+            <ResponsiveContainer width="100%" height="90%">
+              <PieChart>
+                <Pie
+                  data={categoryData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {categoryData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </Paper>
+        </Box>
+
+        {/* Weekly Performance & Recent Activity */}
+        <Box display="grid" 
+             gridTemplateColumns={{ xs: '1fr', lg: '2fr 1fr' }} 
+             gap={3} 
+             mb={4}>
+          <Paper elevation={2} sx={{ p: 3, height: 400 }}>
+            <Typography variant="h6" fontWeight="bold" mb={2}>
+              Weekly Performance
+            </Typography>
+            <ResponsiveContainer width="100%" height="90%">
+              <BarChart data={weeklyData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="day" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="sales" fill="#10b981" name="Ticket Sales" />
+                <Bar dataKey="users" fill="#3b82f6" name="New Users" />
+              </BarChart>
+            </ResponsiveContainer>
+          </Paper>
+
+          <Paper elevation={2} sx={{ p: 3, height: 400 }}>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+              <Typography variant="h6" fontWeight="bold">
+                Recent Activity
+              </Typography>
+              <Button 
+                size="small" 
+                onClick={() => setActivityDialogOpen(true)}
+                sx={{ textTransform: 'none' }}
+              >
+                View All
+              </Button>
+            </Box>
+            <List sx={{ maxHeight: 320, overflow: 'auto' }}>
+              {recentActivities.slice(0, 5).map((activity, index) => (
+                <React.Fragment key={activity.id}>
+                  <ListItem alignItems="flex-start" sx={{ px: 0 }}>
+                    <ListItemAvatar>
+                      <Avatar src={activity.avatar} sx={{ width: 32, height: 32 }} />
+                    </ListItemAvatar>
+                    <ListItemText
+                      primary={
+                        <Typography variant="body2">
+                          <strong>{activity.user}</strong> {activity.action}
+                          {activity.event && ` for ${activity.event}`}
+                        </Typography>
+                      }
+                      secondary={
+                        <Typography variant="caption" color="text.secondary">
+                          {activity.time}
+                        </Typography>
+                      }
+                    />
+                  </ListItem>
+                  {index < recentActivities.length - 1 && <Divider />}
+                </React.Fragment>
+              ))}
+            </List>
+          </Paper>
+        </Box>
+
+        {/* Top Events */}
+        <Paper elevation={2} sx={{ p: 3 }}>
+          <Typography variant="h6" fontWeight="bold" mb={3}>
+            Top Performing Events
+          </Typography>
+          <Box display="grid" 
+               gridTemplateColumns={{ 
+                 xs: '1fr', 
+                 sm: 'repeat(2, 1fr)', 
+                 md: 'repeat(3, 1fr)', 
+                 lg: 'repeat(5, 1fr)' 
+               }} 
+               gap={2}>
+            {topEvents.map((event) => (
+              <Card variant="outlined" sx={{ height: '100%' }} key={event.id}>
+                <CardContent>
+                  <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+                    {event.name}
+                  </Typography>
+                  <Box display="flex" justifyContent="space-between" mb={1}>
+                    <Typography variant="body2" color="text.secondary">
+                      Tickets
+                    </Typography>
+                    <Typography variant="body2" fontWeight="bold">
+                      {event.tickets.toLocaleString()}
+                    </Typography>
+                  </Box>
+                  <Box display="flex" justifyContent="space-between" mb={2}>
+                    <Typography variant="body2" color="text.secondary">
+                      Revenue
+                    </Typography>
+                    <Typography variant="body2" fontWeight="bold">
+                      LKR {(event.revenue / 1000).toFixed(0)}K
+                    </Typography>
+                  </Box>
+                  <Box display="flex" alignItems="center" justifyContent="space-between">
+                    <Typography variant="caption" color="text.secondary">
+                      Growth
+                    </Typography>
+                    <Chip
+                      size="small"
+                      label={`${event.growth > 0 ? '+' : ''}${event.growth}%`}
+                      color={event.growth > 0 ? 'success' : 'error'}
+                      variant="outlined"
+                    />
+                  </Box>
+                </CardContent>
+              </Card>
+            ))}
+          </Box>
+        </Paper>
+
+        {/* Recent Activity Dialog */}
+        <Dialog 
+          open={activityDialogOpen} 
+          onClose={() => setActivityDialogOpen(false)}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle>All Recent Activities</DialogTitle>
+          <DialogContent>
+            <List>
+              {recentActivities.map((activity, index) => (
+                <React.Fragment key={activity.id}>
+                  <ListItem alignItems="flex-start">
+                    <ListItemAvatar>
+                      <Avatar src={activity.avatar} />
+                    </ListItemAvatar>
+                    <ListItemText
+                      primary={
+                        <Typography variant="body1">
+                          <strong>{activity.user}</strong> {activity.action}
+                          {activity.event && ` for ${activity.event}`}
+                        </Typography>
+                      }
+                      secondary={activity.time}
+                    />
+                  </ListItem>
+                  {index < recentActivities.length - 1 && <Divider />}
+                </React.Fragment>
+              ))}
+            </List>
+          </DialogContent>
+        </Dialog>
+
+        {/* Floating Action Button */}
+        <Fab
+          color="primary"
+          aria-label="add"
+          sx={{
+            position: 'fixed',
+            bottom: 24,
+            right: 24,
+          }}
+        >
+          <Plus />
+        </Fab>
+      </Container>
+    </Box>
   );
 }

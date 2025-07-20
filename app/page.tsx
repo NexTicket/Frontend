@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/components/auth/auth-provider';
-import { getWelcomeMessage } from '@/lib/auth-utils';
+//import { getWelcomeMessage } from '@/lib/auth-utils';
 import { 
   Calendar, 
   MapPin, 
@@ -24,7 +24,7 @@ import { mockEvents } from '@/lib/mock-data';
 
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
-  const { user } = useAuth();
+  const { userProfile } = useAuth();
   
   const featuredEvents = mockEvents.slice(0, 6);
   
@@ -60,11 +60,11 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <div className="text-center">
             {/* User Welcome Message */}
-            {user && (
+            {userProfile && (
               <div className="mb-6 p-4 bg-background/10 backdrop-blur-sm rounded-lg">
-                <p className="text-lg text-primary-foreground/90">
-                  {getWelcomeMessage(user)}
-                </p>
+              <p className="text-lg text-primary-foreground/90">
+                Welcome back, {userProfile.firstName || 'User'}!
+              </p>
               </div>
             )}
             
