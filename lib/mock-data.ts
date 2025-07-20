@@ -1,0 +1,295 @@
+export interface Event {
+  id: string;
+  title: string;
+  description: string;
+  date: string;
+  time: string;
+  venue: string;
+  venueId: string;
+  price: number;
+  image: string;
+  category: string;
+  capacity: number;
+  availableTickets: number;
+  organizer: string;
+  tags: string[];
+}
+
+export interface Venue {
+  id: string;
+  name: string;
+  address: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  capacity: number;
+  description: string;
+  image: string;
+  amenities: string[];
+  contact: {
+    phone: string;
+    email: string;
+  };
+}
+
+export interface Seat {
+  id: string;
+  row: string;
+  number: number;
+  section: string;
+  price: number;
+  isAvailable: boolean;
+  isSelected: boolean;
+}
+
+export interface Ticket {
+  id: string;
+  eventId: string;
+  seatId: string;
+  userId: string;
+  purchaseDate: string;
+  price: number;
+  status: 'active' | 'used' | 'cancelled';
+}
+
+export const mockEvents: Event[] = [
+  {
+    id: '1',
+    title: 'Rock Concert 2024',
+    description: 'An amazing rock concert featuring top artists from around the world.',
+    date: '2024-08-15',
+    time: '19:00',
+    venue: 'Madison Square Garden',
+    venueId: '1',
+    price: 75,
+    image: '/api/placeholder/600/400',
+    category: 'Music',
+    capacity: 20000,
+    availableTickets: 15000,
+    organizer: 'Rock Events Inc.',
+    tags: ['rock', 'music', 'concert', 'live']
+  },
+  {
+    id: '2',
+    title: 'Tech Conference 2024',
+    description: 'The biggest tech conference of the year with industry leaders.',
+    date: '2024-09-22',
+    time: '09:00',
+    venue: 'Convention Center',
+    venueId: '2',
+    price: 299,
+    image: '/api/placeholder/600/400',
+    category: 'Technology',
+    capacity: 5000,
+    availableTickets: 3500,
+    organizer: 'Tech World',
+    tags: ['tech', 'conference', 'networking', 'innovation']
+  },
+  {
+    id: '3',
+    title: 'Broadway Musical',
+    description: 'A spectacular Broadway musical performance.',
+    date: '2024-07-30',
+    time: '20:00',
+    venue: 'Broadway Theater',
+    venueId: '3',
+    price: 120,
+    image: '/api/placeholder/600/400',
+    category: 'Theater',
+    capacity: 1500,
+    availableTickets: 800,
+    organizer: 'Broadway Productions',
+    tags: ['broadway', 'musical', 'theater', 'performance']
+  },
+  {
+    id: '4',
+    title: 'Food Festival',
+    description: 'A celebration of local and international cuisine.',
+    date: '2024-08-05',
+    time: '11:00',
+    venue: 'Central Park',
+    venueId: '4',
+    price: 25,
+    image: '/api/placeholder/600/400',
+    category: 'Food',
+    capacity: 10000,
+    availableTickets: 7500,
+    organizer: 'City Events',
+    tags: ['food', 'festival', 'outdoor', 'family']
+  },
+  {
+    id: '5',
+    title: 'Art Gallery Opening',
+    description: 'Grand opening of a new contemporary art exhibition.',
+    date: '2024-08-12',
+    time: '18:00',
+    venue: 'Modern Art Museum',
+    venueId: '5',
+    price: 15,
+    image: '/api/placeholder/600/400',
+    category: 'Art',
+    capacity: 300,
+    availableTickets: 150,
+    organizer: 'Art Museum',
+    tags: ['art', 'exhibition', 'culture', 'opening']
+  },
+  {
+    id: '6',
+    title: 'Jazz Night',
+    description: 'An intimate jazz performance with renowned musicians.',
+    date: '2024-07-28',
+    time: '21:00',
+    venue: 'Blue Note Jazz Club',
+    venueId: '6',
+    price: 45,
+    image: '/api/placeholder/600/400',
+    category: 'Music',
+    capacity: 200,
+    availableTickets: 120,
+    organizer: 'Jazz Club',
+    tags: ['jazz', 'music', 'intimate', 'live']
+  }
+];
+
+export const mockVenues: Venue[] = [
+  {
+    id: '1',
+    name: 'Madison Square Garden',
+    address: '4 Pennsylvania Plaza',
+    city: 'New York',
+    state: 'NY',
+    zipCode: '10001',
+    capacity: 20000,
+    description: 'The world\'s most famous arena, hosting major concerts and sporting events.',
+    image: '/api/placeholder/800/600',
+    amenities: ['Parking', 'Restaurants', 'Gift Shop', 'Accessibility', 'VIP Suites'],
+    contact: {
+      phone: '(212) 465-6741',
+      email: 'info@msg.com'
+    }
+  },
+  {
+    id: '2',
+    name: 'Convention Center',
+    address: '655 West 34th Street',
+    city: 'New York',
+    state: 'NY',
+    zipCode: '10001',
+    capacity: 5000,
+    description: 'Modern convention center perfect for conferences and exhibitions.',
+    image: '/api/placeholder/800/600',
+    amenities: ['WiFi', 'Catering', 'Parking', 'AV Equipment', 'Registration Area'],
+    contact: {
+      phone: '(212) 216-2000',
+      email: 'events@javitscenter.com'
+    }
+  },
+  {
+    id: '3',
+    name: 'Broadway Theater',
+    address: '243 West 42nd Street',
+    city: 'New York',
+    state: 'NY',
+    zipCode: '10036',
+    capacity: 1500,
+    description: 'Historic Broadway theater with excellent acoustics and sightlines.',
+    image: '/api/placeholder/800/600',
+    amenities: ['Bar', 'Coat Check', 'Accessibility', 'Historic Architecture'],
+    contact: {
+      phone: '(212) 239-6200',
+      email: 'info@broadwaytheater.com'
+    }
+  },
+  {
+    id: '4',
+    name: 'Central Park',
+    address: 'Central Park West',
+    city: 'New York',
+    state: 'NY',
+    zipCode: '10024',
+    capacity: 10000,
+    description: 'Beautiful outdoor venue in the heart of Manhattan.',
+    image: '/api/placeholder/800/600',
+    amenities: ['Outdoor Space', 'Scenic Views', 'Accessibility', 'Nearby Restaurants'],
+    contact: {
+      phone: '(212) 310-6600',
+      email: 'events@centralparknyc.org'
+    }
+  },
+  {
+    id: '5',
+    name: 'Modern Art Museum',
+    address: '11 West 53rd Street',
+    city: 'New York',
+    state: 'NY',
+    zipCode: '10019',
+    capacity: 300,
+    description: 'Contemporary art museum with flexible exhibition spaces.',
+    image: '/api/placeholder/800/600',
+    amenities: ['Gallery Space', 'Museum Shop', 'Café', 'Accessibility', 'Parking'],
+    contact: {
+      phone: '(212) 708-9400',
+      email: 'info@moma.org'
+    }
+  },
+  {
+    id: '6',
+    name: 'Blue Note Jazz Club',
+    address: '131 West 3rd Street',
+    city: 'New York',
+    state: 'NY',
+    zipCode: '10012',
+    capacity: 200,
+    description: 'Intimate jazz club with world-class acoustics and atmosphere.',
+    image: '/api/placeholder/800/600',
+    amenities: ['Full Bar', 'Restaurant', 'Intimate Setting', 'Professional Sound System'],
+    contact: {
+      phone: '(212) 475-8592',
+      email: 'info@bluenotejazz.com'
+    }
+  }
+];
+
+export const mockSeats: Seat[] = [
+  // Generate some sample seats for event 1
+  ...Array.from({ length: 100 }, (_, i) => ({
+    id: `seat-${i + 1}`,
+    row: String.fromCharCode(65 + Math.floor(i / 10)), // A, B, C, etc.
+    number: (i % 10) + 1,
+    section: 'Orchestra',
+    price: 75,
+    isAvailable: Math.random() > 0.3, // 70% available
+    isSelected: false
+  })),
+  // Generate seats for other sections
+  ...Array.from({ length: 50 }, (_, i) => ({
+    id: `balcony-${i + 1}`,
+    row: String.fromCharCode(65 + Math.floor(i / 10)),
+    number: (i % 10) + 1,
+    section: 'Balcony',
+    price: 50,
+    isAvailable: Math.random() > 0.2,
+    isSelected: false
+  }))
+];
+
+export const mockTickets: Ticket[] = [
+  {
+    id: 'ticket-1',
+    eventId: '1',
+    seatId: 'seat-1',
+    userId: 'user-1',
+    purchaseDate: '2024-07-15',
+    price: 75,
+    status: 'active'
+  },
+  {
+    id: 'ticket-2',
+    eventId: '2',
+    seatId: 'seat-2',
+    userId: 'user-1',
+    purchaseDate: '2024-07-16',
+    price: 299,
+    status: 'active'
+  }
+];

@@ -1,103 +1,275 @@
-import Image from "next/image";
+"use client"
+
+import { useState } from 'react';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/components/auth/auth-provider';
+//import { getWelcomeMessage } from '@/lib/auth-utils';
+import { 
+  Calendar, 
+  MapPin, 
+  Users, 
+  Search, 
+  Star, 
+  ArrowRight,
+  Music,
+  Trophy,
+  Theater,
+  Heart,
+  Shield,
+  Zap,
+  Clock
+} from 'lucide-react';
+import { mockEvents } from '@/lib/mock-data';
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [searchQuery, setSearchQuery] = useState('');
+  const { userProfile } = useAuth();
+  
+  const featuredEvents = mockEvents.slice(0, 6);
+  
+  const categories = [
+    { name: 'Music', icon: Music, color: 'bg-pink-500' },
+    { name: 'Sports', icon: Trophy, color: 'bg-blue-500' },
+    { name: 'Theater', icon: Theater, color: 'bg-purple-500' },
+    { name: 'Comedy', icon: Heart, color: 'bg-red-500' },
+  ];
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const features = [
+    {
+      icon: Shield,
+      title: 'Secure Booking',
+      description: 'Your tickets are protected with industry-standard security'
+    },
+    {
+      icon: Zap,
+      title: 'Instant Confirmation',
+      description: 'Get your tickets immediately after purchase'
+    },
+    {
+      icon: Clock,
+      title: '24/7 Support',
+      description: 'Our team is here to help whenever you need assistance'
+    }
+  ];
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Hero Section */}
+      <section className="relative bg-gradient-to-r from-primary to-primary/80 text-primary-foreground">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+          <div className="text-center">
+            {/* User Welcome Message */}
+            {userProfile && (
+              <div className="mb-6 p-4 bg-background/10 backdrop-blur-sm rounded-lg">
+              <p className="text-lg text-primary-foreground/90">
+                Welcome back, {userProfile.firstName || 'User'}!
+              </p>
+              </div>
+            )}
+            
+            <h1 className="text-4xl md:text-6xl font-bold mb-6">
+              Discover Amazing Events
+            </h1>
+            <p className="text-xl md:text-2xl mb-8 text-primary-foreground/90">
+              Find and book tickets for concerts, sports, theater, and more
+            </p>
+            
+            {/* Search Bar */}
+            <div className="max-w-2xl mx-auto mb-8">
+              <div className="flex flex-col sm:flex-row gap-4 p-2 bg-background/10 backdrop-blur-sm rounded-lg">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
+                  <input
+                    type="text"
+                    placeholder="Search events, artists, venues..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                <Button size="lg" className="bg-background text-primary hover:bg-background/90">
+                  Search Events
+                </Button>
+              </div>
+            </div>
+
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button size="lg" variant="secondary" asChild>
+                <Link href="/events">
+                  Browse All Events
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Link>
+              </Button>
+              <Button size="lg" variant="outline" className="border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary" asChild>
+                <Link href="/venues">
+                  Explore Venues
+                </Link>
+              </Button>
+            </div>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </section>
+
+      {/* Categories Section */}
+      <section className="py-16 bg-muted/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold mb-4">Popular Categories</h2>
+            <p className="text-xl text-muted-foreground">
+              Discover events by category
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {categories.map((category, index) => {
+              const Icon = category.icon;
+              return (
+                <Link
+                  key={index}
+                  href={`/events?category=${category.name.toLowerCase()}`}
+                  className="group p-6 bg-card rounded-lg border hover:border-primary transition-colors"
+                >
+                  <div className={`${category.color} p-4 rounded-full w-fit mx-auto mb-4 group-hover:scale-110 transition-transform`}>
+                    <Icon className="h-8 w-8 text-white" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-center">{category.name}</h3>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Featured Events */}
+      <section className="py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold mb-4">Featured Events</h2>
+            <p className="text-xl text-muted-foreground">
+              Don't miss these amazing upcoming events
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {featuredEvents.map((event) => (
+              <div key={event.id} className="bg-card rounded-lg border overflow-hidden hover:shadow-lg transition-shadow">
+                <div className="aspect-video bg-muted flex items-center justify-center">
+                  <Calendar className="h-12 w-12 text-muted-foreground" />
+                </div>
+                
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="px-2 py-1 bg-primary/10 text-primary text-sm rounded-full">
+                      {event.category}
+                    </span>
+                    <div className="flex items-center">
+                      <Star className="h-4 w-4 text-yellow-500 mr-1" />
+                      <span className="text-sm text-muted-foreground">4.8</span>
+                    </div>
+                  </div>
+                  
+                  <h3 className="text-xl font-semibold mb-2">{event.title}</h3>
+                  
+                  <div className="space-y-2 text-sm text-muted-foreground mb-4">
+                    <div className="flex items-center">
+                      <Calendar className="h-4 w-4 mr-2" />
+                      {new Date(event.date).toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                      })}
+                    </div>
+                    <div className="flex items-center">
+                      <MapPin className="h-4 w-4 mr-2" />
+                      {event.venue}
+                    </div>
+                    <div className="flex items-center">
+                      <Users className="h-4 w-4 mr-2" />
+                      {event.availableTickets} tickets available
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <span className="text-2xl font-bold text-primary">
+                      ${event.price}
+                    </span>
+                    <Button asChild>
+                      <Link href={`/events/${event.id}`}>
+                        View Details
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          <div className="text-center mt-12">
+            <Button size="lg" variant="outline" asChild>
+              <Link href="/events">
+                View All Events
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="py-16 bg-muted/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold mb-4">Why Choose NexTicket?</h2>
+            <p className="text-xl text-muted-foreground">
+              The best way to discover and book event tickets
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {features.map((feature, index) => {
+              const Icon = feature.icon;
+              return (
+                <div key={index} className="text-center">
+                  <div className="bg-primary p-4 rounded-full w-fit mx-auto mb-4">
+                    <Icon className="h-8 w-8 text-primary-foreground" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
+                  <p className="text-muted-foreground">{feature.description}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-16 bg-primary text-primary-foreground">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-3xl font-bold mb-4">
+            Ready to Find Your Next Event?
+          </h2>
+          <p className="text-xl mb-8 text-primary-foreground/90">
+            Join thousands of event-goers who trust NexTicket for their entertainment needs
+          </p>
+          
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button size="lg" variant="secondary" asChild>
+              <Link href="/events">
+                Start Exploring
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Link>
+            </Button>
+            <Button size="lg" variant="outline" className="border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary" asChild>
+              <Link href="/auth/signup">
+                Create Account
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
