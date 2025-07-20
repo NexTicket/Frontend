@@ -125,6 +125,7 @@ export default function OrganizerDashboard() {
   ];
 
   return (
+    <RouteGuard requiredRole="organizer">
     <div className="min-h-screen bg-background relative">
       {/* Background Pattern */}
       <div className="absolute inset-0 bg-grid-pattern opacity-5 dark:opacity-10"></div>
@@ -545,5 +546,6 @@ export default function OrganizerDashboard() {
         </div>
       </div>
     </div>
+    </RouteGuard>
   );
 }
