@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/components/auth/auth-provider';
 import { 
   Box, 
   Typography, 
@@ -40,7 +42,9 @@ import {
   Settings,
   Plus,
   Bell,
-  Download
+  Download,
+  LogOut,
+  ArrowLeft
 } from 'lucide-react';
 import {
   AreaChart,
@@ -60,6 +64,7 @@ import {
   ResponsiveContainer
 } from 'recharts';
 import { format, subDays, startOfWeek, endOfWeek } from 'date-fns';
+import RouteGuard from '@/components/auth/routeGuard';
 
 // Mock data for analytics
 const revenueData = [
@@ -120,6 +125,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, trend, color, s
   const trendColor = trend && trend > 0 ? '#10b981' : '#ef4444';
 
   return (
+    <RouteGuard requiredRole="admin">
     <Card elevation={2} sx={{ height: '100%', position: 'relative', overflow: 'visible' }}>
       <CardContent>
         <Box display="flex" justifyContent="space-between" alignItems="flex-start">
@@ -159,18 +165,66 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, trend, color, s
         </Box>
       </CardContent>
     </Card>
+    </RouteGuard>
   );
 };
 
 export default function AdminDashboard() {
+  const { userProfile, firebaseUser, logout, isLoading } = useAuth();
+  const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
   const [activityDialogOpen, setActivityDialogOpen] = useState(false);
   const [notifications, setNotifications] = useState(3);
+  console.log('User profile after admin redirectory:', userProfile);
+
+  // Check authentication and admin role
+  useEffect(() => {
+    if (!isLoading && (!firebaseUser || !userProfile)) {
+      router.push('/auth/signin');
+    } else if (!isLoading && userProfile && userProfile.role !== 'admin') {
+      router.push('/dashboard'); // Redirect non-admin users
+    }
+  }, [isLoading, firebaseUser, userProfile, router]);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.push('/');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
 
   const handleRefresh = () => {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 2000);
   };
+
+  // Show loading if auth is still loading
+  if (isLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+        <Typography variant="h6">Loading admin dashboard...</Typography>
+      </Box>
+    );
+  }
+
+  // Show access denied if not authenticated or not admin
+  if (!firebaseUser || !userProfile || userProfile.role !== 'admin') {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+        <Paper sx={{ p: 4, textAlign: 'center' }}>
+          <Typography variant="h5" gutterBottom>Access Denied</Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+            You need admin privileges to access this page.
+          </Typography>
+          <Button variant="contained" onClick={() => router.push('/auth/signin')}>
+            Sign In
+          </Button>
+        </Paper>
+      </Box>
+    );
+  }
 
   const stats = [
     {
@@ -233,10 +287,18 @@ export default function AdminDashboard() {
               Admin Dashboard
             </Typography>
             <Typography variant="body1" color="text.secondary" mt={0.5}>
-              Welcome back! Here's what's happening with NexTicket today.
+              Welcome back, {userProfile.firstName || 'Admin'}! Here's what's happening with NexTicket today.
             </Typography>
           </Box>
           <Box display="flex" gap={2} alignItems="center">
+            <Button
+              variant="outlined"
+              startIcon={<ArrowLeft />}
+              onClick={() => router.push('/dashboard')}
+              sx={{ mr: 1 }}
+            >
+              Dashboard
+            </Button>
             <IconButton 
               onClick={handleRefresh} 
               disabled={refreshing}
@@ -255,6 +317,22 @@ export default function AdminDashboard() {
               sx={{ textTransform: 'none' }}
             >
               Export Report
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<LogOut size={16} />}
+              onClick={handleLogout}
+              sx={{ 
+                textTransform: 'none',
+                color: '#dc2626',
+                borderColor: '#dc2626',
+                '&:hover': {
+                  borderColor: '#b91c1c',
+                  backgroundColor: 'rgba(220, 38, 38, 0.04)'
+                }
+              }}
+            >
+              Logout
             </Button>
           </Box>
         </Box>

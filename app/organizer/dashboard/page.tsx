@@ -1,8 +1,10 @@
 "use client"
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/components/auth/auth-provider';
 import { 
   Plus, 
   Calendar, 
@@ -16,12 +18,62 @@ import {
   Clock,
   Ticket,
   BarChart3,
-  PieChart
+  PieChart,
+  LogOut,
+  ArrowLeft
 } from 'lucide-react';
 import { mockEvents, mockVenues } from '@/lib/mock-data';
+import RouteGuard from '@/components/auth/routeGuard';
 
 export default function OrganizerDashboard() {
+  const { userProfile, firebaseUser, logout, isLoading } = useAuth();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState('overview');
+
+  // Check authentication and organizer role
+  useEffect(() => {
+    if (!isLoading && (!firebaseUser || !userProfile)) {
+      router.push('/auth/signin');
+    } else if (!isLoading && userProfile && userProfile.role !== 'organizer') {
+      router.push('/dashboard'); // Redirect non-organizer users
+    }
+  }, [isLoading, firebaseUser, userProfile, router]);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.push('/');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
+
+  // Show loading if auth is still loading
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+          <p className="mt-4 text-muted-foreground">Loading organizer dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show access denied if not authenticated or not organizer
+  if (!firebaseUser || !userProfile || userProfile.role !== 'organizer') {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
+          <p className="text-muted-foreground mb-6">You need organizer privileges to access this page.</p>
+          <Button onClick={() => router.push('/auth/signin')}>
+            Sign In
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   // Mock organizer data
   const organizer = {
@@ -72,20 +124,41 @@ export default function OrganizerDashboard() {
   ];
 
   return (
+    <RouteGuard requiredRole="organizer">
     <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Back Button */}
+        <div className="mb-6">
+          <Button variant="ghost" onClick={() => router.push('/dashboard')}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Dashboard
+          </Button>
+        </div>
+
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold">Organizer Dashboard</h1>
-            <p className="text-muted-foreground">Welcome back, {organizer.name}</p>
+            <p className="text-muted-foreground">
+              Welcome back, {userProfile.firstName || userProfile.displayName || 'Organizer'}!
+            </p>
           </div>
-          <Link href="/organizer/events/new">
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Event
+          <div className="flex items-center space-x-3">
+            <Link href="/organizer/events/new">
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Create Event
+              </Button>
+            </Link>
+            <Button 
+              variant="outline" 
+              onClick={handleLogout}
+              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Logout
             </Button>
-          </Link>
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -452,5 +525,6 @@ export default function OrganizerDashboard() {
         )}
       </div>
     </div>
+    </RouteGuard>
   );
 }

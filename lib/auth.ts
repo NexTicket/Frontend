@@ -5,6 +5,9 @@ import {
 } from 'firebase/auth';
 import { auth } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
+import { getFirestore, doc, setDoc, serverTimestamp } from 'firebase/firestore';
+
+const db = getFirestore();
 
 onAuthStateChanged(auth, (user) => {
   if (user) {
@@ -15,8 +18,17 @@ onAuthStateChanged(auth, (user) => {
 });
 
 //Sign up with Email + Password
-export const firebaseSignUp = (email: string, password: string) => {
-  return createUserWithEmailAndPassword(auth, email, password);
+export const firebaseSignUp = async (email: string, password: string) => {
+  const result = await createUserWithEmailAndPassword(auth, email, password);
+
+  const userRef = doc(db, 'users', result.user.uid);
+  await setDoc(userRef, {
+    email,
+    role: 'customer', //enforce 'customer' only
+    createdAt: serverTimestamp(),
+  });
+
+  return result;
 };
 
 //Sign in with Email + Password

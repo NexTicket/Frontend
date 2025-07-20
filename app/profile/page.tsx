@@ -1,8 +1,10 @@
 "use client"
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/components/auth/auth-provider';
 import { 
   User, 
   Calendar, 
@@ -14,21 +16,59 @@ import {
   Star,
   Settings,
   Heart,
-  History
+  History,
+  LogOut,
+  ArrowLeft
 } from 'lucide-react';
 import { mockEvents, mockTickets } from '@/lib/mock-data';
 
 export default function ProfilePage() {
+  const { userProfile, firebaseUser, logout, isLoading } = useAuth();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState('tickets');
   
-  // Mock user data
-  const user = {
-    name: 'John Doe',
-    email: 'john@example.com',
-    memberSince: '2023-01-15',
-    totalEvents: 12,
-    totalSpent: 1250
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!isLoading && !firebaseUser) {
+      router.push('/auth/signin');
+    }
+  }, [isLoading, firebaseUser, router]);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.push('/');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
   };
+
+  // Show loading if auth is still loading
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+          <p className="mt-4 text-muted-foreground">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show signin prompt if not authenticated
+  if (!firebaseUser || !userProfile) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
+          <p className="text-muted-foreground mb-6">Please sign in to view your profile.</p>
+          <Button asChild>
+            <Link href="/auth/signin">Sign In</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   const userTickets = mockTickets.map(ticket => ({
     ...ticket,
@@ -48,6 +88,16 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Back Button */}
+        <div className="mb-6">
+          <Button variant="ghost" asChild>
+            <Link href="/dashboard">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Dashboard
+            </Link>
+          </Button>
+        </div>
+
         {/* Profile Header */}
         <div className="bg-card rounded-lg border p-6 mb-8">
           <div className="flex items-center justify-between">
@@ -56,24 +106,40 @@ export default function ProfilePage() {
                 <User className="h-10 w-10 text-primary" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold">{user.name}</h1>
-                <p className="text-muted-foreground">{user.email}</p>
+                <h1 className="text-2xl font-bold">
+                  {userProfile.firstName || userProfile.displayName || 'User'} {userProfile.lastName || ''}
+                </h1>
+                <p className="text-muted-foreground">{userProfile.email}</p>
                 <p className="text-sm text-muted-foreground">
-                  Member since {new Date(user.memberSince).toLocaleDateString()}
+                  Member since {new Date(userProfile.createdAt?.toDate?.() || Date.now()).toLocaleDateString()}
                 </p>
+                <span className="inline-block px-2 py-1 text-xs bg-primary/10 text-primary rounded-full capitalize">
+                  {userProfile.role}
+                </span>
               </div>
             </div>
-            <div className="text-right">
-              <div className="grid grid-cols-2 gap-6">
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-primary">{user.totalEvents}</p>
-                  <p className="text-sm text-muted-foreground">Events Attended</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-primary">${user.totalSpent}</p>
-                  <p className="text-sm text-muted-foreground">Total Spent</p>
+            <div className="flex items-center space-x-4">
+              <div className="text-right">
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-primary">0</p>
+                    <p className="text-sm text-muted-foreground">Events Attended</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-primary">$0</p>
+                    <p className="text-sm text-muted-foreground">Total Spent</p>
+                  </div>
                 </div>
               </div>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleLogout}
+                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </Button>
             </div>
           </div>
         </div>
@@ -277,8 +343,9 @@ export default function ProfilePage() {
                       <label className="block text-sm font-medium mb-2">Email</label>
                       <input
                         type="email"
-                        defaultValue={user.email}
+                        defaultValue={userProfile.email}
                         className="w-full px-3 py-2 border rounded-md bg-background"
+                        disabled
                       />
                     </div>
                     <div>
