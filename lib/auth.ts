@@ -5,7 +5,7 @@ import {
   User,
 } from 'firebase/auth';
 import { auth } from './firebase';
-import { onAuthStateChanged } from 'firebase/auth';
+
 import { 
   getDoc, 
   doc, 

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, User, sendEmailVerification, createUserWithEmailAndPassword } from 'firebase/auth';
+import { onAuthStateChanged, User, sendEmailVerification, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { 
   getDoc, 
@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore';
 import { firebaseSignIn } from '@/lib/auth';
 import { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
+import { useRouter } from 'next/navigation';
 
 const db = getFirestore();
 
@@ -36,6 +37,7 @@ interface AuthContextProps {
   logout: () => Promise<void>;
   updateProfile: (data: Partial<UserProfile>) => Promise<void>;
   signInAndRedirect: (email: string, password: string, router: AppRouterInstance) => Promise<void>;
+  signInWithGoogle: () => Promise<User | undefined>;
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
@@ -44,6 +46,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
 
   // Determine user role based on email or other criteria
   const determineUserRole = (email: string): 'admin' | 'organizer' | 'customer' => {
@@ -137,21 +140,62 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Auth state listener
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setIsLoading(true);
-      setFirebaseUser(user);
-      
-      if (user) {
-        await loadUserProfile(user);
-      } else {
-        setUserProfile(null);
-      }
-      
-      setIsLoading(false);
-    });
+  const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    setIsLoading(true);
 
-    return () => unsubscribe();
-  }, []);
+    if (user) {
+      await user.reload(); // Make sure emailVerified is fresh
+
+      
+      // if (!user.emailVerified) {
+      //   console.warn("Email not verified");
+      //   setFirebaseUser(null);
+      //   setUserProfile(null);
+      //   setIsLoading(false);
+      //   return;
+      // }
+
+      setFirebaseUser(user);
+
+      const docRef = doc(db, 'users', user.uid);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        const profile = docSnap.data() as UserProfile;
+        setUserProfile(profile);
+
+        // ✅ Redirect based on role
+        switch (profile.role) {
+          case 'admin':
+            console.log('Redirecting centrally to admin dashboard');
+            router.push('/admin/dashboard');
+            break;
+          case 'organizer':
+            console.log('Redirecting centrally to organizer dashboard');
+            router.push('/organizer/dashboard');
+            break;
+          case 'customer':
+            console.log('Redirecting centrally to customers dashboard');
+            router.push('/dashboard');
+            break;
+          default:
+            router.push('/dashboard');
+        }
+      } else {
+        //console.error("⚠️ User profile not found in Firestore.");
+        //setUserProfile(null);
+      }
+    } else {
+      setFirebaseUser(null);
+      setUserProfile(null);
+    }
+
+    setIsLoading(false);
+  });
+
+  return () => unsubscribe();
+}, []);
+
 
   // Sign in function
   const signIn = async (email: string, password: string) => {
@@ -168,6 +212,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       throw error;
     }
   };
+
+  //google sign in function
+  const signInWithGoogle = async () => {
+    const provider = new GoogleAuthProvider();
+
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      if (user) {
+        await createUserProfile(user); // creates profile in Firestore if needed
+        setFirebaseUser(user);
+        await loadUserProfile(user); // loads user profile from Firestore
+      }
+
+      return user;
+    } catch (error) {
+      console.error('❌ Google Sign-in error:', error);
+      throw error;
+    }
+  };
+
+
 
   // Sign up function
   const signUp = async (
@@ -252,38 +319,41 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signInAndRedirect = async (email: string, password: string, router: AppRouterInstance) => {
   await firebaseSignIn(email, password);
   const user = auth.currentUser;
-  if (!user) return;
-
-  const docRef = doc(db, 'users', user.uid);
-  const docSnap = await getDoc(docRef);
-  if (docSnap.exists()) {
-    const profile = docSnap.data() as UserProfile;
-    setUserProfile(profile);
-    setFirebaseUser(user);
-    console.log('User profile:', userProfile);
-
-    // Do redirection here
-    switch (profile.role) {
-      
-      case 'admin':
-        
-        console.log('Redirecting to admin dashboard');
-        router.push('/admin/dashboard');
-        break;
-      case 'organizer':
-        console.log('Redirecting to organizer dashboard');
-        router.push('/organizer/dashboard');
-        break;
-      case 'customer':
-        console.log('Redirecting to customers dashboard');
-        router.push('/dashboard');
-        break;
-      // default:
-      //   router.push('/dashboard');
-    }
-  } else {
-    console.error('No user profile found in Firestore!');
+  if (user) {
+    await loadUserProfile(user);
   }
+  // if (!user) return;
+
+  // const docRef = doc(db, 'users', user.uid);
+  // const docSnap = await getDoc(docRef);
+  // if (docSnap.exists()) {
+  //   const profile = docSnap.data() as UserProfile;
+  //   setUserProfile(profile);
+  //   setFirebaseUser(user);
+  //   console.log('User profile:', userProfile);
+
+  //   // Do redirection here
+  //   switch (profile.role) {
+      
+  //     case 'admin':
+        
+  //       console.log('Redirecting to admin dashboard');
+  //       router.push('/admin/dashboard');
+  //       break;
+  //     case 'organizer':
+  //       console.log('Redirecting to organizer dashboard');
+  //       router.push('/organizer/dashboard');
+  //       break;
+  //     case 'customer':
+  //       console.log('Redirecting to customers dashboard');
+  //       router.push('/dashboard');
+  //       break;
+  //     // default:
+  //     //   router.push('/dashboard');
+  //   }
+  // } else {
+  //   console.error('No user profile found in Firestore!');
+  // }
 };
 
 
@@ -307,7 +377,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     signUp,
     logout,
     updateProfile,
-    signInAndRedirect
+    signInAndRedirect,
+    signInWithGoogle
   };
 
   return (
