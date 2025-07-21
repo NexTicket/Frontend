@@ -49,8 +49,8 @@ export default function SignInPage() {
   const [error, setError] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
-  const { signInAndRedirect } = useAuth();
-
+  const { signInAndRedirect, signInWithGoogle } = useAuth();
+   
   useEffect(() => {
   if (authLoading) return; // wait until auth status is resolved
 
@@ -409,6 +409,7 @@ export default function SignInPage() {
               variant="outlined"
               fullWidth
               startIcon={<Google />}
+              onClick={signInWithGoogle}
               sx={{ 
                 py: 1.5,
                 borderColor: '#db4437',

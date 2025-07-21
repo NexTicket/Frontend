@@ -50,6 +50,7 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [passwordStrength, setPasswordStrength] = useState(0);
+  const { signInWithGoogle } = useAuth();
 
   // Handle redirect after successful authentication
   useEffect(() => {
@@ -468,6 +469,7 @@ export default function SignupPage() {
               variant="outlined"
               fullWidth
               startIcon={<Google />}
+              onClick={signInWithGoogle}
               sx={{ 
                 py: 1.5,
                 borderColor: '#db4437',
