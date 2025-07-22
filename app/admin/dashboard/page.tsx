@@ -177,14 +177,14 @@ export default function AdminDashboard() {
   const [notifications, setNotifications] = useState(3);
   console.log('User profile after admin redirectory:', userProfile);
 
-  // Check authentication and admin role
-  useEffect(() => {
-    if (!isLoading && (!firebaseUser || !userProfile)) {
-      router.push('/auth/signin');
-    } else if (!isLoading && userProfile && userProfile.role !== 'admin') {
-      router.push('/dashboard'); // Redirect non-admin users
-    }
-  }, [isLoading, firebaseUser, userProfile, router]);
+  // No need for additional auth checks - admin layout handles this
+  // useEffect(() => {
+  //   if (!isLoading && (!firebaseUser || !userProfile)) {
+  //     router.push('/auth/signin');
+  //   } else if (!isLoading && userProfile && userProfile.role !== 'admin') {
+  //     router.push('/dashboard'); // Redirect non-admin users
+  //   }
+  // }, [isLoading, firebaseUser, userProfile, router]);
 
   const handleLogout = async () => {
     try {
@@ -299,6 +299,24 @@ export default function AdminDashboard() {
             >
               Dashboard
             </Button>
+            <Button
+              variant="contained"
+              startIcon={<Users size={16} />}
+              onClick={() => router.push('/admin/users')}
+              sx={{ 
+                textTransform: 'none',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%)',
+                  boxShadow: '0 6px 20px rgba(102, 126, 234, 0.6)',
+                  transform: 'translateY(-2px)'
+                },
+                transition: 'all 0.3s ease'
+              }}
+            >
+              Manage Users
+            </Button>
             <IconButton 
               onClick={handleRefresh} 
               disabled={refreshing}
@@ -365,6 +383,173 @@ export default function AdminDashboard() {
           {stats.map((stat, index) => (
             <StatCard key={index} {...stat} />
           ))}
+        </Box>
+
+        {/* Quick Actions Section */}
+        <Box display="grid" 
+             gridTemplateColumns={{ xs: '1fr', md: 'repeat(3, 1fr)' }} 
+             gap={3} 
+             mb={4}>
+          {/* User Management Quick Action */}
+          <Paper 
+            elevation={3} 
+            sx={{ 
+              p: 3, 
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              position: 'relative',
+              overflow: 'hidden',
+              '&:hover': {
+                transform: 'translateY(-4px)',
+                boxShadow: '0 8px 25px rgba(102, 126, 234, 0.4)',
+              },
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
+                opacity: 0,
+                transition: 'opacity 0.3s ease',
+              },
+              '&:hover::before': {
+                opacity: 1,
+              }
+            }}
+            onClick={() => router.push('/admin/users')}
+          >
+            <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+              <Box>
+                <Typography variant="h6" fontWeight="bold" gutterBottom>
+                  👥 User Management
+                </Typography>
+                <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                  Manage role requests, user permissions, and account settings
+                </Typography>
+              </Box>
+              <Box
+                sx={{
+                  backgroundColor: 'rgba(255,255,255,0.2)',
+                  borderRadius: 2,
+                  p: 1.5,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <Users size={32} />
+              </Box>
+            </Box>
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                • Review role upgrade requests<br/>
+                • Approve/reject permissions<br/>
+                • View user statistics
+              </Typography>
+              <Button
+                variant="contained"
+                size="small"
+                sx={{
+                  backgroundColor: 'rgba(255,255,255,0.2)',
+                  color: 'white',
+                  '&:hover': {
+                    backgroundColor: 'rgba(255,255,255,0.3)',
+                  }
+                }}
+              >
+                Go →
+              </Button>
+            </Box>
+          </Paper>
+
+          {/* Events Management */}
+          <Paper 
+            elevation={3} 
+            sx={{ 
+              p: 3, 
+              background: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
+              color: '#8b4513',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                transform: 'translateY(-4px)',
+                boxShadow: '0 8px 25px rgba(252, 182, 159, 0.4)',
+              }
+            }}
+            onClick={() => router.push('/admin/events')}
+          >
+            <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+              <Box>
+                <Typography variant="h6" fontWeight="bold" gutterBottom>
+                  🎪 Event Management
+                </Typography>
+                <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                  Oversee all events, approvals, and performance
+                </Typography>
+              </Box>
+              <Box
+                sx={{
+                  backgroundColor: 'rgba(139,69,19,0.1)',
+                  borderRadius: 2,
+                  p: 1.5,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <Calendar size={32} />
+              </Box>
+            </Box>
+            <Typography variant="body2" sx={{ opacity: 0.8 }}>
+              186 active events • 23 pending approval
+            </Typography>
+          </Paper>
+
+          {/* Analytics & Reports */}
+          <Paper 
+            elevation={3} 
+            sx={{ 
+              p: 3, 
+              background: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+              color: '#2d3748',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                transform: 'translateY(-4px)',
+                boxShadow: '0 8px 25px rgba(168, 237, 234, 0.4)',
+              }
+            }}
+          >
+            <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+              <Box>
+                <Typography variant="h6" fontWeight="bold" gutterBottom>
+                  📊 Analytics Hub
+                </Typography>
+                <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                  Deep insights and performance reports
+                </Typography>
+              </Box>
+              <Box
+                sx={{
+                  backgroundColor: 'rgba(45,55,72,0.1)',
+                  borderRadius: 2,
+                  p: 1.5,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <Activity size={32} />
+              </Box>
+            </Box>
+            <Typography variant="body2" sx={{ opacity: 0.8 }}>
+              LKR 847K revenue • 15.8% growth this month
+            </Typography>
+          </Paper>
         </Box>
 
         {/* Charts Section */}
