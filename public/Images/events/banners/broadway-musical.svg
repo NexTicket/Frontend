@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400">
+  <defs>
+    <linearGradient id="broadwayGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#8B5CF6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#EC4899;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="600" height="400" fill="url(#broadwayGradient)"/>
+  <rect x="100" y="80" width="400" height="240" fill="none" stroke="white" stroke-width="4" opacity="0.8" rx="20"/>
+  <text x="300" y="180" text-anchor="middle" fill="white" font-family="serif" font-size="28" font-weight="bold">BROADWAY</text>
+  <text x="300" y="220" text-anchor="middle" fill="white" font-family="serif" font-size="28" font-weight="bold">MUSICAL</text>
+  <text x="300" y="280" text-anchor="middle" fill="white" font-family="serif" font-size="18">🎭 Live Performance 🎭</text>
+  <circle cx="150" cy="120" r="15" fill="gold"/>
+  <circle cx="450" cy="280" r="15" fill="gold"/>
+</svg>
