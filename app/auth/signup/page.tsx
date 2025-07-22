@@ -150,7 +150,17 @@ export default function SignupPage() {
     setError('');
 
     try {
-      await signUp(formData.email, formData.password);
+      // Create the additional user data to save to Firestore
+      const additionalUserData = {
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        displayName: `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim(),
+      };
+
+      // Pass the additional data to signUp function
+      await signUp(formData.email, formData.password, additionalUserData);
+      
+      console.log('✅ User created with profile data:', additionalUserData);
       // Redirect will be handled by useEffect above after profile is created
     } catch (err: any) {
       console.error('Signup error:', err);

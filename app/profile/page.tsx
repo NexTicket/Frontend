@@ -18,11 +18,20 @@ import {
   Heart,
   History,
   LogOut,
-  ArrowLeft
+  ArrowLeft,
+  Edit3,
+  Save,
+  X,
+  Eye,
+  EyeOff,
+  Wallet,
+  CreditCard,
+  Receipt
 } from 'lucide-react';
 import { mockEvents, mockTickets } from '@/lib/mock-data';
 import { db } from '@/lib/firebase';
-import { setDoc, doc, serverTimestamp, getDoc, collection } from 'firebase/firestore';
+import { setDoc, doc, serverTimestamp, getDoc, collection, updateDoc } from 'firebase/firestore';
+import { updatePassword, EmailAuthProvider, reauthenticateWithCredential, updateProfile } from 'firebase/auth';
 
 export default function ProfilePage() {
   const { userProfile, firebaseUser, logout, isLoading } = useAuth();
@@ -35,7 +44,34 @@ export default function ProfilePage() {
   const [hasExistingRequest, setHasExistingRequest] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  //if (!userProfile) return null; // loading fallback
+  // User info update states
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [profileData, setProfileData] = useState({
+    firstName: '',
+    lastName: '',
+    displayName: '',
+    email: '',
+    phone: ''
+  });
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+  const [profileUpdateSuccess, setProfileUpdateSuccess] = useState(false);
+  
+  // Password update states
+  const [isEditingPassword, setIsEditingPassword] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false
+  });
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [passwordUpdateSuccess, setPasswordUpdateSuccess] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+
 
   const isCustomer = userProfile?.role === 'customer';
   
@@ -73,6 +109,117 @@ export default function ProfilePage() {
     }
   }, [firebaseUser, isCustomer]);
 
+  // Initialize profile data when userProfile loads
+  useEffect(() => {
+    if (userProfile) {
+      setProfileData({
+        firstName: userProfile.firstName || '',
+        lastName: userProfile.lastName || '',
+        displayName: userProfile.displayName || '',
+        email: userProfile.email || '',
+        phone: '' // This will be handled separately as it's not in UserProfile type
+      });
+    }
+  }, [userProfile]);
+
+  // Handle profile update
+  const handleProfileUpdate = async () => {
+    if (!firebaseUser || !userProfile) return;
+
+    setIsUpdatingProfile(true);
+    setErrorMessage('');
+
+    try {
+      // Update Firebase user profile if displayName changed
+      if (profileData.displayName !== userProfile.displayName) {
+        await updateProfile(firebaseUser, {
+          displayName: profileData.displayName
+        });
+      }
+
+      // Update Firestore document
+      await updateDoc(doc(db, 'users', firebaseUser.uid), {
+        firstName: profileData.firstName,
+        lastName: profileData.lastName,
+        phone: profileData.phone,
+        displayName: profileData.displayName,
+        updatedAt: serverTimestamp()
+      });
+
+      setProfileUpdateSuccess(true);
+      setIsEditingProfile(false);
+      
+      // Hide success message after 3 seconds
+      setTimeout(() => {
+        setProfileUpdateSuccess(false);
+      }, 3000);
+
+    } catch (error: any) {
+      console.error('Failed to update profile:', error);
+      setErrorMessage('Failed to update profile. Please try again.');
+      setTimeout(() => setErrorMessage(''), 5000);
+    } finally {
+      setIsUpdatingProfile(false);
+    }
+  };
+
+  // Handle password update
+  const handlePasswordUpdate = async () => {
+    if (!firebaseUser) return;
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setPasswordError('New passwords do not match');
+      setTimeout(() => setPasswordError(''), 3000);
+      return;
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      setPasswordError('Password must be at least 6 characters');
+      setTimeout(() => setPasswordError(''), 3000);
+      return;
+    }
+
+    setIsUpdatingPassword(true);
+    setPasswordError('');
+
+    try {
+      // Re-authenticate user before password change
+      const credential = EmailAuthProvider.credential(
+        firebaseUser.email!,
+        passwordData.currentPassword
+      );
+      
+      await reauthenticateWithCredential(firebaseUser, credential);
+      
+      // Update password
+      await updatePassword(firebaseUser, passwordData.newPassword);
+
+      setPasswordUpdateSuccess(true);
+      setIsEditingPassword(false);
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      });
+      
+      // Hide success message after 3 seconds
+      setTimeout(() => {
+        setPasswordUpdateSuccess(false);
+      }, 3000);
+
+    } catch (error: any) {
+      console.error('Failed to update password:', error);
+      if (error.code === 'auth/wrong-password') {
+        setPasswordError('Current password is incorrect');
+      } else {
+        setPasswordError('Failed to update password. Please try again.');
+      }
+      setTimeout(() => setPasswordError(''), 5000);
+    } finally {
+      setIsUpdatingPassword(false);
+    }
+  };
+
   const handleLogout = async () => {
     try {
       await logout();
@@ -97,7 +244,7 @@ export default function ProfilePage() {
         requestedRole: selectedRole,
         status: 'pending',
         requestedAt: serverTimestamp(),
-        message: `User ${userProfile?.email || firebaseUser.email} has requested ${selectedRole} role access.`,
+        message: `User ${userProfile?.email || firebaseUser.displayName} has requested ${selectedRole} role access.`,
         createdAt: new Date().toISOString()
       };
 
@@ -173,8 +320,9 @@ export default function ProfilePage() {
 
   const tabs = [
     { id: 'tickets', label: 'My Tickets', icon: Ticket },
+    { id: 'wallet', label: 'Ticket Wallet', icon: Wallet },
+    { id: 'bookings', label: 'Booking History', icon: Receipt },
     { id: 'favorites', label: 'Favorites', icon: Heart },
-    { id: 'history', label: 'History', icon: History },
     { id: 'settings', label: 'Settings', icon: Settings }
   ];
 
@@ -182,7 +330,7 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-background">
       {/* Success Notification */}
       {requestSubmitted && (
-        <div className="fixed top-4 right-4 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg shadow-lg z-50 max-w-sm">
+        <div className="fixed top-4 right-4 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg shadow-lg z-50 max-w-sm animate-slide-in">
           <div className="flex items-center space-x-2">
             <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
               <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -192,6 +340,40 @@ export default function ProfilePage() {
             <div>
               <p className="font-medium text-sm">Request Submitted!</p>
               <p className="text-xs">We'll review your request and get back to you.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Profile Update Success */}
+      {profileUpdateSuccess && (
+        <div className="fixed top-4 right-4 bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg shadow-lg z-50 max-w-sm animate-slide-in">
+          <div className="flex items-center space-x-2">
+            <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
+              <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div>
+              <p className="font-medium text-sm">Profile Updated!</p>
+              <p className="text-xs">Your information has been saved successfully.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Password Update Success */}
+      {passwordUpdateSuccess && (
+        <div className="fixed top-4 right-4 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg shadow-lg z-50 max-w-sm animate-slide-in">
+          <div className="flex items-center space-x-2">
+            <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+              <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div>
+              <p className="font-medium text-sm">Password Updated!</p>
+              <p className="text-xs">Your password has been changed successfully.</p>
             </div>
           </div>
         </div>
@@ -479,6 +661,284 @@ export default function ProfilePage() {
               </div>
             )}
 
+            {activeTab === 'wallet' && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-semibold">Ticket Wallet</h2>
+                  <Button variant="outline" size="sm">
+                    <Wallet className="h-4 w-4 mr-2" />
+                    Add Ticket
+                  </Button>
+                </div>
+                
+                {/* Digital Tickets */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {/* Sample Digital Ticket */}
+                  <div className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl p-6 text-white transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3">
+                        <CreditCard className="h-6 w-6" />
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs opacity-80">TICKET ID</p>
+                        <p className="text-sm font-mono">#TK2024001</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <h3 className="text-lg font-bold">Tech Conference 2024</h3>
+                      <p className="text-sm opacity-90">VIP Access Pass</p>
+                      <div className="flex items-center justify-between text-sm">
+                        <span>Dec 15, 2024</span>
+                        <span>Gate A - Seat 12</span>
+                      </div>
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-white/20">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm opacity-80">Status</span>
+                        <span className="bg-green-400 text-green-900 px-2 py-1 rounded-full text-xs font-medium">
+                          Active
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Add more sample tickets */}
+                  <div className="bg-gradient-to-br from-orange-500 to-red-600 rounded-xl p-6 text-white transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3">
+                        <CreditCard className="h-6 w-6" />
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs opacity-80">TICKET ID</p>
+                        <p className="text-sm font-mono">#TK2024002</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <h3 className="text-lg font-bold">Music Festival</h3>
+                      <p className="text-sm opacity-90">General Admission</p>
+                      <div className="flex items-center justify-between text-sm">
+                        <span>Nov 28, 2024</span>
+                        <span>Main Stage Area</span>
+                      </div>
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-white/20">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm opacity-80">Status</span>
+                        <span className="bg-yellow-400 text-yellow-900 px-2 py-1 rounded-full text-xs font-medium">
+                          Upcoming
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Empty state for adding new tickets */}
+                  <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 flex flex-col items-center justify-center text-center hover:border-primary transition-colors duration-200">
+                    <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                      <Wallet className="h-6 w-6 text-gray-500" />
+                    </div>
+                    <h3 className="font-medium text-gray-900 mb-2">Add Digital Ticket</h3>
+                    <p className="text-sm text-gray-500 mb-4">
+                      Import tickets from email or add manually
+                    </p>
+                    <Button variant="outline" size="sm">
+                      Add Ticket
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Wallet Statistics */}
+                <div className="bg-card rounded-lg border p-6">
+                  <h3 className="text-lg font-semibold mb-4">Wallet Summary</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-blue-600">2</p>
+                      <p className="text-sm text-muted-foreground">Active Tickets</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-green-600">5</p>
+                      <p className="text-sm text-muted-foreground">Used Tickets</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-orange-600">1</p>
+                      <p className="text-sm text-muted-foreground">Upcoming</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-purple-600">$450</p>
+                      <p className="text-sm text-muted-foreground">Total Value</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'bookings' && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-semibold">Booking History</h2>
+                  <div className="flex items-center space-x-2">
+                    <Button variant="outline" size="sm">
+                      <Download className="h-4 w-4 mr-2" />
+                      Export
+                    </Button>
+                    <select className="px-3 py-2 border rounded-md text-sm">
+                      <option>All Bookings</option>
+                      <option>This Year</option>
+                      <option>Last 6 Months</option>
+                      <option>Last Month</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Booking Timeline */}
+                <div className="space-y-4">
+                  {/* Recent Booking */}
+                  <div className="bg-card rounded-lg border p-6 hover:shadow-md transition-shadow duration-200">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start space-x-4">
+                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                          <Receipt className="h-6 w-6 text-blue-600" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <h3 className="font-semibold">Tech Conference 2024</h3>
+                            <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
+                              Confirmed
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-muted-foreground">
+                            <div className="flex items-center">
+                              <Calendar className="h-4 w-4 mr-2" />
+                              Dec 15, 2024 at 9:00 AM
+                            </div>
+                            <div className="flex items-center">
+                              <MapPin className="h-4 w-4 mr-2" />
+                              Convention Center
+                            </div>
+                            <div className="flex items-center">
+                              <User className="h-4 w-4 mr-2" />
+                              2 Tickets
+                            </div>
+                          </div>
+                          <div className="mt-3 flex items-center justify-between">
+                            <div className="text-sm">
+                              <span className="text-muted-foreground">Booking ID: </span>
+                              <span className="font-mono">#BK2024001</span>
+                            </div>
+                            <div className="text-sm">
+                              <span className="text-muted-foreground">Booked on: </span>
+                              <span>Nov 20, 2024</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-primary">$299.00</p>
+                        <p className="text-xs text-muted-foreground">per ticket</p>
+                        <div className="mt-2 space-y-1">
+                          <Button variant="outline" size="sm" className="w-full">
+                            View Details
+                          </Button>
+                          <Button variant="outline" size="sm" className="w-full">
+                            Download Receipt
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Past Booking */}
+                  <div className="bg-card rounded-lg border p-6 hover:shadow-md transition-shadow duration-200 opacity-75">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start space-x-4">
+                        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                          <Receipt className="h-6 w-6 text-gray-600" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <h3 className="font-semibold">Music Festival 2024</h3>
+                            <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs font-medium">
+                              Completed
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-muted-foreground">
+                            <div className="flex items-center">
+                              <Calendar className="h-4 w-4 mr-2" />
+                              Aug 15, 2024 at 6:00 PM
+                            </div>
+                            <div className="flex items-center">
+                              <MapPin className="h-4 w-4 mr-2" />
+                              Central Park
+                            </div>
+                            <div className="flex items-center">
+                              <User className="h-4 w-4 mr-2" />
+                              1 Ticket
+                            </div>
+                          </div>
+                          <div className="mt-3 flex items-center justify-between">
+                            <div className="text-sm">
+                              <span className="text-muted-foreground">Booking ID: </span>
+                              <span className="font-mono">#BK2024000</span>
+                            </div>
+                            <div className="text-sm">
+                              <span className="text-muted-foreground">Booked on: </span>
+                              <span>Jul 10, 2024</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-primary">$89.00</p>
+                        <p className="text-xs text-muted-foreground">total</p>
+                        <div className="mt-2 space-y-1">
+                          <Button variant="outline" size="sm" className="w-full">
+                            View Details
+                          </Button>
+                          <Button variant="outline" size="sm" className="w-full">
+                            Download Receipt
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Empty state for no bookings */}
+                  <div className="text-center py-12 bg-card rounded-lg border">
+                    <Receipt className="h-16 w-16 text-muted-foreground mx-auto mb-4 opacity-50" />
+                    <h3 className="text-lg font-semibold mb-2">That's all your bookings!</h3>
+                    <p className="text-muted-foreground mb-4">
+                      Showing your complete booking history. Looking for more events?
+                    </p>
+                    <Link href="/events">
+                      <Button>Browse Events</Button>
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Booking Statistics */}
+                <div className="bg-card rounded-lg border p-6">
+                  <h3 className="text-lg font-semibold mb-4">Booking Statistics</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-blue-600">12</p>
+                      <p className="text-sm text-muted-foreground">Total Bookings</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-green-600">$1,249</p>
+                      <p className="text-sm text-muted-foreground">Total Spent</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-orange-600">3</p>
+                      <p className="text-sm text-muted-foreground">This Year</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-purple-600">$104</p>
+                      <p className="text-sm text-muted-foreground">Avg. per Booking</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {activeTab === 'favorites' && (
               <div className="space-y-6">
                 <h2 className="text-xl font-semibold">Favorite Events</h2>
@@ -542,7 +1002,7 @@ export default function ProfilePage() {
             )}
 
             {activeTab === 'settings' && (
-              <div className="space-y-6">
+              <div className="space-y-8">
                 <h2 className="text-xl font-semibold">Account Settings</h2>
                 
                 {/* Role Upgrade Section - Only for customers */}
@@ -613,48 +1073,255 @@ export default function ProfilePage() {
                     </div>
                   </div>
                 )}
-                
-                <div className="bg-card rounded-lg border p-6">
-                  <h3 className="text-lg font-semibold mb-4">Personal Information</h3>
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium mb-2">First Name</label>
+
+                {/* Enhanced Profile Settings */}
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900">Personal Information</h3>
+                    {!isEditingProfile ? (
+                      <button
+                        onClick={() => setIsEditingProfile(true)}
+                        className="flex items-center space-x-2 px-4 py-2 text-blue-600 bg-blue-100 hover:bg-blue-200 rounded-lg transition-all duration-200 transform hover:scale-105"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                        <span>Edit</span>
+                      </button>
+                    ) : (
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={handleProfileUpdate}
+                          disabled={isUpdatingProfile}
+                          className="flex items-center space-x-2 px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50"
+                        >
+                          <Save className="w-4 h-4" />
+                          <span>{isUpdatingProfile ? 'Saving...' : 'Save'}</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsEditingProfile(false);
+                            setProfileData({
+                              firstName: '',
+                              lastName: '',
+                              displayName: firebaseUser?.displayName || '',
+                              email: firebaseUser?.email || '',
+                              phone: ''
+                            });
+                          }}
+                          className="flex items-center space-x-2 px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-all duration-200 transform hover:scale-105"
+                        >
+                          <X className="w-4 h-4" />
+                          <span>Cancel</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Full Name
+                      </label>
+                      {isEditingProfile ? (
                         <input
                           type="text"
-                          defaultValue="John"
-                          className="w-full px-3 py-2 border rounded-md bg-background"
+                          value={profileData.displayName}
+                          onChange={(e) => setProfileData({ ...profileData, displayName: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                          placeholder="Enter your full name"
                         />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-2">Last Name</label>
+                      ) : (
+                        <p className="px-4 py-3 bg-white border border-gray-200 rounded-lg text-gray-900">
+                          {firebaseUser?.displayName || 'Not provided'}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Email Address
+                      </label>
+                      {isEditingProfile ? (
                         <input
-                          type="text"
-                          defaultValue="Doe"
-                          className="w-full px-3 py-2 border rounded-md bg-background"
+                          type="email"
+                          value={profileData.email}
+                          onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                          placeholder="Enter your email"
                         />
-                      </div>
+                      ) : (
+                        <p className="px-4 py-3 bg-white border border-gray-200 rounded-lg text-gray-900">
+                          {firebaseUser?.email}
+                        </p>
+                      )}
                     </div>
+
                     <div>
-                      <label className="block text-sm font-medium mb-2">Email</label>
-                      <input
-                        type="email"
-                        defaultValue={userProfile.email}
-                        className="w-full px-3 py-2 border rounded-md bg-background"
-                        disabled
-                      />
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Phone Number
+                      </label>
+                      {isEditingProfile ? (
+                        <input
+                          type="tel"
+                          value={profileData.phone}
+                          onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                          placeholder="Enter your phone number"
+                        />
+                      ) : (
+                        <p className="px-4 py-3 bg-white border border-gray-200 rounded-lg text-gray-900">
+                          {profileData.phone || 'Not provided'}
+                        </p>
+                      )}
                     </div>
+
                     <div>
-                      <label className="block text-sm font-medium mb-2">Phone</label>
-                      <input
-                        type="tel"
-                        placeholder="+1 (555) 123-4567"
-                        className="w-full px-3 py-2 border rounded-md bg-background"
-                      />
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Member Since
+                      </label>
+                      <p className="px-4 py-3 bg-white border border-gray-200 rounded-lg text-gray-500">
+                        {firebaseUser?.metadata?.creationTime ? 
+                          new Date(firebaseUser.metadata.creationTime).toLocaleDateString() : 
+                          'Unknown'
+                        }
+                      </p>
                     </div>
                   </div>
+
+                  {passwordError && (
+                    <div className="mt-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg">
+                      <p className="text-sm">{passwordError}</p>
+                    </div>
+                  )}
                 </div>
 
+                {/* Password Change Card */}
+                <div className="bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-xl p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900">Security Settings</h3>
+                    {!isEditingPassword ? (
+                      <button
+                        onClick={() => setIsEditingPassword(true)}
+                        className="flex items-center space-x-2 px-4 py-2 text-orange-600 bg-orange-100 hover:bg-orange-200 rounded-lg transition-all duration-200 transform hover:scale-105"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                        <span>Change Password</span>
+                      </button>
+                    ) : (
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={handlePasswordUpdate}
+                          disabled={isUpdatingPassword}
+                          className="flex items-center space-x-2 px-4 py-2 text-white bg-orange-600 hover:bg-orange-700 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50"
+                        >
+                          <Save className="w-4 h-4" />
+                          <span>{isUpdatingPassword ? 'Updating...' : 'Update Password'}</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsEditingPassword(false);
+                            setPasswordData({
+                              currentPassword: '',
+                              newPassword: '',
+                              confirmPassword: ''
+                            });
+                            setPasswordError('');
+                          }}
+                          className="flex items-center space-x-2 px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-all duration-200 transform hover:scale-105"
+                        >
+                          <X className="w-4 h-4" />
+                          <span>Cancel</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {isEditingPassword ? (
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Current Password
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showPasswords.current ? 'text' : 'password'}
+                            value={passwordData.currentPassword}
+                            onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200 pr-12"
+                            placeholder="Enter current password"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPasswords({ ...showPasswords, current: !showPasswords.current })}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                          >
+                            {showPasswords.current ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          New Password
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showPasswords.new ? 'text' : 'password'}
+                            value={passwordData.newPassword}
+                            onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200 pr-12"
+                            placeholder="Enter new password"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                          >
+                            {showPasswords.new ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Confirm New Password
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showPasswords.confirm ? 'text' : 'password'}
+                            value={passwordData.confirmPassword}
+                            onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200 pr-12"
+                            placeholder="Confirm new password"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                          >
+                            {showPasswords.confirm ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      {passwordError && (
+                        <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg">
+                          <p className="text-sm">{passwordError}</p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div>
+                      <p className="text-gray-600">
+                        Password last changed: <span className="font-medium">Not available</span>
+                      </p>
+                      <p className="text-sm text-gray-500 mt-2">
+                        Keep your account secure by updating your password regularly.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Notifications Settings */}
                 <div className="bg-card rounded-lg border p-6">
                   <h3 className="text-lg font-semibold mb-4">Notifications</h3>
                   <div className="space-y-4">
@@ -686,26 +1353,6 @@ export default function ProfilePage() {
                       <input type="checkbox" className="h-4 w-4 text-primary" />
                     </div>
                   </div>
-                </div>
-
-                <div className="bg-card rounded-lg border p-6">
-                  <h3 className="text-lg font-semibold mb-4">Security</h3>
-                  <div className="space-y-4">
-                    <Button variant="outline" className="w-full justify-start">
-                      Change Password
-                    </Button>
-                    <Button variant="outline" className="w-full justify-start">
-                      Enable Two-Factor Authentication
-                    </Button>
-                    <Button variant="outline" className="w-full justify-start">
-                      Download My Data
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="flex justify-end space-x-4">
-                  <Button variant="outline">Cancel</Button>
-                  <Button>Save Changes</Button>
                 </div>
               </div>
             )}
@@ -796,4 +1443,28 @@ export default function ProfilePage() {
       </div>
     </div>
   );
+}
+
+const styles = `
+  @keyframes slide-in {
+    from {
+      opacity: 0;
+      transform: translateX(100%);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  
+  .animate-slide-in {
+    animation: slide-in 0.3s ease-out;
+  }
+`;
+
+// Add styles to document head
+if (typeof document !== 'undefined') {
+  const styleSheet = document.createElement('style');
+  styleSheet.innerText = styles;
+  document.head.appendChild(styleSheet);
 }

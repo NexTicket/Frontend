@@ -80,11 +80,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (!userDoc.exists()) {
         // Create new user profile
         const role = determineUserRole(user.email || '');
+        
+        // Create displayName from firstName/lastName if provided, otherwise use Firebase displayName
+        let displayName = user.displayName || '';
+        if (additionalData?.firstName || additionalData?.lastName) {
+          displayName = `${additionalData.firstName || ''} ${additionalData.lastName || ''}`.trim();
+        }
+        
         const profileData: UserProfile = {
           uid: user.uid,
           email: user.email || '',
           role,
-          displayName: user.displayName || '',
+          firstName: additionalData?.firstName || '',
+          lastName: additionalData?.lastName || '',
+          displayName: displayName,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
           ...additionalData
@@ -236,7 +245,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const user = result.user;
 
       if (user) {
-        await createUserProfile(user); // creates profile in Firestore if needed
+        // Extract name components from Google profile
+        const additionalData: Partial<UserProfile> = {};
+        
+        if (user.displayName) {
+          const nameParts = user.displayName.split(' ');
+          additionalData.firstName = nameParts[0] || '';
+          additionalData.lastName = nameParts.slice(1).join(' ') || '';
+          additionalData.displayName = user.displayName;
+        }
+
+        await createUserProfile(user, additionalData); // creates profile in Firestore if needed
         setFirebaseUser(user);
         await loadUserProfile(user); // loads user profile from Firestore
       }
