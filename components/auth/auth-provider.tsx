@@ -164,22 +164,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const profile = docSnap.data() as UserProfile;
         setUserProfile(profile);
 
-        // ✅ Redirect based on role
-        switch (profile.role) {
-          case 'admin':
-            console.log('Redirecting centrally to admin dashboard');
-            router.push('/admin/dashboard');
-            break;
-          case 'organizer':
-            console.log('Redirecting centrally to organizer dashboard');
-            router.push('/organizer/dashboard');
-            break;
-          case 'customer':
-            console.log('Redirecting centrally to customers dashboard');
-            router.push('/dashboard');
-            break;
-          default:
-            router.push('/dashboard');
+        // Only redirect if user is on a "neutral" page, not if they're already in their role area
+        const currentPath = window.location.pathname;
+        const shouldRedirect = 
+          currentPath === '/' || 
+          currentPath === '/auth/signin' || 
+          currentPath === '/auth/signup' ||
+          currentPath === '/dashboard' ||
+          (!currentPath.startsWith('/admin') && profile.role === 'admin') ||
+          (!currentPath.startsWith('/organizer') && profile.role === 'organizer');
+
+        if (shouldRedirect) {
+          // ✅ Redirect based on role only when appropriate
+          switch (profile.role) {
+            case 'admin':
+              console.log('Redirecting centrally to admin dashboard');
+              router.push('/admin/dashboard');
+              break;
+            case 'organizer':
+              console.log('Redirecting centrally to organizer dashboard');
+              router.push('/organizer/dashboard');
+              break;
+            case 'customer':
+              console.log('Redirecting centrally to customers dashboard');
+              router.push('/dashboard');
+              break;
+            default:
+              router.push('/dashboard');
+          }
+        } else {
+          console.log(`User already in correct area: ${currentPath} for role: ${profile.role}`);
         }
       } else {
         //console.error("⚠️ User profile not found in Firestore.");

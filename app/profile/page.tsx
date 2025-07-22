@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -21,11 +21,23 @@ import {
   ArrowLeft
 } from 'lucide-react';
 import { mockEvents, mockTickets } from '@/lib/mock-data';
+import { db } from '@/lib/firebase';
+import { setDoc, doc, serverTimestamp, getDoc, collection } from 'firebase/firestore';
 
 export default function ProfilePage() {
   const { userProfile, firebaseUser, logout, isLoading } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('tickets');
+  const [openRequestDialog, setOpenRequestDialog] = useState(false);
+  const [selectedRole, setSelectedRole] = useState('');
+  const [requestSubmitted, setRequestSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasExistingRequest, setHasExistingRequest] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  //if (!userProfile) return null; // loading fallback
+
+  const isCustomer = userProfile?.role === 'customer';
   
   // Redirect if not authenticated
   useEffect(() => {
@@ -33,6 +45,33 @@ export default function ProfilePage() {
       router.push('/auth/signin');
     }
   }, [isLoading, firebaseUser, router]);
+
+  // Check for existing role requests
+  useEffect(() => {
+    const checkExistingRequest = async () => {
+      if (firebaseUser && isCustomer) {
+        try {
+          // Only check user's own subcollection to avoid permission issues
+          const userRequestDoc = await getDoc(doc(db, 'users', firebaseUser.uid, 'requests', 'roleRequest'));
+          if (userRequestDoc.exists() && userRequestDoc.data()?.status === 'pending') {
+            setHasExistingRequest(true);
+          } else {
+            setHasExistingRequest(false);
+          }
+        } catch (error: any) {
+          // Silently handle permission errors - this is expected for new users
+          if (error?.code !== 'permission-denied') {
+            console.log('Error checking requests:', error.message);
+          }
+          setHasExistingRequest(false);
+        }
+      }
+    };
+
+    if (firebaseUser && isCustomer) {
+      checkExistingRequest();
+    }
+  }, [firebaseUser, isCustomer]);
 
   const handleLogout = async () => {
     try {
@@ -42,6 +81,60 @@ export default function ProfilePage() {
       console.error('Logout failed:', error);
     }
   };
+
+  const handleRoleRequest = async () => {
+    if (!firebaseUser || !selectedRole) return;
+
+    setIsSubmitting(true);
+    setErrorMessage('');
+    
+    try {
+      const requestData = {
+        userId: firebaseUser.uid,
+        userEmail: userProfile?.email || firebaseUser.email,
+        userName: `${userProfile?.firstName || ''} ${userProfile?.lastName || ''}`.trim() || userProfile?.displayName || 'User',
+        currentRole: userProfile?.role || 'customer',
+        requestedRole: selectedRole,
+        status: 'pending',
+        requestedAt: serverTimestamp(),
+        message: `User ${userProfile?.email || firebaseUser.email} has requested ${selectedRole} role access.`,
+        createdAt: new Date().toISOString()
+      };
+
+      // Save to user's subcollection (this should always work with basic auth)
+      await setDoc(doc(db, 'users', firebaseUser.uid, 'requests', 'roleRequest'), requestData);
+      
+      setRequestSubmitted(true);
+      setHasExistingRequest(true);
+      setOpenRequestDialog(false);
+      setSelectedRole('');
+      
+      // Show success notification
+      setTimeout(() => {
+        setRequestSubmitted(false);
+      }, 5000); // Hide after 5 seconds
+      
+    } catch (error: any) {
+      console.error('Failed to submit role request:', error);
+      
+      // More specific error handling
+      if (error?.code === 'permission-denied') {
+        setErrorMessage('Permission denied. Please sign in again and try again.');
+      } else if (error?.code === 'unavailable') {
+        setErrorMessage('Service temporarily unavailable. Please try again later.');
+      } else if (error?.code === 'unauthenticated') {
+        setErrorMessage('Please sign in again and try again.');
+      } else {
+        setErrorMessage('Failed to submit request. Please check your connection and try again.');
+      }
+      
+      // Hide error after 8 seconds
+      setTimeout(() => setErrorMessage(''), 8000);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
 
   // Show loading if auth is still loading
   if (isLoading) {
@@ -87,6 +180,40 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Success Notification */}
+      {requestSubmitted && (
+        <div className="fixed top-4 right-4 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg shadow-lg z-50 max-w-sm">
+          <div className="flex items-center space-x-2">
+            <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+              <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div>
+              <p className="font-medium text-sm">Request Submitted!</p>
+              <p className="text-xs">We'll review your request and get back to you.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Error Notification */}
+      {errorMessage && (
+        <div className="fixed top-4 right-4 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg shadow-lg z-50 max-w-sm">
+          <div className="flex items-center space-x-2">
+            <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+              <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div>
+              <p className="font-medium text-sm">Error</p>
+              <p className="text-xs">{errorMessage}</p>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Back Button */}
         <div className="mb-6">
@@ -131,18 +258,118 @@ export default function ProfilePage() {
                   </div>
                 </div>
               </div>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={handleLogout}
-                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
-              </Button>
+              <div className="flex flex-col space-y-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleLogout}
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Logout
+                </Button>
+                
+                {isCustomer && !hasExistingRequest && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setOpenRequestDialog(true)}
+                    className="bg-gradient-to-r from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 border-primary/30 hover:border-primary/50 text-primary hover:text-primary/90 transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-primary/20"
+                  >
+                    <Settings className="h-4 w-4 mr-2" />
+                    Request Role Upgrade
+                  </Button>
+                )}
+                
+                {isCustomer && hasExistingRequest && (
+                  <div className="flex items-center space-x-2 px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div className="w-4 h-4 bg-yellow-500 rounded-full flex items-center justify-center">
+                      <Clock className="h-2 w-2 text-white" />
+                    </div>
+                    <span className="text-xs text-yellow-800 font-medium">Request Pending</span>
+                  </div>
+                )}
+              </div>
+
             </div>
           </div>
         </div>
+
+        {/* Role Request Modal */}
+        {openRequestDialog && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-card rounded-lg border max-w-md w-full p-6 shadow-xl">
+              <h2 className="text-xl font-semibold mb-2">Request Role Upgrade</h2>
+              <p className="text-muted-foreground mb-6">
+                Select the role you would like to request. Our team will review your application.
+              </p>
+              
+              <div className="space-y-4 mb-6">
+                <label className="block text-sm font-medium mb-2">Choose Role</label>
+                <select 
+                  value={selectedRole} 
+                  onChange={(e) => setSelectedRole(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                >
+                  <option value="">Select a role...</option>
+                  <option value="organizer">Organizer</option>
+                  <option value="admin">Admin</option>
+                </select>
+                
+                {selectedRole && (
+                  <div className="mt-4 p-4 bg-primary/5 rounded-lg border border-primary/20">
+                    <h4 className="font-medium text-sm mb-2">
+                      {selectedRole === 'organizer' ? 'Organizer Role Benefits:' : 'Admin Role Benefits:'}
+                    </h4>
+                    <ul className="text-xs text-muted-foreground space-y-1">
+                      {selectedRole === 'organizer' ? (
+                        <>
+                          <li>• Create and manage events</li>
+                          <li>• Access to analytics dashboard</li>
+                          <li>• Revenue tracking</li>
+                          <li>• Venue management tools</li>
+                        </>
+                      ) : (
+                        <>
+                          <li>• Full system access</li>
+                          <li>• User management</li>
+                          <li>• Platform analytics</li>
+                          <li>• System configuration</li>
+                        </>
+                      )}
+                    </ul>
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex justify-end space-x-3">
+                <Button variant="outline" onClick={() => {
+                  setOpenRequestDialog(false);
+                  setSelectedRole('');
+                }}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleRoleRequest}
+                  disabled={!selectedRole || isSubmitting}
+                  className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      <Settings className="h-4 w-4 mr-2" />
+                      Submit Request
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Navigation Tabs */}
         <div className="border-b mb-8">
@@ -318,6 +545,75 @@ export default function ProfilePage() {
               <div className="space-y-6">
                 <h2 className="text-xl font-semibold">Account Settings</h2>
                 
+                {/* Role Upgrade Section - Only for customers */}
+                {isCustomer && (
+                  <div className="bg-gradient-to-br from-primary/5 via-primary/3 to-transparent rounded-lg border border-primary/20 p-6 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-primary/10 to-transparent rounded-full -translate-y-16 translate-x-16"></div>
+                    <div className="relative">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-12 h-12 bg-gradient-to-br from-primary to-primary/80 rounded-full flex items-center justify-center shadow-lg">
+                            <Settings className="h-6 w-6 text-white" />
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-semibold text-foreground">Upgrade Your Account</h3>
+                            <p className="text-sm text-muted-foreground">Get access to advanced features</p>
+                          </div>
+                        </div>
+                        <Button 
+                          onClick={() => setOpenRequestDialog(true)}
+                          disabled={hasExistingRequest}
+                          className={`${
+                            hasExistingRequest 
+                              ? 'bg-yellow-100 text-yellow-800 cursor-not-allowed' 
+                              : 'bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 shadow-lg hover:shadow-xl hover:shadow-primary/25 transform hover:scale-105 transition-all duration-300'
+                          }`}
+                        >
+                          {hasExistingRequest ? (
+                            <>
+                              <Clock className="h-4 w-4 mr-2" />
+                              Request Pending
+                            </>
+                          ) : (
+                            <>
+                              <Settings className="h-4 w-4 mr-2" />
+                              Request Upgrade
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                      
+                      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-card/50 backdrop-blur-sm rounded-lg p-4 border border-primary/10">
+                          <h4 className="font-medium text-sm mb-2 flex items-center">
+                            <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                            Organizer Benefits
+                          </h4>
+                          <ul className="text-xs text-muted-foreground space-y-1">
+                            <li>• Create and manage events</li>
+                            <li>• Access to analytics dashboard</li>
+                            <li>• Revenue tracking</li>
+                            <li>• Venue management tools</li>
+                          </ul>
+                        </div>
+                        
+                        <div className="bg-card/50 backdrop-blur-sm rounded-lg p-4 border border-primary/10">
+                          <h4 className="font-medium text-sm mb-2 flex items-center">
+                            <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
+                            Admin Benefits
+                          </h4>
+                          <ul className="text-xs text-muted-foreground space-y-1">
+                            <li>• Full system access</li>
+                            <li>• User management</li>
+                            <li>• Platform analytics</li>
+                            <li>• System configuration</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 <div className="bg-card rounded-lg border p-6">
                   <h3 className="text-lg font-semibold mb-4">Personal Information</h3>
                   <div className="space-y-4">
@@ -439,6 +735,43 @@ export default function ProfilePage() {
                   </Button>
                 </Link>
               </div>
+
+              {/* Upgrade Notification for Customers */}
+              {isCustomer && (
+                <div className="mt-6 p-4 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent rounded-lg border border-primary/20 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-primary/20 to-transparent rounded-full -translate-y-8 translate-x-8"></div>
+                  <div className="relative">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <div className="w-6 h-6 bg-gradient-to-br from-primary to-primary/80 rounded-full flex items-center justify-center">
+                        <Settings className="h-3 w-3 text-white" />
+                      </div>
+                      <h4 className="font-medium text-sm">Unlock More Features</h4>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      Upgrade to Organizer or Admin to access powerful tools and analytics.
+                    </p>
+                    <Button 
+                      size="sm" 
+                      onClick={() => setOpenRequestDialog(true)}
+                      disabled={hasExistingRequest}
+                      className={`w-full ${
+                        hasExistingRequest 
+                          ? 'bg-yellow-100 text-yellow-800 cursor-not-allowed hover:bg-yellow-100' 
+                          : 'bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 transform hover:scale-105 transition-all duration-300'
+                      }`}
+                    >
+                      {hasExistingRequest ? (
+                        <>
+                          <Clock className="h-3 w-3 mr-1" />
+                          Request Pending
+                        </>
+                      ) : (
+                        'Request Upgrade'
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               <div className="mt-6 pt-6 border-t">
                 <h4 className="font-medium mb-3">Account Status</h4>
