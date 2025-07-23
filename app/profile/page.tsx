@@ -26,7 +26,8 @@ import {
   EyeOff,
   Wallet,
   CreditCard,
-  Receipt
+  Receipt,
+  Bell
 } from 'lucide-react';
 import { mockEvents, mockTickets } from '@/lib/mock-data';
 import { db } from '@/lib/firebase';
@@ -71,6 +72,106 @@ export default function ProfilePage() {
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [passwordUpdateSuccess, setPasswordUpdateSuccess] = useState(false);
   const [passwordError, setPasswordError] = useState('');
+
+  // Notification preferences state
+  const [notificationPreferences, setNotificationPreferences] = useState({
+    email: true,
+    sms: false,
+    push: true,
+    eventReminders: true,
+    paymentConfirmations: true,
+    marketingEmails: false,
+    adminReplies: true
+  });
+
+  // Mock notifications data
+  const [notifications] = useState([
+    {
+      id: 1,
+      type: 'event_reminder',
+      title: 'Tech Conference 2024 - Tomorrow!',
+      message: 'Your event starts tomorrow at 9:00 AM. Don\'t forget to bring your ticket!',
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
+      read: false,
+      icon: Calendar
+    },
+    {
+      id: 2,
+      type: 'payment_confirmation',
+      title: 'Payment Confirmed',
+      message: 'Your payment of $299.00 for Tech Conference 2024 has been successfully processed.',
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
+      read: true,
+      icon: CreditCard
+    },
+    {
+      id: 3,
+      type: 'admin_reply',
+      title: 'Role Request Update',
+      message: 'Your request for organizer role is being reviewed. We\'ll notify you within 2-3 business days.',
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2), // 2 days ago
+      read: true,
+      icon: Settings
+    },
+    {
+      id: 4,
+      type: 'event_reminder',
+      title: 'New Event: Music Festival 2024',
+      message: 'A new music festival has been added to your area. Check it out!',
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3), // 3 days ago
+      read: false,
+      icon: Star
+    }
+  ]);
+
+  // Mock payment data
+  const [paymentMethods] = useState([
+    {
+      id: 1,
+      type: 'card',
+      last4: '4242',
+      brand: 'Visa',
+      expiryMonth: 12,
+      expiryYear: 2026,
+      isDefault: true
+    },
+    {
+      id: 2,
+      type: 'card',
+      last4: '5555',
+      brand: 'Mastercard',
+      expiryMonth: 8,
+      expiryYear: 2025,
+      isDefault: false
+    }
+  ]);
+
+  const [purchaseHistory] = useState([
+    {
+      id: 'TXN2024001',
+      description: 'Tech Conference 2024 - VIP Pass',
+      amount: 299.00,
+      date: new Date(Date.now() - 1000 * 60 * 60 * 24),
+      status: 'completed',
+      paymentMethod: '**** 4242'
+    },
+    {
+      id: 'TXN2024000',
+      description: 'Music Festival 2024 - General Admission',
+      amount: 89.00,
+      date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30),
+      status: 'completed',
+      paymentMethod: '**** 5555'
+    },
+    {
+      id: 'TXN2023099',
+      description: 'Sports Event 2023 - Premium Seats',
+      amount: 150.00,
+      date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 90),
+      status: 'completed',
+      paymentMethod: '**** 4242'
+    }
+  ]);
 
 
   const isCustomer = userProfile?.role === 'customer';
@@ -322,6 +423,8 @@ export default function ProfilePage() {
     { id: 'tickets', label: 'My Tickets', icon: Ticket },
     { id: 'wallet', label: 'Ticket Wallet', icon: Wallet },
     { id: 'bookings', label: 'Booking History', icon: Receipt },
+    { id: 'notifications', label: 'Notifications', icon: Bell },
+    { id: 'payments', label: 'Payments', icon: CreditCard },
     { id: 'favorites', label: 'Favorites', icon: Heart },
     { id: 'settings', label: 'Settings', icon: Settings }
   ];
@@ -939,6 +1042,386 @@ export default function ProfilePage() {
               </div>
             )}
 
+            {activeTab === 'notifications' && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-semibold">Notifications Center</h2>
+                  <div className="flex items-center space-x-2">
+                    <Button variant="outline" size="sm">
+                      Mark All Read
+                    </Button>
+                    <Button variant="outline" size="sm">
+                      <Settings className="h-4 w-4 mr-2" />
+                      Preferences
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Notification List */}
+                <div className="space-y-4">
+                  {notifications.map(notification => {
+                    const Icon = notification.icon;
+                    return (
+                      <div 
+                        key={notification.id} 
+                        className={`bg-card rounded-lg border p-6 hover:shadow-md transition-all duration-200 ${
+                          !notification.read ? 'bg-blue-50/50 border-blue-200' : ''
+                        }`}
+                      >
+                        <div className="flex items-start space-x-4">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                            notification.type === 'event_reminder' ? 'bg-blue-100 text-blue-600' :
+                            notification.type === 'payment_confirmation' ? 'bg-green-100 text-green-600' :
+                            notification.type === 'admin_reply' ? 'bg-purple-100 text-purple-600' :
+                            'bg-orange-100 text-orange-600'
+                          }`}>
+                            <Icon className="h-5 w-5" />
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-2">
+                              <h3 className={`font-semibold ${!notification.read ? 'text-blue-900' : ''}`}>
+                                {notification.title}
+                              </h3>
+                              <div className="flex items-center space-x-2">
+                                <span className="text-xs text-muted-foreground">
+                                  {notification.timestamp.toLocaleDateString()} at {notification.timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                </span>
+                                {!notification.read && (
+                                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                )}
+                              </div>
+                            </div>
+                            <p className="text-sm text-muted-foreground mb-3">{notification.message}</p>
+                            <div className="flex items-center space-x-2">
+                              <Button variant="outline" size="sm">
+                                {!notification.read ? 'Mark as Read' : 'Archive'}
+                              </Button>
+                              {notification.type === 'event_reminder' && (
+                                <Button variant="outline" size="sm">
+                                  View Event
+                                </Button>
+                              )}
+                              {notification.type === 'payment_confirmation' && (
+                                <Button variant="outline" size="sm">
+                                  View Receipt
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Notification Preferences */}
+                <div className="bg-card rounded-lg border p-6">
+                  <h3 className="text-lg font-semibold mb-4">Notification Preferences</h3>
+                  <div className="space-y-6">
+                    {/* Delivery Methods */}
+                    <div>
+                      <h4 className="font-medium mb-3">Delivery Methods</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="flex items-center justify-between p-4 border rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                              <span className="text-blue-600 text-sm font-medium">@</span>
+                            </div>
+                            <div>
+                              <p className="font-medium">Email</p>
+                              <p className="text-xs text-muted-foreground">Receive via email</p>
+                            </div>
+                          </div>
+                          <input 
+                            type="checkbox" 
+                            checked={notificationPreferences.email}
+                            onChange={(e) => setNotificationPreferences({...notificationPreferences, email: e.target.checked})}
+                            className="h-4 w-4 text-primary" 
+                          />
+                        </div>
+                        
+                        <div className="flex items-center justify-between p-4 border rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                              <span className="text-green-600 text-sm font-medium">📱</span>
+                            </div>
+                            <div>
+                              <p className="font-medium">SMS</p>
+                              <p className="text-xs text-muted-foreground">Text messages</p>
+                            </div>
+                          </div>
+                          <input 
+                            type="checkbox" 
+                            checked={notificationPreferences.sms}
+                            onChange={(e) => setNotificationPreferences({...notificationPreferences, sms: e.target.checked})}
+                            className="h-4 w-4 text-primary" 
+                          />
+                        </div>
+                        
+                        <div className="flex items-center justify-between p-4 border rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                              <Bell className="h-4 w-4 text-purple-600" />
+                            </div>
+                            <div>
+                              <p className="font-medium">Push</p>
+                              <p className="text-xs text-muted-foreground">Browser notifications</p>
+                            </div>
+                          </div>
+                          <input 
+                            type="checkbox" 
+                            checked={notificationPreferences.push}
+                            onChange={(e) => setNotificationPreferences({...notificationPreferences, push: e.target.checked})}
+                            className="h-4 w-4 text-primary" 
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Notification Types */}
+                    <div>
+                      <h4 className="font-medium mb-3">Notification Types</h4>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h5 className="font-medium">Event Reminders</h5>
+                            <p className="text-sm text-muted-foreground">
+                              Get notified about upcoming events you've registered for
+                            </p>
+                          </div>
+                          <input 
+                            type="checkbox" 
+                            checked={notificationPreferences.eventReminders}
+                            onChange={(e) => setNotificationPreferences({...notificationPreferences, eventReminders: e.target.checked})}
+                            className="h-4 w-4 text-primary" 
+                          />
+                        </div>
+                        
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h5 className="font-medium">Payment Confirmations</h5>
+                            <p className="text-sm text-muted-foreground">
+                              Receive confirmation when payments are processed
+                            </p>
+                          </div>
+                          <input 
+                            type="checkbox" 
+                            checked={notificationPreferences.paymentConfirmations}
+                            onChange={(e) => setNotificationPreferences({...notificationPreferences, paymentConfirmations: e.target.checked})}
+                            className="h-4 w-4 text-primary" 
+                          />
+                        </div>
+                        
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h5 className="font-medium">Admin Replies</h5>
+                            <p className="text-sm text-muted-foreground">
+                              Updates on your role requests and support tickets
+                            </p>
+                          </div>
+                          <input 
+                            type="checkbox" 
+                            checked={notificationPreferences.adminReplies}
+                            onChange={(e) => setNotificationPreferences({...notificationPreferences, adminReplies: e.target.checked})}
+                            className="h-4 w-4 text-primary" 
+                          />
+                        </div>
+                        
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h5 className="font-medium">Marketing Emails</h5>
+                            <p className="text-sm text-muted-foreground">
+                              Promotional offers, new events, and special deals
+                            </p>
+                          </div>
+                          <input 
+                            type="checkbox" 
+                            checked={notificationPreferences.marketingEmails}
+                            onChange={(e) => setNotificationPreferences({...notificationPreferences, marketingEmails: e.target.checked})}
+                            className="h-4 w-4 text-primary" 
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end">
+                      <Button>Save Preferences</Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'payments' && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-semibold">Payments & Billing</h2>
+                  <Button variant="outline" size="sm">
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Add Payment Method
+                  </Button>
+                </div>
+
+                {/* Current Subscription */}
+                <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-xl p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center">
+                        <CreditCard className="h-6 w-6 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold">Basic Plan</h3>
+                        <p className="text-sm text-muted-foreground">Free tier with basic features</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-purple-600">$0</p>
+                      <p className="text-sm text-muted-foreground">per month</p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div className="bg-white/50 backdrop-blur-sm rounded-lg p-3 border border-purple-100">
+                      <p className="text-sm font-medium">Event Bookings</p>
+                      <p className="text-xs text-muted-foreground">Unlimited</p>
+                    </div>
+                    <div className="bg-white/50 backdrop-blur-sm rounded-lg p-3 border border-purple-100">
+                      <p className="text-sm font-medium">Support</p>
+                      <p className="text-xs text-muted-foreground">Community</p>
+                    </div>
+                    <div className="bg-white/50 backdrop-blur-sm rounded-lg p-3 border border-purple-100">
+                      <p className="text-sm font-medium">Storage</p>
+                      <p className="text-xs text-muted-foreground">Basic</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">Want more features?</p>
+                      <p className="text-xs text-muted-foreground">Upgrade to Premium for advanced analytics and priority support</p>
+                    </div>
+                    <Button className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
+                      Upgrade Plan
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Payment Methods */}
+                <div className="bg-card rounded-lg border p-6">
+                  <h3 className="text-lg font-semibold mb-4">Payment Methods</h3>
+                  <div className="space-y-4">
+                    {paymentMethods.map(method => (
+                      <div key={method.id} className="flex items-center justify-between p-4 border rounded-lg hover:shadow-sm transition-shadow duration-200">
+                        <div className="flex items-center space-x-4">
+                          <div className={`w-12 h-8 rounded ${
+                            method.brand === 'Visa' ? 'bg-blue-600' : 
+                            method.brand === 'Mastercard' ? 'bg-red-500' : 'bg-gray-600'
+                          } flex items-center justify-center`}>
+                            <span className="text-white text-xs font-bold">
+                              {method.brand.substring(0, 4).toUpperCase()}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="font-medium">**** **** **** {method.last4}</p>
+                            <p className="text-sm text-muted-foreground">
+                              Expires {method.expiryMonth.toString().padStart(2, '0')}/{method.expiryYear}
+                            </p>
+                          </div>
+                          {method.isDefault && (
+                            <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
+                              Default
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Button variant="outline" size="sm">Edit</Button>
+                          <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                            Remove
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    <button className="w-full p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-primary transition-colors duration-200 text-center">
+                      <div className="flex items-center justify-center space-x-2 text-muted-foreground">
+                        <CreditCard className="h-5 w-5" />
+                        <span>Add New Payment Method</span>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Purchase History */}
+                <div className="bg-card rounded-lg border p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold">Purchase History</h3>
+                    <div className="flex items-center space-x-2">
+                      <Button variant="outline" size="sm">
+                        <Download className="h-4 w-4 mr-2" />
+                        Export
+                      </Button>
+                      <select className="px-3 py-2 border rounded-md text-sm">
+                        <option>Last 6 months</option>
+                        <option>This year</option>
+                        <option>All time</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    {purchaseHistory.map(purchase => (
+                      <div key={purchase.id} className="flex items-center justify-between p-4 border rounded-lg hover:shadow-sm transition-shadow duration-200">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                            <Receipt className="h-5 w-5 text-green-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium">{purchase.description}</p>
+                            <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                              <span>{purchase.date.toLocaleDateString()}</span>
+                              <span>•</span>
+                              <span>{purchase.paymentMethod}</span>
+                              <span>•</span>
+                              <span className="capitalize">{purchase.status}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-semibold">${purchase.amount.toFixed(2)}</p>
+                          <Button variant="outline" size="sm" className="mt-1">
+                            View Receipt
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Billing Summary */}
+                  <div className="mt-6 pt-6 border-t">
+                    <h4 className="font-medium mb-3">Billing Summary</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-green-600">$538</p>
+                        <p className="text-sm text-muted-foreground">Total Spent</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-blue-600">3</p>
+                        <p className="text-sm text-muted-foreground">Transactions</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-purple-600">$179</p>
+                        <p className="text-sm text-muted-foreground">Average Order</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-orange-600">100%</p>
+                        <p className="text-sm text-muted-foreground">Success Rate</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {activeTab === 'favorites' && (
               <div className="space-y-6">
                 <h2 className="text-xl font-semibold">Favorite Events</h2>
@@ -1441,6 +1924,52 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+      
+      {/* Custom CSS for animations */}
+      <style jsx>{`
+        @keyframes slide-in {
+          from {
+            transform: translateX(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+        
+        .animate-slide-in {
+          animation: slide-in 0.3s ease-out;
+        }
+        
+        @keyframes pulse-soft {
+          0%, 100% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.8;
+          }
+        }
+        
+        .animate-pulse-soft {
+          animation: pulse-soft 2s infinite;
+        }
+        
+        @keyframes fade-in {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        .animate-fade-in {
+          animation: fade-in 0.4s ease-out;
+        }
+      `}</style>
     </div>
   );
 }

@@ -80,20 +80,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (!userDoc.exists()) {
         // Create new user profile
         const role = determineUserRole(user.email || '');
-        
-        // Create displayName from firstName/lastName if provided, otherwise use Firebase displayName
-        let displayName = user.displayName || '';
-        if (additionalData?.firstName || additionalData?.lastName) {
-          displayName = `${additionalData.firstName || ''} ${additionalData.lastName || ''}`.trim();
-        }
-        
         const profileData: UserProfile = {
           uid: user.uid,
           email: user.email || '',
           role,
-          firstName: additionalData?.firstName || '',
-          lastName: additionalData?.lastName || '',
-          displayName: displayName,
+          displayName: user.displayName || '',
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
           ...additionalData
