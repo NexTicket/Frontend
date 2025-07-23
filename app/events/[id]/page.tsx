@@ -13,7 +13,10 @@ import {
   Heart,
   Star,
   ArrowLeft,
-  Ticket
+  Ticket,
+  Play,
+  Facebook,
+  Twitter
 } from 'lucide-react';
 import { mockEvents, mockVenues } from '@/lib/mock-data';
 
@@ -25,7 +28,7 @@ interface EventDetailPageProps {
 
 export default function EventDetailPage({ params }: EventDetailPageProps) {
   const [isLiked, setIsLiked] = useState(false);
-  const [selectedTicketType, setSelectedTicketType] = useState('general');
+  const [selectedTicketType, setSelectedTicketType] = useState('standard');
   const [activeTab, setActiveTab] = useState('summary');
   
   const event = mockEvents.find(e => e.id === params.id);
@@ -54,21 +57,21 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
     {
       id: 'general',
       name: 'General Admission',
-      price: event.price,
+      price: event.price * 300, // Convert to LKR (approx 1 USD = 300 LKR)
       description: 'Standard entry to the event',
       available: event.availableTickets
     },
     {
       id: 'vip',
       name: 'VIP Pass',
-      price: event.price * 2,
+      price: event.price * 300 * 2,
       description: 'Premium access with exclusive perks',
       available: Math.floor(event.availableTickets * 0.1)
     },
     {
       id: 'student',
       name: 'Student Discount',
-      price: Math.floor(event.price * 0.8),
+      price: Math.floor(event.price * 300 * 0.8),
       description: 'Special pricing for students with valid ID',
       available: Math.floor(event.availableTickets * 0.3)
     }
@@ -91,7 +94,7 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
             
             {/* Content */}
             <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center">
-              <div className="flex gap-8 items-center w-full">
+              <div className="flex gap-8 items-start w-full">
                 {/* Movie Poster */}
                 <div className="flex-shrink-0">
                   <Image 
@@ -108,11 +111,19 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
 
                 {/* Movie Details */}
                 <div className="flex-1 max-w-2xl">
-                  <h1 className="text-5xl font-bold mb-4">{event.title}</h1>
-                  <p className="text-xl text-gray-300 mb-4">
+                  {/* Title and Language aligned with top of poster */}
+                  <h1 className="text-5xl font-bold mb-2 uppercase">{event.title}</h1>
+                  <p className="text-xl text-gray-300 mb-8 uppercase tracking-wide">
                     {event.title.includes('Sinhala') || event.title.includes('සිංහල') ? 'SINHALA' : 'ENGLISH'}
                   </p>
                   
+                  {/* Play Button */}
+                  <div className="mb-8">
+                    <button className="w-20 h-20 bg-white/25 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white/35 transition-all duration-300 hover:scale-110 shadow-2xl border-2 border-white/30">
+                      <Play className="h-7 w-7 text-white ml-1" fill="white" />
+                    </button>
+                  </div>
+
                   {/* Genre Tags */}
                   <div className="flex gap-2 mb-6">
                     <span className="px-3 py-1 border border-gray-600 rounded text-sm uppercase">
@@ -146,260 +157,246 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                     </div>
                   </div>
 
-                  {/* Tabs */}
-                  <div className="flex gap-8 mb-8">
-                    <button 
-                      className={`pb-2 ${activeTab === 'summary' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400'}`}
-                      onClick={() => setActiveTab('summary')}
-                    >
-                      Summary
-                    </button>
-                    <button 
-                      className={`pb-2 ${activeTab === 'reviews' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400'}`}
-                      onClick={() => setActiveTab('reviews')}
-                    >
-                      User Reviews
-                    </button>
-                    <button 
-                      className={`pb-2 ${activeTab === 'critic' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400'}`}
-                      onClick={() => setActiveTab('critic')}
-                    >
-                      Critic Reviews
-                    </button>
-                  </div>
-
-                  {/* Tab Content */}
-                  <div className="mb-8">
-                    {activeTab === 'summary' && (
-                      <div>
-                        <h3 className="text-lg font-semibold mb-4">SYNOPSIS</h3>
-                        <p className="text-gray-300 leading-relaxed">{event.description}</p>
-                      </div>
-                    )}
-                    
-                    {activeTab === 'reviews' && (
-                      <div>
-                        <h3 className="text-lg font-semibold mb-4">USER REVIEWS</h3>
-                        <div className="space-y-4">
-                          <div className="border-l-4 border-blue-500 pl-4">
-                            <div className="flex items-center mb-2">
-                              <div className="flex text-yellow-400">
-                                {'★'.repeat(5)}
-                              </div>
-                              <span className="ml-2 text-gray-400">- MovieFan123</span>
-                            </div>
-                            <p className="text-gray-300">&ldquo;Absolutely amazing! One of the best films I&rsquo;ve seen this year.&rdquo;</p>
-                          </div>
-                          <div className="border-l-4 border-blue-500 pl-4">
-                            <div className="flex items-center mb-2">
-                              <div className="flex text-yellow-400">
-                                {'★'.repeat(4)}{'☆'}
-                              </div>
-                              <span className="ml-2 text-gray-400">- CinemaLover</span>
-                            </div>
-                            <p className="text-gray-300">&ldquo;Great story and excellent performances. Highly recommended!&rdquo;</p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                    
-                    {activeTab === 'critic' && (
-                      <div>
-                        <h3 className="text-lg font-semibold mb-4">CRITIC REVIEWS</h3>
-                        <div className="space-y-4">
-                          <div className="border-l-4 border-blue-500 pl-4">
-                            <div className="flex items-center mb-2">
-                              <span className="text-green-400 font-bold">85%</span>
-                              <span className="ml-2 text-gray-400">- Rotten Tomatoes</span>
-                            </div>
-                            <p className="text-gray-300">&ldquo;A masterfully crafted film that delivers on all fronts.&rdquo;</p>
-                          </div>
-                          <div className="border-l-4 border-blue-500 pl-4">
-                            <div className="flex items-center mb-2">
-                              <span className="text-green-400 font-bold">8.2/10</span>
-                              <span className="ml-2 text-gray-400">- IMDb</span>
-                            </div>
-                            <p className="text-gray-300">&ldquo;Outstanding cinematography and compelling storytelling.&rdquo;</p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
                   {/* Social Share */}
                   <div className="flex gap-4">
-                    <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
-                      <span className="text-white text-sm">f</span>
-                    </div>
-                    <div className="w-10 h-10 bg-blue-400 rounded-full flex items-center justify-center">
-                      <span className="text-white text-sm">t</span>
-                    </div>
-                    <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center">
-                      <span className="text-white text-sm">P</span>
-                    </div>
+                    <button className="w-10 h-10 bg-blue-600 hover:bg-blue-700 rounded-full flex items-center justify-center transition-colors">
+                      <Facebook className="h-5 w-5 text-white" />
+                    </button>
+                    <button className="w-10 h-10 bg-sky-500 hover:bg-sky-600 rounded-full flex items-center justify-center transition-colors">
+                      <Twitter className="h-5 w-5 text-white" />
+                    </button>
+                    <button className="w-10 h-10 bg-red-600 hover:bg-red-700 rounded-full flex items-center justify-center transition-colors">
+                      <Share2 className="h-4 w-4 text-white" />
+                    </button>
                   </div>
                 </div>
-
-
               </div>
             </div>
+          </div>
 
-            {/* Play Button */}
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-              <button className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white/30 transition-colors">
-                <div className="w-0 h-0 border-l-8 border-r-0 border-t-6 border-b-6 border-l-white border-t-transparent border-b-transparent ml-1"></div>
+          {/* Tabs and Content Section */}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+            {/* Tabs */}
+            <div className="flex gap-8 mb-8 border-b border-gray-700">
+              <button 
+                className={`pb-4 px-2 transition-colors ${
+                  activeTab === 'summary' 
+                    ? 'text-blue-400 border-b-2 border-blue-400' 
+                    : 'text-gray-400 hover:text-gray-300'
+                }`}
+                onClick={() => setActiveTab('summary')}
+              >
+                Summary
+              </button>
+              <button 
+                className={`pb-4 px-2 transition-colors ${
+                  activeTab === 'reviews' 
+                    ? 'text-blue-400 border-b-2 border-blue-400' 
+                    : 'text-gray-400 hover:text-gray-300'
+                }`}
+                onClick={() => setActiveTab('reviews')}
+              >
+                User Reviews
+              </button>
+              <button 
+                className={`pb-4 px-2 transition-colors ${
+                  activeTab === 'critic' 
+                    ? 'text-blue-400 border-b-2 border-blue-400' 
+                    : 'text-gray-400 hover:text-gray-300'
+                }`}
+                onClick={() => setActiveTab('critic')}
+              >
+                Critic Reviews
               </button>
             </div>
-          </div>
 
-          {/* Cast Section */}
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-            <h2 className="text-2xl font-bold mb-8">CAST</h2>
-            <div className="flex gap-6">
-              {(() => {
-                // Dynamic cast based on movie
-                const getCast = () => {
-                  if (event.title.includes('Deadpool')) {
-                    return [
-                      { name: 'Ryan Reynolds', role: 'Deadpool' },
-                      { name: 'Hugh Jackman', role: 'Wolverine' },
-                      { name: 'Emma Corrin', role: 'Cassandra Nova' }
-                    ];
-                  } else if (event.title.includes('Batman')) {
-                    return [
-                      { name: 'Robert Pattinson', role: 'Batman' },
-                      { name: 'Zoë Kravitz', role: 'Catwoman' },
-                      { name: 'Paul Dano', role: 'The Riddler' }
-                    ];
-                  } else if (event.title.includes('Inception')) {
-                    return [
-                      { name: 'Leonardo DiCaprio', role: 'Dom Cobb' },
-                      { name: 'Marion Cotillard', role: 'Mal' },
-                      { name: 'Tom Hardy', role: 'Eames' }
-                    ];
-                  }
-                  return [
-                    { name: 'Lead Actor', role: 'Main Character' },
-                    { name: 'Supporting Actor', role: 'Supporting Role' },
-                    { name: 'Featured Actor', role: 'Key Role' }
-                  ];
-                };
-                
-                return getCast().map((actor, i) => (
-                  <div key={i} className="text-center">
-                    <div className="w-24 h-24 bg-gray-700 rounded-full mb-3 flex items-center justify-center">
-                      <span className="text-2xl">{actor.name.charAt(0)}</span>
-                    </div>
-                    <p className="text-sm font-medium">{actor.name}</p>
-                    <p className="text-xs text-gray-400">{actor.role}</p>
-                  </div>
-                ));
-              })()}
-            </div>
-          </div>
-
-          {/* Movie Booking Section */}
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
-            <div className="bg-[#23232b] rounded-xl border border-gray-700 p-8">
+            {/* Movie Booking Section */}
+            <div className="mb-12">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Movie Info Summary */}
+                {/* Tab Content Area */}
                 <div className="lg:col-span-2">
-                  <h2 className="text-2xl font-bold mb-6">BOOK YOUR TICKETS</h2>
-                  
-                  {/* Movie Details Grid */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
-                    <div className="text-center">
-                      <div className="text-blue-400 text-sm font-medium mb-2">DATE</div>
-                      <div className="text-white">
-                        {new Date(event.date).toLocaleDateString('en-US', { 
-                          month: 'short', 
-                          day: 'numeric' 
-                        })}
+                  {activeTab === 'summary' && (
+                    <div className="space-y-12">
+                      {/* Synopsis */}
+                      <div>
+                        <h3 className="text-2xl font-bold mb-6">SYNOPSIS</h3>
+                        <p className="text-gray-300 text-lg leading-relaxed">{event.description}</p>
                       </div>
-                      <div className="text-gray-400 text-sm">
-                        {new Date(event.date).toLocaleDateString('en-US', { 
-                          weekday: 'short' 
-                        })}
-                      </div>
-                    </div>
-                    
-                    <div className="text-center">
-                      <div className="text-blue-400 text-sm font-medium mb-2">TIME</div>
-                      <div className="text-white">{event.time}</div>
-                      <div className="text-gray-400 text-sm">
-                        {event.tags.includes('action') ? '2h 30m' : 
-                         event.tags.includes('horror') ? '1h 45m' :
-                         event.tags.includes('comedy') ? '2h 10m' :
-                         '2h 20m'}
-                      </div>
-                    </div>
-                    
-                    <div className="text-center">
-                      <div className="text-blue-400 text-sm font-medium mb-2">VENUE</div>
-                      <div className="text-white">{event.venue}</div>
-                      <div className="text-gray-400 text-sm">Premium</div>
-                    </div>
-                    
-                    <div className="text-center">
-                      <div className="text-blue-400 text-sm font-medium mb-2">PRICE</div>
-                      <div className="text-white">${event.price}</div>
-                      <div className="text-gray-400 text-sm">+ fees</div>
-                    </div>
-                  </div>
 
-                  {/* Ticket Types for Movies */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold mb-4">SELECT TICKET TYPE</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {[
-                        {
-                          id: 'standard',
-                          name: 'Standard',
-                          price: event.price,
-                          description: 'Regular cinema experience',
-                          features: ['Standard seating', 'Digital projection']
-                        },
-                        {
-                          id: 'premium',
-                          name: 'Premium',
-                          price: Math.floor(event.price * 1.5),
-                          description: 'Enhanced comfort & quality',
-                          features: ['Luxury seating', 'Dolby Atmos', 'Premium snacks']
-                        },
-                        {
-                          id: 'vip',
-                          name: 'VIP Experience',
-                          price: event.price * 2,
-                          description: 'Ultimate movie experience',
-                          features: ['Recliner seats', 'Waiter service', 'Exclusive lounge']
-                        }
-                      ].map(ticket => (
-                        <div
-                          key={ticket.id}
-                          className={`p-4 border rounded-lg cursor-pointer transition-all hover:border-blue-500 ${
-                            selectedTicketType === ticket.id
-                              ? 'border-blue-500 bg-blue-500/10'
-                              : 'border-gray-600'
-                          }`}
-                          onClick={() => setSelectedTicketType(ticket.id)}
-                        >
-                          <div className="text-center">
-                            <h4 className="font-semibold text-white mb-2">{ticket.name}</h4>
-                            <div className="text-2xl font-bold text-blue-400 mb-2">${ticket.price}</div>
-                            <p className="text-sm text-gray-400 mb-3">{ticket.description}</p>
-                            <div className="text-xs text-gray-500">
-                              {ticket.features.map((feature, i) => (
-                                <div key={i}>• {feature}</div>
-                              ))}
-                            </div>
+                      {/* Cast Section */}
+                      <div>
+                        <h3 className="text-2xl font-bold mb-8">CAST</h3>
+                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
+                          {(() => {
+                            // Dynamic cast based on movie
+                            const getCast = () => {
+                              if (event.title.includes('Deadpool')) {
+                                return [
+                                  { name: 'Ryan Reynolds', role: 'Deadpool' },
+                                  { name: 'Hugh Jackman', role: 'Wolverine' },
+                                  { name: 'Emma Corrin', role: 'Cassandra Nova' },
+                                  { name: 'Matthew Macfadyen', role: 'Paradox' },
+                                  { name: 'Dafne Keen', role: 'X-23' },
+                                  { name: 'Jon Favreau', role: 'Happy Hogan' }
+                                ];
+                              } else if (event.title.includes('Batman')) {
+                                return [
+                                  { name: 'Robert Pattinson', role: 'Batman' },
+                                  { name: 'Zoë Kravitz', role: 'Catwoman' },
+                                  { name: 'Paul Dano', role: 'The Riddler' },
+                                  { name: 'Jeffrey Wright', role: 'Commissioner Gordon' },
+                                  { name: 'John Turturro', role: 'Carmine Falcone' },
+                                  { name: 'Andy Serkis', role: 'Alfred' }
+                                ];
+                              } else if (event.title.includes('Inception')) {
+                                return [
+                                  { name: 'Leonardo DiCaprio', role: 'Dom Cobb' },
+                                  { name: 'Marion Cotillard', role: 'Mal' },
+                                  { name: 'Tom Hardy', role: 'Eames' },
+                                  { name: 'Ellen Page', role: 'Ariadne' },
+                                  { name: 'Joseph Gordon-Levitt', role: 'Arthur' },
+                                  { name: 'Cillian Murphy', role: 'Robert Fischer' }
+                                ];
+                              }
+                              return [
+                                { name: 'Lead Actor', role: 'Main Character' },
+                                { name: 'Supporting Actor', role: 'Supporting Role' },
+                                { name: 'Featured Actor', role: 'Key Role' },
+                                { name: 'Character Actor', role: 'Important Role' },
+                                { name: 'Guest Actor', role: 'Special Appearance' },
+                                { name: 'Voice Actor', role: 'Narrator' }
+                              ];
+                            };
+                            
+                            return getCast().map((actor, i) => (
+                              <div key={i} className="text-center">
+                                <div className="w-20 h-20 bg-gray-700 rounded-full mb-3 flex items-center justify-center mx-auto">
+                                  <span className="text-xl font-semibold">{actor.name.charAt(0)}</span>
+                                </div>
+                                <p className="text-sm font-medium text-white">{actor.name}</p>
+                                <p className="text-xs text-gray-400">{actor.role}</p>
+                              </div>
+                            ));
+                          })()}
+                        </div>
+                      </div>
+
+                      {/* Technical Details */}
+                      <div>
+                        <h3 className="text-2xl font-bold mb-6">TECHNICAL DETAILS</h3>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                          <div>
+                            <h4 className="text-blue-400 font-medium mb-2">Director</h4>
+                            <p className="text-gray-300">
+                              {event.title.includes('Deadpool') ? 'Shawn Levy' :
+                               event.title.includes('Batman') ? 'Matt Reeves' :
+                               event.title.includes('Inception') ? 'Christopher Nolan' :
+                               'John Director'}
+                            </p>
+                          </div>
+                          <div>
+                            <h4 className="text-blue-400 font-medium mb-2">Genre</h4>
+                            <p className="text-gray-300">{event.category}</p>
+                          </div>
+                          <div>
+                            <h4 className="text-blue-400 font-medium mb-2">Rating</h4>
+                            <p className="text-gray-300">R</p>
+                          </div>
+                          <div>
+                            <h4 className="text-blue-400 font-medium mb-2">Language</h4>
+                            <p className="text-gray-300">
+                              {event.title.includes('Sinhala') || event.title.includes('සිංහල') ? 'Sinhala' : 'English'}
+                            </p>
                           </div>
                         </div>
-                      ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
+                  
+                  {activeTab === 'reviews' && (
+                    <div>
+                      <h3 className="text-2xl font-bold mb-8">USER REVIEWS</h3>
+                      <div className="space-y-6">
+                        {[
+                          {
+                            rating: 5,
+                            user: 'MovieFan123',
+                            review: 'Absolutely amazing! One of the best films I\'ve seen this year. The action sequences are incredible and the character development is top-notch.'
+                          },
+                          {
+                            rating: 4,
+                            user: 'CinemaLover',
+                            review: 'Great story and excellent performances. Highly recommended! The cinematography is stunning and the soundtrack perfectly complements the mood.'
+                          },
+                          {
+                            rating: 5,
+                            user: 'FilmCritic2024',
+                            review: 'A masterpiece of modern cinema. The director has outdone themselves with this incredible piece of art that will be remembered for years to come.'
+                          },
+                          {
+                            rating: 4,
+                            user: 'ActionMovieFan',
+                            review: 'Non-stop entertainment from start to finish. The special effects are mind-blowing and the storyline keeps you engaged throughout.'
+                          }
+                        ].map((review, i) => (
+                          <div key={i} className="border-l-4 border-blue-500 pl-6 py-4">
+                            <div className="flex items-center mb-3">
+                              <div className="flex text-yellow-400 mr-3">
+                                {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
+                              </div>
+                              <span className="text-gray-400">- {review.user}</span>
+                            </div>
+                            <p className="text-gray-300 leading-relaxed">&ldquo;{review.review}&rdquo;</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {activeTab === 'critic' && (
+                    <div>
+                      <h3 className="text-2xl font-bold mb-8">CRITIC REVIEWS</h3>
+                      <div className="space-y-6">
+                        {[
+                          {
+                            source: 'Rotten Tomatoes',
+                            score: '85%',
+                            scoreColor: 'text-green-400',
+                            review: 'A masterfully crafted film that delivers on all fronts. The performances are outstanding and the direction is flawless.'
+                          },
+                          {
+                            source: 'IMDb',
+                            score: '8.2/10',
+                            scoreColor: 'text-green-400',
+                            review: 'Outstanding cinematography and compelling storytelling. A must-watch for fans of the genre.'
+                          },
+                          {
+                            source: 'Metacritic',
+                            score: '78/100',
+                            scoreColor: 'text-green-400',
+                            review: 'Visually stunning with exceptional performances. The film successfully balances action with emotional depth.'
+                          },
+                          {
+                            source: 'The Guardian',
+                            score: '4/5',
+                            scoreColor: 'text-green-400',
+                            review: 'A remarkable achievement in filmmaking. The director has created something truly special that resonates with audiences.'
+                          }
+                        ].map((review, i) => (
+                          <div key={i} className="border-l-4 border-blue-500 pl-6 py-4">
+                            <div className="flex items-center mb-3">
+                              <span className={`font-bold text-xl mr-3 ${review.scoreColor}`}>{review.score}</span>
+                              <span className="text-gray-400">- {review.source}</span>
+                            </div>
+                            <p className="text-gray-300 leading-relaxed">&ldquo;{review.review}&rdquo;</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* Booking Actions */}
+                {/* Booking Summary Only */}
                 <div className="lg:col-span-1">
                   <div className="bg-[#2a2a35] rounded-lg p-6 sticky top-8">
                     <h3 className="text-lg font-semibold mb-4">BOOKING SUMMARY</h3>
@@ -429,24 +426,24 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-400">Ticket ({selectedTicketType})</span>
                         <span className="text-white">
-                          ${selectedTicketType === 'premium' ? Math.floor(event.price * 1.5) : 
-                            selectedTicketType === 'vip' ? event.price * 2 : event.price}
+                          LKR {(selectedTicketType === 'premium' ? Math.floor(event.price * 300 * 1.5) : 
+                            selectedTicketType === 'vip' ? event.price * 300 * 2 : event.price * 300).toLocaleString()}
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-400">Convenience Fee</span>
-                        <span className="text-white">$3.00</span>
+                        <span className="text-white">LKR 900</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-400">Service Tax</span>
-                        <span className="text-white">$2.00</span>
+                        <span className="text-white">LKR 600</span>
                       </div>
                       <div className="border-t border-gray-600 pt-3">
                         <div className="flex justify-between font-semibold">
                           <span className="text-white">Total Amount</span>
                           <span className="text-blue-400">
-                            ${(selectedTicketType === 'premium' ? Math.floor(event.price * 1.5) : 
-                              selectedTicketType === 'vip' ? event.price * 2 : event.price) + 5}
+                            LKR {((selectedTicketType === 'premium' ? Math.floor(event.price * 300 * 1.5) : 
+                              selectedTicketType === 'vip' ? event.price * 300 * 2 : event.price * 300) + 1500).toLocaleString()}
                           </span>
                         </div>
                       </div>
@@ -524,11 +521,10 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                       variant="ghost"
                       size="sm"
                       onClick={() => setIsLiked(!isLiked)}
-                      className="text-gray-400 hover:text-white"
                     >
                       <Heart className={`h-4 w-4 ${isLiked ? 'fill-red-500 text-red-500' : ''}`} />
                     </Button>
-                    <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
+                    <Button variant="ghost" size="sm">
                       <Share2 className="h-4 w-4" />
                     </Button>
                   </div>
@@ -587,7 +583,7 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                       <p className="font-medium">Venue</p>
                       <p className="text-gray-400">{event.venue}</p>
                       {venue && (
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-gray-400">
                           {venue.address}, {venue.city}
                         </p>
                       )}
@@ -606,9 +602,9 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                 </div>
 
                 {venue && (
-                  <div className="mt-6 pt-6 border-t border-gray-700">
+                  <div className="mt-6 pt-6 border-t border-gray-600">
                     <Link href={`/venues/${venue.id}`}>
-                      <Button variant="outline" size="sm" className="border-gray-600 text-gray-300 hover:bg-gray-700">
+                      <Button variant="outline" size="sm">
                         View Venue Details
                       </Button>
                     </Link>
@@ -651,12 +647,12 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                     >
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="font-medium">{ticket.name}</h4>
-                        <span className="font-bold text-blue-400">${ticket.price}</span>
+                        <span className="font-bold text-blue-400">LKR {ticket.price.toLocaleString()}</span>
                       </div>
                       <p className="text-sm text-gray-400 mb-2">
                         {ticket.description}
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-gray-400">
                         {ticket.available} available
                       </p>
                     </div>
@@ -678,14 +674,14 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                 </div>
 
                 {/* Price Summary */}
-                <div className="mt-6 pt-6 border-t border-gray-700">
+                <div className="mt-6 pt-6 border-t border-gray-600">
                   <div className="flex items-center justify-between text-sm text-gray-400 mb-2">
                     <span>Service fee</span>
-                    <span>$5.00</span>
+                    <span>LKR 1,500</span>
                   </div>
                   <div className="flex items-center justify-between font-medium">
                     <span>Total</span>
-                    <span>${(ticketTypes.find(t => t.id === selectedTicketType)?.price || 0) + 5}</span>
+                    <span>LKR {((ticketTypes.find(t => t.id === selectedTicketType)?.price || 0) + 1500).toLocaleString()}</span>
                   </div>
                 </div>
               </div>
