@@ -128,3 +128,89 @@ body {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
+
+/* Entrance Animations for Event Detail Page */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInFromTop {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInFromBottom {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Animation Classes */
+.animate-fadeIn {
+  animation: fadeIn 0.8s ease-out both;
+}
+
+.animate-slideInFromLeft {
+  animation: slideInFromLeft 0.8s ease-out both;
+}
+
+.animate-slideInFromRight {
+  animation: slideInFromRight 0.8s ease-out both;
+}
+
+.animate-slideInFromTop {
+  animation: slideInFromTop 0.8s ease-out both;
+}
+
+.animate-slideInFromBottom {
+  animation: slideInFromBottom 0.8s ease-out both;
+}
+
+/* Reduced motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fadeIn,
+  .animate-slideInFromLeft,
+  .animate-slideInFromRight,
+  .animate-slideInFromTop,
+  .animate-slideInFromBottom {
+    animation: none;
+  }
+}
