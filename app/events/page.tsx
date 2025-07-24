@@ -22,9 +22,7 @@ export default function EventsPage() {
   // Filter events based on active tab
   const allEvents = mockEvents;
   const movieEvents = allEvents.filter(event => 
-    movieCategories.some(cat => event.category.toLowerCase().includes(cat.toLowerCase()) || 
-    event.title.toLowerCase().includes('movie') || 
-    event.tags.some(tag => ['film', 'cinema', 'movie'].includes(tag.toLowerCase())))
+    event.tags.includes('movie')
   );
   const nonMovieEvents = allEvents.filter(event => !movieEvents.includes(event));
   
