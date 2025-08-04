@@ -51,11 +51,6 @@ export default function AdminUsers(){
     const [searchTerm, setSearchTerm] = useState('');
     const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'organizer' | 'customer'>('all');
     
-    // Modal states
-    const [showUserDetails, setShowUserDetails] = useState(false);
-    const [showManageUser, setShowManageUser] = useState(false);
-    const [selectedUser, setSelectedUser] = useState<User | null>(null);
-    
     // Ref to prevent duplicate API calls in React Strict Mode
     const hasFetched = useRef(false);
     
@@ -173,7 +168,6 @@ export default function AdminUsers(){
             });
             
             console.log(`Admin Users: Found ${requests.length} pending role requests and ${users.length} total users`);
-            console.log('Admin Users: Sample users:', users.slice(0, 3));
             setRoleRequests(requests);
             setAllUsers(users);
             setUserStats(stats);
@@ -262,23 +256,19 @@ export default function AdminUsers(){
 
     // Filter users based on search term and role filter
     const filteredUsers = useMemo(() => {
-        console.log('Filtering users:', { allUsers: allUsers.length, searchTerm, roleFilter });
         if (!allUsers) return [];
         
-        const filtered = allUsers.filter(user => {
+        return allUsers.filter(user => {
             const matchesSearch = !searchTerm || 
                 user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 user.displayName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 user.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 user.lastName?.toLowerCase().includes(searchTerm.toLowerCase());
             
-            const matchesRole = roleFilter === 'all' || !roleFilter || user.role === roleFilter;
+            const matchesRole = !roleFilter || user.role === roleFilter;
             
             return matchesSearch && matchesRole;
         });
-        
-        console.log('Filtered users result:', filtered.length);
-        return filtered;
     }, [allUsers, searchTerm, roleFilter]);
 
     // Helper function to format dates
@@ -307,87 +297,6 @@ export default function AdminUsers(){
             newExpanded.add(requestId);
         }
         setExpandedRequests(newExpanded);
-    };
-
-    // Handle view user details
-    const handleViewDetails = (user: User) => {
-        setSelectedUser(user);
-        setShowUserDetails(true);
-    };
-
-    // Handle manage user
-    const handleManageUser = (user: User) => {
-        setSelectedUser(user);
-        setShowManageUser(true);
-    };
-
-    // Handle role change
-    const handleRoleChange = async (newRole: 'admin' | 'organizer' | 'customer') => {
-        if (!selectedUser) return;
-        
-        setProcessingId(selectedUser.id);
-        
-        try {
-            await updateDoc(doc(db, 'users', selectedUser.id), {
-                role: newRole,
-                updatedAt: new Date()
-            });
-            
-            // Update local state
-            setAllUsers(prev => prev.map(user => 
-                user.id === selectedUser.id 
-                    ? { ...user, role: newRole, updatedAt: new Date() }
-                    : user
-            ));
-            
-            // Update stats
-            setUserStats(prev => {
-                const newStats = { ...prev };
-                // Decrease old role count
-                if (selectedUser.role === 'admin') newStats.admins--;
-                else if (selectedUser.role === 'organizer') newStats.organizers--;
-                else newStats.customers--;
-                
-                // Increase new role count
-                if (newRole === 'admin') newStats.admins++;
-                else if (newRole === 'organizer') newStats.organizers++;
-                else newStats.customers++;
-                
-                return newStats;
-            });
-            
-            setSelectedUser({ ...selectedUser, role: newRole });
-            
-        } catch (error: any) {
-            console.error('Error updating user role:', error);
-            setError('Failed to update user role. Please try again.');
-        } finally {
-            setProcessingId(null);
-        }
-    };
-
-    // Handle account suspension
-    const handleSuspendUser = async () => {
-        if (!selectedUser) return;
-        
-        setProcessingId(selectedUser.id);
-        
-        try {
-            await updateDoc(doc(db, 'users', selectedUser.id), {
-                suspended: true,
-                suspendedAt: new Date(),
-                suspendedBy: firebaseUser?.uid
-            });
-            
-            console.log(`Suspended user: ${selectedUser.email}`);
-            setShowManageUser(false);
-            
-        } catch (error: any) {
-            console.error('Error suspending user:', error);
-            setError('Failed to suspend user. Please try again.');
-        } finally {
-            setProcessingId(null);
-        }
     };
     
 
@@ -521,7 +430,7 @@ export default function AdminUsers(){
                                     onChange={(e) => setRoleFilter(e.target.value as 'all' | 'admin' | 'organizer' | 'customer')}
                                     className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 >
-                                    <option value="all">All Roles</option>
+                                    <option value="">All Roles</option>
                                     <option value="admin">Admin</option>
                                     <option value="organizer">Organizer</option>
                                     <option value="customer">Customer</option>
@@ -842,24 +751,10 @@ export default function AdminUsers(){
                                                     ) : 'Unknown'}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                    <button 
-                                                        onClick={() => handleViewDetails(user)}
-                                                        className="inline-flex items-center px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700 transition-colors mr-2"
-                                                    >
-                                                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                        </svg>
+                                                    <button className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 mr-4">
                                                         View Details
                                                     </button>
-                                                    <button 
-                                                        onClick={() => handleManageUser(user)}
-                                                        className="inline-flex items-center px-3 py-1.5 bg-orange-600 text-white text-xs font-medium rounded-lg hover:bg-orange-700 transition-colors"
-                                                    >
-                                                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                        </svg>
+                                                    <button className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
                                                         Manage
                                                     </button>
                                                 </td>
@@ -869,278 +764,6 @@ export default function AdminUsers(){
                                 </table>
                             </div>
                         )}
-                    </div>
-                </div>
-            )}
-            
-            {/* User Details Modal */}
-            {showUserDetails && selectedUser && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                        {/* Modal Header */}
-                        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-600 to-purple-600">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-4">
-                                    <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                                        <span className="text-xl font-bold text-white">
-                                            {selectedUser.displayName ? selectedUser.displayName.charAt(0).toUpperCase() : 
-                                             selectedUser.firstName ? selectedUser.firstName.charAt(0).toUpperCase() : 
-                                             selectedUser.email.charAt(0).toUpperCase()}
-                                        </span>
-                                    </div>
-                                    <div>
-                                        <h3 className="text-xl font-semibold text-white">User Details</h3>
-                                        <p className="text-blue-100">Complete user information</p>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={() => setShowUserDetails(false)}
-                                    className="text-white hover:text-blue-200 transition-colors"
-                                >
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Modal Content */}
-                        <div className="p-6 space-y-6">
-                            {/* Personal Information */}
-                            <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                                <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
-                                    <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                    </svg>
-                                    Personal Information
-                                </h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Display Name</label>
-                                        <p className="text-gray-900 dark:text-white font-medium">
-                                            {selectedUser.displayName || 'Not provided'}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Email</label>
-                                        <p className="text-gray-900 dark:text-white font-medium">{selectedUser.email}</p>
-                                    </div>
-                                    <div>
-                                        <label className="text-sm font-medium text-gray-600 dark:text-gray-400">First Name</label>
-                                        <p className="text-gray-900 dark:text-white font-medium">
-                                            {selectedUser.firstName || 'Not provided'}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Last Name</label>
-                                        <p className="text-gray-900 dark:text-white font-medium">
-                                            {selectedUser.lastName || 'Not provided'}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Account Information */}
-                            <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                                <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
-                                    <svg className="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                                    </svg>
-                                    Account Information
-                                </h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="text-sm font-medium text-gray-600 dark:text-gray-400">User ID</label>
-                                        <p className="text-gray-900 dark:text-white font-mono text-sm">{selectedUser.uid}</p>
-                                    </div>
-                                    <div>
-                                        <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Role</label>
-                                        <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${
-                                            selectedUser.role === 'admin' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
-                                            selectedUser.role === 'organizer' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' :
-                                            'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
-                                        }`}>
-                                            {selectedUser.role.charAt(0).toUpperCase() + selectedUser.role.slice(1)}
-                                        </span>
-                                    </div>
-                                    <div>
-                                        <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Joined</label>
-                                        <p className="text-gray-900 dark:text-white font-medium">
-                                            {selectedUser.createdAt ? formatDate(
-                                                selectedUser.createdAt.toDate ? selectedUser.createdAt.toDate().toISOString() : selectedUser.createdAt.toString()
-                                            ) : 'Unknown'}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Last Updated</label>
-                                        <p className="text-gray-900 dark:text-white font-medium">
-                                            {selectedUser.updatedAt ? formatDate(
-                                                selectedUser.updatedAt.toDate ? selectedUser.updatedAt.toDate().toISOString() : selectedUser.updatedAt.toString()
-                                            ) : 'Never'}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Modal Footer */}
-                        <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
-                            <div className="flex justify-end space-x-3">
-                                <button
-                                    onClick={() => setShowUserDetails(false)}
-                                    className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-                                >
-                                    Close
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        setShowUserDetails(false);
-                                        handleManageUser(selectedUser);
-                                    }}
-                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                                >
-                                    Manage User
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* User Management Modal */}
-            {showManageUser && selectedUser && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-lg w-full">
-                        {/* Modal Header */}
-                        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-orange-600 to-red-600">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-3">
-                                    <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        </svg>
-                                    </div>
-                                    <div>
-                                        <h3 className="text-lg font-semibold text-white">Manage User</h3>
-                                        <p className="text-orange-100 text-sm">{selectedUser.email}</p>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={() => setShowManageUser(false)}
-                                    className="text-white hover:text-orange-200 transition-colors"
-                                >
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Modal Content */}
-                        <div className="p-6 space-y-6">
-                            {/* Role Management */}
-                            <div>
-                                <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
-                                    <svg className="w-5 h-5 mr-2 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                    </svg>
-                                    Change User Role
-                                </h4>
-                                <div className="space-y-3">
-                                    {(['customer', 'organizer', 'admin'] as const).map((role) => (
-                                        <button
-                                            key={role}
-                                            onClick={() => handleRoleChange(role)}
-                                            disabled={selectedUser.role === role || processingId === selectedUser.id}
-                                            className={`w-full p-3 rounded-lg border-2 transition-all text-left ${
-                                                selectedUser.role === role
-                                                    ? 'border-green-500 bg-green-50 dark:bg-green-900/20 cursor-not-allowed'
-                                                    : 'border-gray-200 dark:border-gray-600 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20'
-                                            }`}
-                                        >
-                                            <div className="flex items-center justify-between">
-                                                <div>
-                                                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                                        role === 'admin' ? 'bg-green-100 text-green-800' :
-                                                        role === 'organizer' ? 'bg-purple-100 text-purple-800' :
-                                                        'bg-gray-100 text-gray-800'
-                                                    }`}>
-                                                        {role.charAt(0).toUpperCase() + role.slice(1)}
-                                                    </span>
-                                                    {selectedUser.role === role && (
-                                                        <span className="ml-2 text-sm text-green-600 font-medium">Current Role</span>
-                                                    )}
-                                                </div>
-                                                {processingId === selectedUser.id ? (
-                                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                                                ) : selectedUser.role === role ? (
-                                                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                                    </svg>
-                                                ) : (
-                                                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                                    </svg>
-                                                )}
-                                            </div>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Account Actions */}
-                            <div>
-                                <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
-                                    <svg className="w-5 h-5 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-2.694-.833-3.464 0L3.35 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                                    </svg>
-                                    Account Actions
-                                </h4>
-                                <div className="space-y-3">
-                                    <button
-                                        onClick={handleSuspendUser}
-                                        disabled={processingId === selectedUser.id}
-                                        className="w-full p-3 bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors text-left"
-                                    >
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <span className="text-red-800 dark:text-red-200 font-medium">Suspend Account</span>
-                                                <p className="text-red-600 dark:text-red-400 text-sm">Temporarily disable user access</p>
-                                            </div>
-                                            {processingId === selectedUser.id ? (
-                                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
-                                            ) : (
-                                                <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728" />
-                                                </svg>
-                                            )}
-                                        </div>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Modal Footer */}
-                        <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
-                            <div className="flex justify-end space-x-3">
-                                <button
-                                    onClick={() => setShowManageUser(false)}
-                                    className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        setShowManageUser(false);
-                                        handleViewDetails(selectedUser);
-                                    }}
-                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                                >
-                                    View Details
-                                </button>
-                            </div>
-                        </div>
                     </div>
                 </div>
             )}

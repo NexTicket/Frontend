@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -29,6 +29,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '@/components/auth/auth-provider';
 import { sendEmailVerification } from 'firebase/auth';
+import { secureFetch } from '@/utils/secureFetch';
 
 export default function DashboardPage() {
   const { userProfile, firebaseUser, isLoading, logout } = useAuth();
@@ -40,6 +41,20 @@ export default function DashboardPage() {
       router.push('/auth/signin');
     }
   }, [isLoading, firebaseUser, router]);
+
+  useEffect(() => {
+  const loadProfile = async () => {
+    try {
+      const res = await secureFetch('http://localhost:4001/profile');
+      const data = await res.json();
+      console.log('🔥 Backend profile:', data);
+    } catch (err) {
+      console.error('Error fetching profile:', err);
+    }
+  };
+
+  loadProfile();
+}, []);
 
   const handleLogout = async () => {
     try {
