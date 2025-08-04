@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { 
@@ -17,19 +17,47 @@ import {
   Ticket
 } from 'lucide-react';
 import { mockVenues, mockEvents } from '@/lib/mock-data';
+import { fetchVenueById } from '@/lib/api';
 
 interface VenueDetailPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default function VenueDetailPage({ params }: VenueDetailPageProps) {
+  const resolvedParams = use(params);
+  const [venue, setVenue] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [isLiked, setIsLiked] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
-  
-  const venue = mockVenues.find(v => v.id === params.id);
-  const upcomingEvents = mockEvents.filter(event => event.venueId === params.id);
+
+  useEffect(() => {
+    fetchVenueById(resolvedParams.id)
+      .then(data => {
+        console.log(resolvedParams.id)//debugging
+        setVenue(data.data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Error fetching venue", err);
+        // Fallback to mock data if API fails
+        const mockVenue = mockVenues.find(v => v.id === resolvedParams.id);
+        setVenue(mockVenue);
+        setLoading(false);
+      });
+  }, [resolvedParams.id]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading venue...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!venue) {
     return (
@@ -46,6 +74,8 @@ export default function VenueDetailPage({ params }: VenueDetailPageProps) {
       </div>
     );
   }
+
+  const upcomingEvents = mockEvents.filter(event => event.venueId === resolvedParams.id);
 
   const tabs = [
     { id: 'overview', label: 'Overview' },
@@ -81,7 +111,7 @@ export default function VenueDetailPage({ params }: VenueDetailPageProps) {
               <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                 <div className="flex items-center">
                   <Users className="h-4 w-4 mr-1" />
-                  Capacity: {venue.capacity.toLocaleString()}
+                  {/* Capacity: {venue.capacity.toLocaleString()} */}
                 </div>
                 <div className="flex items-center">
                   <Star className="h-4 w-4 fill-yellow-400 text-yellow-400 mr-1" />
@@ -171,7 +201,7 @@ export default function VenueDetailPage({ params }: VenueDetailPageProps) {
                   <h3 className="text-xl font-semibold mb-4">Upcoming Events</h3>
                   {upcomingEvents.length > 0 ? (
                     <div className="space-y-4">
-                      {upcomingEvents.map(event => (
+                      {upcomingEvents.map((event: any) => (
                         <div key={event.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
@@ -216,7 +246,7 @@ export default function VenueDetailPage({ params }: VenueDetailPageProps) {
                 <div className="bg-card rounded-lg border p-6">
                   <h3 className="text-xl font-semibold mb-4">Venue Amenities</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {venue.amenities.map(amenity => (
+                    {venue.amenities?.map((amenity: string) => (
                       <div key={amenity} className="flex items-center space-x-2">
                         <div className="w-2 h-2 bg-primary rounded-full"></div>
                         <span>{amenity}</span>
@@ -254,20 +284,24 @@ export default function VenueDetailPage({ params }: VenueDetailPageProps) {
                 <div className="bg-card rounded-lg border p-6">
                   <h3 className="text-xl font-semibold mb-4">Contact Information</h3>
                   <div className="space-y-4">
-                    <div className="flex items-center space-x-3">
-                      <Phone className="h-5 w-5 text-primary" />
-                      <div>
-                        <p className="font-medium">Phone</p>
-                        <p className="text-muted-foreground">{venue.contact.phone}</p>
+                    {venue.contact?.phone && (
+                      <div className="flex items-center space-x-3">
+                        <Phone className="h-5 w-5 text-primary" />
+                        <div>
+                          <p className="font-medium">Phone</p>
+                          <p className="text-muted-foreground">{venue.contact.phone}</p>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <Mail className="h-5 w-5 text-primary" />
-                      <div>
-                        <p className="font-medium">Email</p>
-                        <p className="text-muted-foreground">{venue.contact.email}</p>
+                    )}
+                    {venue.contact?.email && (
+                      <div className="flex items-center space-x-3">
+                        <Mail className="h-5 w-5 text-primary" />
+                        <div>
+                          <p className="font-medium">Email</p>
+                          <p className="text-muted-foreground">{venue.contact.email}</p>
+                        </div>
                       </div>
-                    </div>
+                    )}
                     <div className="flex items-center space-x-3">
                       <MapPin className="h-5 w-5 text-primary" />
                       <div>

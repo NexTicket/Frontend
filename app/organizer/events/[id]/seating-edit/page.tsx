@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react';
+import React, { useState, use } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { 
@@ -15,9 +15,9 @@ import {
 import { mockEvents } from '@/lib/mock-data';
 
 interface SeatingEditPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 interface SeatConfig {
@@ -32,7 +32,8 @@ interface SeatConfig {
 }
 
 export default function SeatingEditPage({ params }: SeatingEditPageProps) {
-  const event = mockEvents.find(e => e.id === params.id);
+  const resolvedParams = use(params);
+  const event = mockEvents.find(e => e.id === resolvedParams.id);
   
   const [sections, setSections] = useState([
     { name: 'Main Floor', rows: 10, seatsPerRow: 20, type: 'regular' as const, price: 75 },
@@ -138,7 +139,7 @@ export default function SeatingEditPage({ params }: SeatingEditPageProps) {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center space-x-4">
-            <Link href={`/organizer/events/${params.id}/edit`} className="inline-flex items-center text-muted-foreground hover:text-foreground">
+            <Link href={`/organizer/events/${resolvedParams.id}/edit`} className="inline-flex items-center text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Event Edit
             </Link>
