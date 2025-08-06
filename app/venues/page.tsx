@@ -104,7 +104,15 @@ export default function VenuesPage() {
                 return (
                   <div key={venue.id} className="bg-card rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
                     <div className="aspect-video bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
-                      <MapPin className="h-12 w-12 text-primary" />
+                      {venue.featuredImage || (venue.images && venue.images[0]) || venue.image ? (
+                        <img 
+                          src={venue.featuredImage || (venue.images && venue.images[0]) || venue.image} 
+                          alt={venue.name} 
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="text-muted-foreground text-lg">No Image</div>
+                      )}
                     </div>
                     
                     <div className="p-6">
@@ -118,7 +126,7 @@ export default function VenuesPage() {
 
                       <div className="flex items-center text-sm text-muted-foreground mb-4">
                         <MapPin className="h-4 w-4 mr-1" />
-                        {venue.address}, {venue.city}, {venue.state}
+                        {venue.location}
                       </div>
 
                       <p className="text-muted-foreground mb-4 line-clamp-3">

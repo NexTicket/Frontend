@@ -20,7 +20,7 @@ const db = getFirestore();
 interface UserProfile {
   uid: string;
   email: string;
-  role: 'admin' | 'organizer' | 'customer';
+  role: 'admin' | 'organizer' | 'customer' | 'venue_owner' | 'event_admin' | 'checkin_officer';
   firstName?: string;
   lastName?: string;
   displayName?: string;
@@ -197,6 +197,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             case 'customer':
               console.log('Redirecting centrally to customers dashboard');
               router.push('/dashboard');
+              break;
+            case 'venue_owner':
+              console.log('Redirecting centrally to venue owner dashboard');
+              router.push('/venue-owner/dashboard');
               break;
             default:
               router.push('/dashboard');

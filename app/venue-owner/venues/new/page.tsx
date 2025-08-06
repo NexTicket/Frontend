@@ -1,0 +1,1259 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Button } from '@/components/ui/button';
+import { createVenue, uploadVenueImages } from '@/lib/api';
+import { useRouter } from 'next/navigation';
+import '@/utils/test-venue-creation'; // Load test utilities
+import { 
+  Building2,
+  MapPin,
+  Users,
+  Image as ImageIcon,
+  Save,
+  ArrowLeft,
+  ArrowRight,
+  Plus,
+  Minus,
+  Grid,
+  Eye,
+  Palette,
+  Settings,
+  Zap,
+  Check,
+  X,
+  RotateCcw,
+  Move,
+  Square,
+  Circle
+} from 'lucide-react';
+import Link from 'next/link';
+
+// Types for seating layout
+interface SeatSection {
+  id: string;
+  name: string;
+  rows: number;
+  columns: number;
+  price_multiplier: number;
+  color: string;
+  startRow: number;
+  startCol: number;
+}
+
+interface SeatMapData {
+  rows: number;
+  columns: number;
+  sections: SeatSection[];
+  aisles: number[];
+  wheelchair_accessible: number[];
+  special_features?: string[];
+  layout_type?: string;
+}
+
+interface VenueFormData {
+  name: string;
+  location: string;
+  capacity: number;
+  description: string;
+  amenities: string[];
+  contact: {
+    phone: string;
+    email: string;
+  };
+  seatMap: SeatMapData;
+  images: string[];
+  featuredImage?: string;
+}
+
+const defaultSeatMap: SeatMapData = {
+  rows: 10,
+  columns: 10,
+  sections: [
+    {
+      id: 'general',
+      name: 'General',
+      rows: 10,
+      columns: 10,
+      price_multiplier: 1.0,
+      color: '#3B82F6',
+      startRow: 0,
+      startCol: 0
+    }
+  ],
+  aisles: [5],
+  wheelchair_accessible: [1, 10],
+  special_features: [],
+  layout_type: 'standard'
+};
+
+const sectionColors = [
+  '#3B82F6', // Blue
+  '#10B981', // Green
+  '#F59E0B', // Yellow
+  '#EF4444', // Red
+  '#8B5CF6', // Purple
+  '#06B6D4', // Cyan
+  '#F97316', // Orange
+  '#EC4899'  // Pink
+];
+
+const predefinedLayouts = [
+  {
+    id: 'theater',
+    name: 'Theater Style',
+    icon: Grid,
+    description: 'Traditional theater with premium, standard, and economy sections',
+    seatMap: {
+      rows: 15,
+      columns: 20,
+      sections: [
+        { id: 'premium', name: 'Premium', rows: 5, columns: 20, price_multiplier: 1.5, color: '#F59E0B', startRow: 0, startCol: 0 },
+        { id: 'standard', name: 'Standard', rows: 7, columns: 20, price_multiplier: 1.0, color: '#3B82F6', startRow: 5, startCol: 0 },
+        { id: 'economy', name: 'Economy', rows: 3, columns: 20, price_multiplier: 0.8, color: '#10B981', startRow: 12, startCol: 0 }
+      ],
+      aisles: [5, 12],
+      wheelchair_accessible: [1, 15],
+      special_features: ['Stage_Lighting', 'Sound_System'],
+      layout_type: 'theater'
+    }
+  },
+  {
+    id: 'conference',
+    name: 'Conference Hall',
+    icon: Square,
+    description: 'Modern conference setup with flexible seating',
+    seatMap: {
+      rows: 12,
+      columns: 16,
+      sections: [
+        { id: 'front', name: 'Front VIP', rows: 3, columns: 16, price_multiplier: 1.3, color: '#8B5CF6', startRow: 0, startCol: 0 },
+        { id: 'middle', name: 'Standard', rows: 9, columns: 16, price_multiplier: 1.0, color: '#3B82F6', startRow: 3, startCol: 0 }
+      ],
+      aisles: [3, 8],
+      wheelchair_accessible: [1, 12],
+      special_features: ['Projection_Screen', 'WiFi', 'Air_Conditioning'],
+      layout_type: 'conference'
+    }
+  },
+  {
+    id: 'amphitheater',
+    name: 'Amphitheater',
+    icon: Circle,
+    description: 'Curved amphitheater with tiered seating',
+    seatMap: {
+      rows: 20,
+      columns: 25,
+      sections: [
+        { id: 'orchestra', name: 'Orchestra', rows: 8, columns: 25, price_multiplier: 1.4, color: '#F59E0B', startRow: 0, startCol: 0 },
+        { id: 'mezzanine', name: 'Mezzanine', rows: 6, columns: 25, price_multiplier: 1.1, color: '#3B82F6', startRow: 8, startCol: 0 },
+        { id: 'balcony', name: 'Balcony', rows: 6, columns: 25, price_multiplier: 0.9, color: '#10B981', startRow: 14, startCol: 0 }
+      ],
+      aisles: [8, 14],
+      wheelchair_accessible: [1, 20],
+      special_features: ['Orchestra_Pit', 'Natural_Acoustics'],
+      layout_type: 'amphitheater'
+    }
+  }
+];
+
+export default function CreateVenue() {
+  const router = useRouter();
+  const [currentStep, setCurrentStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState<VenueFormData>({
+    name: '',
+    location: '',
+    capacity: 0,
+    description: '',
+    amenities: [],
+    contact: {
+      phone: '',
+      email: ''
+    },
+    seatMap: defaultSeatMap,
+    images: [],
+    featuredImage: ''
+  });
+
+  const [selectedLayout, setSelectedLayout] = useState<string>('');
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [selectedSection, setSelectedSection] = useState<string>('');
+  const [dragMode, setDragMode] = useState(false);
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+  const [imageFiles, setImageFiles] = useState<File[]>([]); // Store actual file objects
+
+  const totalSteps = 5;
+
+  // Calculate total capacity based on seat map
+  useEffect(() => {
+    const capacity = formData.seatMap.sections.reduce((total, section) => {
+      return total + (section.rows * section.columns);
+    }, 0);
+    setFormData(prev => ({ ...prev, capacity }));
+  }, [formData.seatMap]);
+
+  const nextStep = () => {
+    if (currentStep < totalSteps) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const prevStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const handleInputChange = (field: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleContactChange = (field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      contact: {
+        ...prev.contact,
+        [field]: value
+      }
+    }));
+  };
+
+  const handleSeatMapChange = (seatMap: SeatMapData) => {
+    setFormData(prev => ({
+      ...prev,
+      seatMap
+    }));
+  };
+
+  const applyPredefinedLayout = (layoutId: string) => {
+    const layout = predefinedLayouts.find(l => l.id === layoutId);
+    if (layout) {
+      handleSeatMapChange(layout.seatMap);
+      setSelectedLayout(layoutId);
+    }
+  };
+
+  const addSection = () => {
+    const newSection: SeatSection = {
+      id: `section_${Date.now()}`,
+      name: `Section ${formData.seatMap.sections.length + 1}`,
+      rows: 5,
+      columns: 5,
+      price_multiplier: 1.0,
+      color: sectionColors[formData.seatMap.sections.length % sectionColors.length],
+      startRow: 0,
+      startCol: 0
+    };
+
+    handleSeatMapChange({
+      ...formData.seatMap,
+      sections: [...formData.seatMap.sections, newSection]
+    });
+  };
+
+  const updateSection = (sectionId: string, updates: Partial<SeatSection>) => {
+    const newSections = formData.seatMap.sections.map(section =>
+      section.id === sectionId ? { ...section, ...updates } : section
+    );
+
+    handleSeatMapChange({
+      ...formData.seatMap,
+      sections: newSections
+    });
+  };
+
+  const removeSection = (sectionId: string) => {
+    const newSections = formData.seatMap.sections.filter(section => section.id !== sectionId);
+    handleSeatMapChange({
+      ...formData.seatMap,
+      sections: newSections
+    });
+  };
+
+  // Image handling functions
+  const handleFileUpload = async (files: FileList | null) => {
+    if (!files) return;
+    
+    setUploadingImages(true);
+    const newImages: string[] = [];
+    const newFiles: File[] = [];
+    
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.type.startsWith('image/')) {
+          // Convert to base64 for preview only
+          const reader = new FileReader();
+          const base64 = await new Promise<string>((resolve) => {
+            reader.onload = () => resolve(reader.result as string);
+            reader.readAsDataURL(file);
+          });
+          newImages.push(base64);
+          newFiles.push(file); // Store the actual file object
+        }
+      }
+      
+      // Update preview URLs in formData
+      setFormData(prev => ({
+        ...prev,
+        images: [...prev.images, ...newImages],
+        featuredImage: prev.featuredImage || newImages[0] || ''
+      }));
+      
+      // Update file objects separately
+      setImageFiles(prev => [...prev, ...newFiles]);
+      
+    } catch (error) {
+      console.error('Error processing images:', error);
+    } finally {
+      setUploadingImages(false);
+    }
+  };
+
+  const removeImage = (index: number) => {
+    const newImages = formData.images.filter((_, i) => i !== index);
+    const newFiles = imageFiles.filter((_, i) => i !== index);
+    
+    setFormData(prev => ({
+      ...prev,
+      images: newImages,
+      featuredImage: prev.featuredImage === prev.images[index] 
+        ? newImages[0] || '' 
+        : prev.featuredImage
+    }));
+    
+    setImageFiles(newFiles);
+  };
+
+  const setFeaturedImage = (imageUrl: string) => {
+    setFormData(prev => ({
+      ...prev,
+      featuredImage: imageUrl
+    }));
+  };
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    
+    const files = e.dataTransfer.files;
+    handleFileUpload(files);
+  };
+
+  const renderSeatMap = () => {
+    const { rows, columns, sections, aisles } = formData.seatMap;
+    const seats = [];
+
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < columns; col++) {
+        const section = sections.find(s => 
+          row >= s.startRow && row < s.startRow + s.rows &&
+          col >= s.startCol && col < s.startCol + s.columns
+        );
+
+        const isAisle = aisles.includes(row);
+        const isSelected = selectedSection === section?.id;
+
+        seats.push(
+          <div
+            key={`${row}-${col}`}
+            className={`w-6 h-6 m-0.5 rounded-sm transition-all duration-200 cursor-pointer transform hover:scale-110 ${
+              isAisle ? 'opacity-50' : ''
+            } ${
+              isSelected ? 'ring-2 ring-white ring-offset-1' : ''
+            }`}
+            style={{
+              backgroundColor: section?.color || '#6B7280',
+              opacity: section ? 1 : 0.3
+            }}
+            onClick={() => section && setSelectedSection(section.id)}
+          />
+        );
+      }
+    }
+
+    return (
+      <div className="inline-block p-6 bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl">
+        <div 
+          className="grid gap-0.5"
+          style={{
+            gridTemplateColumns: `repeat(${columns}, 1fr)`
+          }}
+        >
+          {seats}
+        </div>
+        
+        {/* Stage */}
+        <div className="mt-6 w-full h-8 bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 rounded-lg flex items-center justify-center">
+          <span className="text-white text-sm font-semibold">🎭 STAGE</span>
+        </div>
+      </div>
+    );
+  };
+
+  const handleSubmit = async () => {
+    try {
+      setIsSubmitting(true);
+      
+      // Validate required fields
+      if (!formData.name.trim() || !formData.location.trim() || !formData.capacity) {
+        throw new Error('Please fill in all required fields (Name, Location, Capacity)');
+      }
+
+      // Confirm if no images
+      if (imageFiles.length === 0) {
+        const confirmWithoutImages = window.confirm(
+          'No images have been uploaded. Do you want to create the venue without images?'
+        );
+        if (!confirmWithoutImages) return;
+      }
+      
+      console.log('🏗️ Step 1: Creating venue without images...');
+      
+      // Step 1: Create venue without images (minimal payload)
+      const venuePayload = {
+        name: formData.name.trim(),
+        location: formData.location.trim(),
+        capacity: formData.capacity,
+        description: formData.description.trim() || null,
+        seatMap: formData.seatMap,
+        contact: {
+          phone: formData.contact.phone.trim(),
+          email: formData.contact.email.trim()
+        },
+        amenities: formData.amenities
+      };
+
+      console.log('📤 Creating venue with data:', {
+        name: venuePayload.name,
+        location: venuePayload.location,
+        capacity: venuePayload.capacity,
+        hasDescription: !!venuePayload.description,
+        seatMapSections: venuePayload.seatMap.sections.length,
+        hasContact: !!(venuePayload.contact.phone || venuePayload.contact.email),
+        pendingImages: imageFiles.length
+      });
+
+      const createResponse = await createVenue(venuePayload);
+      console.log('✅ Venue created successfully:', createResponse);
+      
+      if (!createResponse || !createResponse.data) {
+        throw new Error(createResponse?.message || 'Failed to create venue');
+      }
+
+      const newVenueId = createResponse.data.id;
+      console.log('🆔 New venue ID:', newVenueId);
+
+      // Step 2: Upload images if any exist
+      if (imageFiles.length > 0) {
+        console.log(`🖼️ Step 2: Uploading ${imageFiles.length} images to venue ${newVenueId}...`);
+        
+        try {
+          const uploadResponse = await uploadVenueImages(newVenueId.toString(), imageFiles);
+          console.log('✅ Images uploaded successfully:', uploadResponse);
+          
+          // Show success message with image count
+          alert(`✅ Venue "${createResponse.data.name}" created successfully with ${uploadResponse.data.uploadedImages.length} images!`);
+        } catch (imageError) {
+          console.warn('⚠️ Venue created but image upload failed:', imageError);
+          alert(`⚠️ Venue "${createResponse.data.name}" was created successfully, but image upload failed. You can add images later by editing the venue.`);
+        }
+      } else {
+        // Success without images
+        alert(`✅ Venue "${createResponse.data.name}" created successfully!`);
+      }
+      
+      // Navigate to venues page
+      router.push('/venue-owner/venues');
+      
+    } catch (error: any) {
+      console.error('❌ Error creating venue:', error);
+      console.error('❌ Error details:', {
+        message: error.message,
+        stack: error.stack
+      });
+      
+      // Show user-friendly error message
+      let errorMessage = 'Failed to create venue. Please try again.';
+      
+      if (error.message?.includes('401') || error.message?.includes('403')) {
+        errorMessage = 'You are not authorized to create venues. Please ensure you have venue owner permissions.';
+      } else if (error.message?.includes('400')) {
+        errorMessage = 'Please check all required fields are filled correctly.';
+      } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
+        errorMessage = 'Network error. Please check your connection and try again.';
+      } else if (error.message && !error.message.includes('Failed to create venue')) {
+        errorMessage = error.message;
+      }
+        
+      alert(`❌ ${errorMessage}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="p-8 bg-gradient-to-br from-background via-muted/10 to-primary/5 min-h-screen">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <Link href="/venue-owner/venues">
+            <Button variant="ghost" className="mb-4">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Venues
+            </Button>
+          </Link>
+          
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary via-purple-500 to-pink-500 bg-clip-text text-transparent mb-2">
+            Create New Venue
+          </h1>
+          <p className="text-muted-foreground">Design your venue with our advanced seating layout system</p>
+        </div>
+
+        {/* Progress Bar */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            {Array.from({ length: totalSteps }, (_, i) => (
+              <div key={i} className="flex items-center">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all duration-300 ${
+                  currentStep > i + 1 
+                    ? 'bg-green-500 text-white' 
+                    : currentStep === i + 1 
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground'
+                }`}>
+                  {currentStep > i + 1 ? <Check className="h-5 w-5" /> : i + 1}
+                </div>
+                {i < totalSteps - 1 && (
+                  <div className={`w-24 h-1 mx-4 rounded-full transition-all duration-300 ${
+                    currentStep > i + 1 ? 'bg-green-500' : 'bg-muted'
+                  }`} />
+                )}
+              </div>
+            ))}
+          </div>
+          
+          <div className="flex justify-center">
+            <span className="text-sm text-muted-foreground">
+              Step {currentStep} of {totalSteps}
+            </span>
+          </div>
+        </div>
+
+        {/* Step Content */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentStep}
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -50 }}
+            transition={{ duration: 0.5 }}
+            className="bg-card/50 backdrop-blur-sm rounded-xl border p-8"
+          >
+            {/* Step 1: Basic Information */}
+            {currentStep === 1 && (
+              <div className="space-y-6">
+                <h2 className="text-2xl font-semibold mb-6 flex items-center">
+                  <Building2 className="h-6 w-6 mr-3 text-primary" />
+                  Basic Information
+                </h2>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Venue Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.name}
+                      onChange={(e) => handleInputChange('name', e.target.value)}
+                      className="w-full px-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                      placeholder="Enter venue name"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Location *
+                    </label>
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
+                      <input
+                        type="text"
+                        value={formData.location}
+                        onChange={(e) => handleInputChange('location', e.target.value)}
+                        className="w-full pl-10 pr-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                        placeholder="Enter venue location"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) => handleInputChange('description', e.target.value)}
+                    rows={4}
+                    className="w-full px-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                    placeholder="Describe your venue..."
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Contact Phone
+                    </label>
+                    <input
+                      type="tel"
+                      value={formData.contact.phone}
+                      onChange={(e) => handleContactChange('phone', e.target.value)}
+                      className="w-full px-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                      placeholder="Enter phone number"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Contact Email
+                    </label>
+                    <input
+                      type="email"
+                      value={formData.contact.email}
+                      onChange={(e) => handleContactChange('email', e.target.value)}
+                      className="w-full px-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                      placeholder="Enter email address"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Images & Media */}
+            {currentStep === 2 && (
+              <div className="space-y-6">
+                <h2 className="text-2xl font-semibold mb-6 flex items-center">
+                  <ImageIcon className="h-6 w-6 mr-3 text-primary" />
+                  Venue Images & Media
+                </h2>
+
+                {/* Image Upload Area */}
+                <div className="space-y-6">
+                  <div
+                    className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300 ${
+                      dragActive 
+                        ? 'border-primary bg-primary/10 scale-105' 
+                        : 'border-border hover:border-primary/50 bg-background/50'
+                    }`}
+                    onDragEnter={handleDragEnter}
+                    onDragLeave={handleDragLeave}
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
+                  >
+                    {uploadingImages ? (
+                      <div className="flex flex-col items-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+                        <p className="text-muted-foreground">Uploading images...</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="flex justify-center">
+                          <ImageIcon className="h-16 w-16 text-muted-foreground" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold mb-2">Upload Venue Images</h3>
+                          <p className="text-muted-foreground mb-4">
+                            Drag and drop images here, or click to browse
+                          </p>
+                          <input
+                            type="file"
+                            id="image-upload"
+                            multiple
+                            accept="image/*"
+                            onChange={(e) => handleFileUpload(e.target.files)}
+                            className="hidden"
+                          />
+                          <label
+                            htmlFor="image-upload"
+                            className="inline-flex items-center px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 cursor-pointer transition-colors"
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Choose Images
+                          </label>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Supported formats: JPG, PNG, WebP. Max 5MB per image.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Uploaded Images Grid */}
+                  {formData.images.length > 0 && (
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold">Uploaded Images ({formData.images.length})</h3>
+                      
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        {formData.images.map((image, index) => (
+                          <motion.div
+                            key={index}
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ duration: 0.3, delay: index * 0.1 }}
+                            className="relative group"
+                          >
+                            <div className="aspect-square rounded-lg overflow-hidden bg-gray-100">
+                              <img
+                                src={image}
+                                alt={`Venue image ${index + 1}`}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            
+                            {/* Image Controls */}
+                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center space-x-2">
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => setFeaturedImage(image)}
+                                className={`${
+                                  formData.featuredImage === image
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'bg-white/90 text-gray-900'
+                                }`}
+                              >
+                                <Eye className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => removeImage(index)}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                            
+                            {/* Featured Badge */}
+                            {formData.featuredImage === image && (
+                              <div className="absolute top-2 left-2 bg-primary text-primary-foreground text-xs px-2 py-1 rounded-full font-medium">
+                                Featured
+                              </div>
+                            )}
+                          </motion.div>
+                        ))}
+                      </div>
+
+                      {/* Featured Image Selection */}
+                      <div className="bg-background/50 rounded-lg p-4 border">
+                        <h4 className="font-medium mb-3 flex items-center">
+                          <Eye className="h-4 w-4 mr-2" />
+                          Featured Image
+                        </h4>
+                        <p className="text-sm text-muted-foreground mb-3">
+                          The featured image will be displayed as the main venue photo in listings.
+                        </p>
+                        {formData.featuredImage ? (
+                          <div className="flex items-center space-x-3">
+                            <img
+                              src={formData.featuredImage}
+                              alt="Featured image"
+                              className="w-16 h-16 object-cover rounded-lg"
+                            />
+                            <div>
+                              <p className="font-medium">Featured image selected</p>
+                              <p className="text-sm text-muted-foreground">
+                                Click the eye icon on any image to change the featured image
+                              </p>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">
+                            No featured image selected. The first uploaded image will be used by default.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Layout Selection */}
+            {currentStep === 3 && (
+              <div className="space-y-6">
+                <h2 className="text-2xl font-semibold mb-6 flex items-center">
+                  <Grid className="h-6 w-6 mr-3 text-primary" />
+                  Choose Layout Template
+                </h2>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {predefinedLayouts.map((layout) => (
+                    <motion.div
+                      key={layout.id}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => applyPredefinedLayout(layout.id)}
+                      className={`p-6 border-2 rounded-xl cursor-pointer transition-all duration-300 ${
+                        selectedLayout === layout.id
+                          ? 'border-primary bg-primary/10 shadow-lg'
+                          : 'border-border hover:border-primary/50 bg-background/50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-center mb-4">
+                        <layout.icon className={`h-12 w-12 ${
+                          selectedLayout === layout.id ? 'text-primary' : 'text-muted-foreground'
+                        }`} />
+                      </div>
+                      
+                      <h3 className="text-lg font-semibold text-center mb-2">
+                        {layout.name}
+                      </h3>
+                      
+                      <p className="text-sm text-muted-foreground text-center mb-4">
+                        {layout.description}
+                      </p>
+
+                      <div className="text-xs text-center space-y-1">
+                        <div className="flex justify-between">
+                          <span>Rows:</span>
+                          <span className="font-medium">{layout.seatMap.rows}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Columns:</span>
+                          <span className="font-medium">{layout.seatMap.columns}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Sections:</span>
+                          <span className="font-medium">{layout.seatMap.sections.length}</span>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+
+                <div className="text-center">
+                  <p className="text-muted-foreground mb-4">
+                    Or start with a custom layout in the next step
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Step 4: Seating Layout Designer */}
+            {currentStep === 4 && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-semibold flex items-center">
+                    <Settings className="h-6 w-6 mr-3 text-primary" />
+                    Seating Layout Designer
+                  </h2>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant={isPreviewMode ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setIsPreviewMode(!isPreviewMode)}
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      {isPreviewMode ? 'Edit Mode' : 'Preview'}
+                    </Button>
+                    
+                    <Button variant="outline" size="sm" onClick={() => handleSeatMapChange(defaultSeatMap)}>
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Reset
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  {/* Controls */}
+                  {!isPreviewMode && (
+                    <div className="space-y-6">
+                      {/* Layout Settings */}
+                      <div className="bg-background/50 rounded-lg p-4 border">
+                        <h3 className="font-semibold mb-4 flex items-center">
+                          <Grid className="h-4 w-4 mr-2" />
+                          Layout Settings
+                        </h3>
+                        
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium mb-2">Total Rows</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="50"
+                              value={formData.seatMap.rows}
+                              onChange={(e) => handleSeatMapChange({
+                                ...formData.seatMap,
+                                rows: parseInt(e.target.value) || 1
+                              })}
+                              className="w-full px-3 py-2 border rounded-lg bg-background text-sm"
+                            />
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium mb-2">Total Columns</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="50"
+                              value={formData.seatMap.columns}
+                              onChange={(e) => handleSeatMapChange({
+                                ...formData.seatMap,
+                                columns: parseInt(e.target.value) || 1
+                              })}
+                              className="w-full px-3 py-2 border rounded-lg bg-background text-sm"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Sections */}
+                      <div className="bg-background/50 rounded-lg p-4 border">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="font-semibold flex items-center">
+                            <Palette className="h-4 w-4 mr-2" />
+                            Sections
+                          </h3>
+                          <Button size="sm" onClick={addSection}>
+                            <Plus className="h-3 w-3 mr-1" />
+                            Add
+                          </Button>
+                        </div>
+
+                        <div className="space-y-3 max-h-64 overflow-y-auto">
+                          {formData.seatMap.sections.map((section) => (
+                            <div
+                              key={section.id}
+                              className={`p-3 border rounded-lg transition-all cursor-pointer ${
+                                selectedSection === section.id
+                                  ? 'border-primary bg-primary/10'
+                                  : 'border-border hover:border-primary/50'
+                              }`}
+                              onClick={() => setSelectedSection(section.id)}
+                            >
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center">
+                                  <div
+                                    className="w-4 h-4 rounded mr-2"
+                                    style={{ backgroundColor: section.color }}
+                                  />
+                                  <input
+                                    type="text"
+                                    value={section.name}
+                                    onChange={(e) => updateSection(section.id, { name: e.target.value })}
+                                    className="text-sm font-medium bg-transparent border-none outline-none"
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                </div>
+                                {formData.seatMap.sections.length > 1 && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      removeSection(section.id);
+                                    }}
+                                    className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                )}
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-2 text-xs">
+                                <div>
+                                  <label className="block text-muted-foreground">Rows</label>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={section.rows}
+                                    onChange={(e) => updateSection(section.id, { 
+                                      rows: parseInt(e.target.value) || 1 
+                                    })}
+                                    className="w-full px-2 py-1 border rounded text-xs"
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-muted-foreground">Cols</label>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={section.columns}
+                                    onChange={(e) => updateSection(section.id, { 
+                                      columns: parseInt(e.target.value) || 1 
+                                    })}
+                                    className="w-full px-2 py-1 border rounded text-xs"
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-muted-foreground">Price ×</label>
+                                  <input
+                                    type="number"
+                                    min="0.1"
+                                    step="0.1"
+                                    value={section.price_multiplier}
+                                    onChange={(e) => updateSection(section.id, { 
+                                      price_multiplier: parseFloat(e.target.value) || 1 
+                                    })}
+                                    className="w-full px-2 py-1 border rounded text-xs"
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-muted-foreground">Color</label>
+                                  <input
+                                    type="color"
+                                    value={section.color}
+                                    onChange={(e) => updateSection(section.id, { color: e.target.value })}
+                                    className="w-full h-6 border rounded cursor-pointer"
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Seating Map Visualization */}
+                  <div className={`${isPreviewMode ? 'lg:col-span-3' : 'lg:col-span-2'} flex flex-col items-center`}>
+                    <div className="mb-4">
+                      <div className="flex items-center justify-center space-x-6 text-sm">
+                        <div className="flex items-center">
+                          <Users className="h-4 w-4 mr-2 text-primary" />
+                          <span>Total Capacity: <strong>{formData.capacity}</strong></span>
+                        </div>
+                        <div className="flex items-center">
+                          <Grid className="h-4 w-4 mr-2 text-muted-foreground" />
+                          <span>{formData.seatMap.rows} × {formData.seatMap.columns}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="relative">
+                      {renderSeatMap()}
+                    </div>
+
+                    {/* Legend */}
+                    <div className="mt-6 flex flex-wrap justify-center gap-4">
+                      {formData.seatMap.sections.map((section) => (
+                        <div key={section.id} className="flex items-center space-x-2 text-sm">
+                          <div
+                            className="w-4 h-4 rounded"
+                            style={{ backgroundColor: section.color }}
+                          />
+                          <span>{section.name}</span>
+                          <span className="text-muted-foreground">
+                            ({section.rows}×{section.columns})
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 5: Review & Submit */}
+            {currentStep === 5 && (
+              <div className="space-y-6">
+                <h2 className="text-2xl font-semibold mb-6 flex items-center">
+                  <Check className="h-6 w-6 mr-3 text-primary" />
+                  Review & Submit
+                </h2>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  {/* Venue Details */}
+                  <div className="space-y-6">
+                    <div className="bg-background/50 rounded-lg p-6 border">
+                      <h3 className="font-semibold mb-4">Venue Details</h3>
+                      <div className="space-y-3">
+                        <div>
+                          <span className="text-sm text-muted-foreground">Name:</span>
+                          <p className="font-medium">{formData.name}</p>
+                        </div>
+                        <div>
+                          <span className="text-sm text-muted-foreground">Location:</span>
+                          <p className="font-medium">{formData.location}</p>
+                        </div>
+                        <div>
+                          <span className="text-sm text-muted-foreground">Capacity:</span>
+                          <p className="font-medium">{formData.capacity} seats</p>
+                        </div>
+                        {formData.description && (
+                          <div>
+                            <span className="text-sm text-muted-foreground">Description:</span>
+                            <p className="font-medium">{formData.description}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="bg-background/50 rounded-lg p-6 border">
+                      <h3 className="font-semibold mb-4">Contact Information</h3>
+                      <div className="space-y-3">
+                        {formData.contact.phone && (
+                          <div>
+                            <span className="text-sm text-muted-foreground">Phone:</span>
+                            <p className="font-medium">{formData.contact.phone}</p>
+                          </div>
+                        )}
+                        {formData.contact.email && (
+                          <div>
+                            <span className="text-sm text-muted-foreground">Email:</span>
+                            <p className="font-medium">{formData.contact.email}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="bg-background/50 rounded-lg p-6 border">
+                      <h3 className="font-semibold mb-4">Images</h3>
+                      <div className="space-y-3">
+                        <div>
+                          <span className="text-sm text-muted-foreground">Total Images:</span>
+                          <p className="font-medium">{formData.images.length} images uploaded</p>
+                        </div>
+                        {formData.images.length > 0 && (
+                          <div className="grid grid-cols-4 gap-2">
+                            {formData.images.slice(0, 4).map((image, index) => (
+                              <div key={index} className="relative">
+                                <img
+                                  src={image}
+                                  alt={`Venue ${index + 1}`}
+                                  className="w-full h-16 object-cover rounded border"
+                                />
+                                {formData.featuredImage === image && (
+                                  <div className="absolute inset-0 bg-primary/20 rounded flex items-center justify-center">
+                                    <Eye className="h-3 w-3 text-primary" />
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                            {formData.images.length > 4 && (
+                              <div className="w-full h-16 bg-muted rounded border flex items-center justify-center text-xs text-muted-foreground">
+                                +{formData.images.length - 4} more
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="bg-background/50 rounded-lg p-6 border">
+                      <h3 className="font-semibold mb-4">Seating Configuration</h3>
+                      <div className="space-y-3">
+                        <div>
+                          <span className="text-sm text-muted-foreground">Layout:</span>
+                          <p className="font-medium">{formData.seatMap.rows} rows × {formData.seatMap.columns} columns</p>
+                        </div>
+                        <div>
+                          <span className="text-sm text-muted-foreground">Sections:</span>
+                          <div className="mt-2 space-y-2">
+                            {formData.seatMap.sections.map((section) => (
+                              <div key={section.id} className="flex items-center justify-between text-sm">
+                                <div className="flex items-center">
+                                  <div
+                                    className="w-3 h-3 rounded mr-2"
+                                    style={{ backgroundColor: section.color }}
+                                  />
+                                  <span>{section.name}</span>
+                                </div>
+                                <span className="text-muted-foreground">
+                                  {section.rows}×{section.columns} ({section.rows * section.columns} seats)
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Seating Preview */}
+                  <div className="flex flex-col items-center">
+                    <h3 className="font-semibold mb-4">Seating Layout Preview</h3>
+                    {renderSeatMap()}
+                  </div>
+                </div>
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
+
+        {/* Navigation */}
+        <div className="flex items-center justify-between mt-8">
+          <Button
+            variant="outline"
+            onClick={prevStep}
+            disabled={currentStep === 1}
+            className="flex items-center"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Previous
+          </Button>
+
+          <div className="flex items-center space-x-4">
+            {currentStep < totalSteps ? (
+              <Button
+                onClick={nextStep}
+                disabled={
+                  (currentStep === 1 && (!formData.name || !formData.location)) ||
+                  (currentStep === 2 && formData.images.length === 0)
+                }
+                className="flex items-center bg-gradient-to-r from-primary to-purple-600"
+              >
+                Next
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            ) : (
+              <Button
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className="flex items-center bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                {isSubmitting ? 'Creating...' : 'Create Venue'}
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

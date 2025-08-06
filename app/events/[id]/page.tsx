@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react';
+import React, { useState, use, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { 
@@ -8,26 +8,65 @@ import {
   MapPin, 
   Clock, 
   Users, 
-  Share2, 
-  Heart,
-  Star,
   ArrowLeft,
   Ticket
 } from 'lucide-react';
 import { mockEvents, mockVenues } from '@/lib/mock-data';
+import { fetchEventById, fetchVenueById } from '@/lib/api';
 
 interface EventDetailPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default function EventDetailPage({ params }: EventDetailPageProps) {
-  const [isLiked, setIsLiked] = useState(false);
-  const [selectedTicketType, setSelectedTicketType] = useState('general');
-  
-  const event = mockEvents.find(e => e.id === params.id);
-  const venue = event ? mockVenues.find(v => v.id === event.venueId) : null;
+  const resolvedParams = use(params);
+  const [event, setEvent] = useState<any>(null);
+  const [venue, setVenue] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchEventById(resolvedParams.id)
+      .then(data => {
+        const eventData = data.data;
+        setEvent(eventData);
+        
+        // If event has venueId, fetch venue details
+        if (eventData?.venueId) {
+          return fetchVenueById(eventData.venueId);
+        }
+        return null;
+      })
+      .then(venueData => {
+        if (venueData) {
+          setVenue(venueData.data);
+        }
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Error fetching event", err);
+        // Fallback to mock data if API fails
+        const mockEvent = mockEvents.find(e => e.id === resolvedParams.id);
+        setEvent(mockEvent);
+        if (mockEvent?.venueId) {
+          const mockVenue = mockVenues.find(v => v.id === mockEvent.venueId);
+          setVenue(mockVenue);
+        }
+        setLoading(false);
+      });
+  }, [resolvedParams.id]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading event...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!event) {
     return (
@@ -90,28 +129,20 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
             <div className="mb-8">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-4">
-                  <span className="px-3 py-1 bg-primary/10 text-primary text-sm rounded-full">
-                    {event.category}
-                  </span>
-                  <div className="flex items-center space-x-2">
-                    {event.tags.map(tag => (
-                      <span key={tag} className="text-xs text-muted-foreground">
-                        #{tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setIsLiked(!isLiked)}
-                  >
-                    <Heart className={`h-4 w-4 ${isLiked ? 'fill-red-500 text-red-500' : ''}`} />
-                  </Button>
-                  <Button variant="ghost" size="sm">
-                    <Share2 className="h-4 w-4" />
-                  </Button>
+                  {event.category && (
+                    <span className="px-3 py-1 bg-primary/10 text-primary text-sm rounded-full">
+                      {event.category}
+                    </span>
+                  )}
+                  {event.tags && (
+                    <div className="flex items-center space-x-2">
+                      {event.tags.map((tag: string) => (
+                        <span key={tag} className="text-xs text-muted-foreground">
+                          #{tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -120,10 +151,6 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
               </h1>
               
               <div className="flex items-center text-muted-foreground mb-6">
-                <div className="flex items-center mr-6">
-                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400 mr-1" />
-                  <span className="text-sm">4.8 (234 reviews)</span>
-                </div>
                 <div className="flex items-center">
                   <Users className="h-4 w-4 mr-1" />
                   <span className="text-sm">{event.organizer}</span>
@@ -202,13 +229,15 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
               <div className="bg-card rounded-lg border p-6">
                 <h3 className="text-xl font-semibold mb-4">About the Venue</h3>
                 <p className="text-muted-foreground mb-4">{venue.description}</p>
-                <div className="flex flex-wrap gap-2">
-                  {venue.amenities.map(amenity => (
-                    <span key={amenity} className="px-2 py-1 bg-muted text-muted-foreground text-sm rounded">
-                      {amenity}
-                    </span>
-                  ))}
-                </div>
+                {venue.amenities && (
+                  <div className="flex flex-wrap gap-2">
+                    {venue.amenities.map((amenity: string) => (
+                      <span key={amenity} className="px-2 py-1 bg-muted text-muted-foreground text-sm rounded">
+                        {amenity}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -218,30 +247,18 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
             <div className="bg-card rounded-lg border p-6 sticky top-8">
               <h3 className="text-xl font-semibold mb-6">Book Your Tickets</h3>
               
-              {/* Ticket Types */}
-              <div className="space-y-4 mb-6">
-                {ticketTypes.map(ticket => (
-                  <div
-                    key={ticket.id}
-                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                      selectedTicketType === ticket.id
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border hover:border-primary/50'
-                    }`}
-                    onClick={() => setSelectedTicketType(ticket.id)}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium">{ticket.name}</h4>
-                      <span className="font-bold text-primary">${ticket.price}</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      {ticket.description}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {ticket.available} available
-                    </p>
-                  </div>
-                ))}
+              {/* Simple Ticket Info */}
+              <div className="p-4 border rounded-lg mb-6">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-medium">General Admission</h4>
+                  <span className="font-bold text-primary">${event.price}</span>
+                </div>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Standard entry to the event
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {event.availableTickets} available
+                </p>
               </div>
 
               {/* Booking Actions */}
@@ -266,7 +283,7 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                 </div>
                 <div className="flex items-center justify-between font-medium">
                   <span>Total</span>
-                  <span>${ticketTypes.find(t => t.id === selectedTicketType)?.price! + 5}</span>
+                  <span>${event.price + 5}</span>
                 </div>
               </div>
             </div>
