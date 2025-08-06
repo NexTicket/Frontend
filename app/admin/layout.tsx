@@ -14,11 +14,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       if (!firebaseUser) {
         // User is not authenticated, redirect to home
         console.log("Admin Layout: No user authenticated, redirecting to home");
-        router.replace('/');
+        router.replace('/?message=admin_login_required');
       } else if (userProfile && userProfile.role !== 'admin') {
         // User is authenticated but not an admin, redirect to home
-        console.log("Admin Layout: User is not admin, redirecting to home");
-        router.replace('/');
+        console.log("Admin Layout: User is not admin, current role:", userProfile.role);
+        router.replace('/?message=admin_access_denied');
+      } else if (userProfile && userProfile.role === 'admin') {
+        console.log("Admin Layout: Admin user authenticated:", userProfile.email);
       }
     }
   }, [firebaseUser, userProfile, isLoading, router]);

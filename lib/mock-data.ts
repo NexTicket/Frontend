@@ -468,7 +468,7 @@ export const mockVenues: Venue[] = [
     zipCode: '10001',
     capacity: 20000,
     description: 'The world\'s most famous arena, hosting major concerts and sporting events.',
-    image: '/api/placeholder/800/600',
+    image: 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=800&h=600&fit=crop',
     amenities: ['Parking', 'Restaurants', 'Gift Shop', 'Accessibility', 'VIP Suites'],
     contact: {
       phone: '(212) 465-6741',
@@ -484,7 +484,7 @@ export const mockVenues: Venue[] = [
     zipCode: '10001',
     capacity: 5000,
     description: 'Modern convention center perfect for conferences and exhibitions.',
-    image: '/api/placeholder/800/600',
+    image: 'https://images.unsplash.com/photo-1587825140708-dfaf72ae4b04?w=800&h=600&fit=crop',
     amenities: ['WiFi', 'Catering', 'Parking', 'AV Equipment', 'Registration Area'],
     contact: {
       phone: '(212) 216-2000',
@@ -500,7 +500,7 @@ export const mockVenues: Venue[] = [
     zipCode: '10036',
     capacity: 1500,
     description: 'Historic Broadway theater with excellent acoustics and sightlines.',
-    image: '/api/placeholder/800/600',
+    image: 'https://images.unsplash.com/photo-1507924538820-ede94a04019d?w=800&h=600&fit=crop',
     amenities: ['Bar', 'Coat Check', 'Accessibility', 'Historic Architecture'],
     contact: {
       phone: '(212) 239-6200',
@@ -516,7 +516,7 @@ export const mockVenues: Venue[] = [
     zipCode: '10024',
     capacity: 10000,
     description: 'Beautiful outdoor venue in the heart of Manhattan.',
-    image: '/api/placeholder/800/600',
+    image: 'https://images.unsplash.com/photo-1519555318633-3e0fa16fcdbe?w=800&h=600&fit=crop',
     amenities: ['Outdoor Space', 'Scenic Views', 'Accessibility', 'Nearby Restaurants'],
     contact: {
       phone: '(212) 310-6600',
@@ -532,7 +532,7 @@ export const mockVenues: Venue[] = [
     zipCode: '10019',
     capacity: 300,
     description: 'Contemporary art museum with flexible exhibition spaces.',
-    image: '/api/placeholder/800/600',
+    image: 'https://images.unsplash.com/photo-1544967882-1f6d331ad852?w=800&h=600&fit=crop',
     amenities: ['Gallery Space', 'Museum Shop', 'Café', 'Accessibility', 'Parking'],
     contact: {
       phone: '(212) 708-9400',
