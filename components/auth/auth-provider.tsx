@@ -9,7 +9,8 @@ import {
   setDoc, 
   getFirestore, 
   serverTimestamp,
-  updateDoc 
+  updateDoc,
+  onSnapshot 
 } from 'firebase/firestore';
 import { firebaseSignIn } from '@/lib/auth';
 import { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
@@ -38,6 +39,7 @@ interface AuthContextProps {
   updateProfile: (data: Partial<UserProfile>) => Promise<void>;
   signInAndRedirect: (email: string, password: string, router: AppRouterInstance) => Promise<void>;
   signInWithGoogle: () => Promise<User | undefined>;
+  refreshUserToken: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
@@ -147,6 +149,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  // Refresh user token to get updated custom claims
+  const refreshUserToken = async () => {
+    try {
+      if (firebaseUser) {
+        console.log('🔄 Refreshing user token to get updated custom claims...');
+        
+        // Force refresh the ID token to get updated custom claims
+        await firebaseUser.getIdToken(true);
+        
+        // Reload user to get fresh Firebase user data
+        await firebaseUser.reload();
+        
+        console.log('✅ User token refreshed successfully');
+        
+        // Optionally refresh user profile from Firestore as well
+        const docRef = doc(db, 'users', firebaseUser.uid);
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+          const profile = docSnap.data() as UserProfile;
+          setUserProfile(profile);
+          console.log('✅ User profile refreshed:', profile);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error refreshing user token:', error);
+      throw error;
+    }
+  };
+
   // Auth state listener
   useEffect(() => {
   const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -179,11 +211,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           currentPath === '/' || 
           currentPath === '/auth/signin' || 
           currentPath === '/auth/signup' ||
-          currentPath === '/dashboard' ||
           (!currentPath.startsWith('/admin') && profile.role === 'admin') ||
-          (!currentPath.startsWith('/organizer') && profile.role === 'organizer');
+          (!currentPath.startsWith('/organizer') && profile.role === 'organizer') ||
+          (!currentPath.startsWith('/venue-owner') && profile.role === 'venue_owner');
 
         if (shouldRedirect) {
+          console.log(`Redirect needed: ${currentPath} for role: ${profile.role}`);
           // ✅ Redirect based on role only when appropriate
           switch (profile.role) {
             case 'admin':
@@ -194,13 +227,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               console.log('Redirecting centrally to organizer dashboard');
               router.push('/organizer/dashboard');
               break;
-            case 'customer':
-              console.log('Redirecting centrally to customers dashboard');
-              router.push('/dashboard');
-              break;
             case 'venue_owner':
               console.log('Redirecting centrally to venue owner dashboard');
               router.push('/venue-owner/dashboard');
+              break;
+            case 'customer':
+              console.log('Redirecting centrally to customers dashboard');
+              router.push('/dashboard');
               break;
             default:
               router.push('/dashboard');
@@ -222,6 +255,61 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   return () => unsubscribe();
 }, []);
+
+  // Listen for real-time profile changes (role updates from admin)
+  useEffect(() => {
+    if (!firebaseUser) return;
+
+    console.log('Setting up real-time profile listener for user:', firebaseUser.uid);
+    
+    const userDocRef = doc(db, 'users', firebaseUser.uid);
+    let isInitialLoad = true;
+    
+    const unsubscribeProfile = onSnapshot(userDocRef, async (doc) => {
+      if (doc.exists()) {
+        const newProfile = doc.data() as UserProfile;
+        const oldRole = userProfile?.role;
+        const newRole = newProfile.role;
+        
+        // Skip processing during initial load to prevent loops
+        if (isInitialLoad) {
+          isInitialLoad = false;
+          console.log('Initial profile load:', newProfile);
+          return;
+        }
+        
+        console.log('Profile update detected:', { oldRole, newRole });
+        
+        // Only process if role actually changed and both roles exist
+        if (oldRole && newRole && oldRole !== newRole) {
+          console.log(`🔄 Role changed from ${oldRole} to ${newRole}, refreshing token...`);
+          try {
+            await refreshUserToken();
+            console.log('✅ Token refreshed successfully after role change');
+            
+            // Force a page reload to ensure all components see the new role
+            setTimeout(() => {
+              console.log('🔄 Reloading page to apply role changes...');
+              window.location.reload();
+            }, 1000);
+            
+          } catch (error) {
+            console.error('❌ Failed to refresh token after role change:', error);
+          }
+        }
+        
+        // Update profile state
+        setUserProfile(newProfile);
+      }
+    }, (error) => {
+      console.error('Profile listener error:', error);
+    });
+
+    return () => {
+      console.log('Cleaning up profile listener for user:', firebaseUser.uid);
+      unsubscribeProfile();
+    };
+  }, [firebaseUser?.uid]); // Only depend on firebaseUser uid
 
 
   // Sign in function
@@ -409,6 +497,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       throw error;
     }
   };
+
   const value = {
     firebaseUser,
     userProfile,
@@ -418,7 +507,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     logout,
     updateProfile,
     signInAndRedirect,
-    signInWithGoogle
+    signInWithGoogle,
+    refreshUserToken
   };
 
   return (

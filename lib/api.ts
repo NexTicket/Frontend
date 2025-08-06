@@ -123,3 +123,16 @@ export async function setUserClaims(firebaseUid: string, claims: { role: string 
   if (!res.ok) throw new Error("Failed to set user claims");
   return res.json();
 }
+
+// Bootstrap admin role (no auth required - only for initial setup)
+export async function bootstrapAdmin(firebaseUid: string, email: string) {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/bootstrap-admin`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ firebaseUid, email })
+  });
+  if (!res.ok) throw new Error("Failed to bootstrap admin");
+  return res.json();
+}

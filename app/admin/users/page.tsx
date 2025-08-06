@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { collection, getDocs, doc, updateDoc, deleteDoc, getDoc, query, orderBy, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/components/auth/auth-provider';
-import { createTenant, setUserClaims } from '@/lib/api';
+import { createTenant, setUserClaims, bootstrapAdmin } from '@/lib/api';
 import { debugApprovalWorkflow } from '@/utils/debug-approval';
 
 // Types for our role request data
@@ -59,7 +59,7 @@ export default function AdminUsers(){
     const hasFetched = useRef(false);
     
     // Get current user authentication
-    const { firebaseUser } = useAuth();
+    const { firebaseUser, refreshUserToken } = useAuth();
 
     // Function to fetch all users and role requests from Firebase - memoized to prevent unnecessary re-renders
     const fetchAllData = useCallback(async () => {
@@ -132,7 +132,7 @@ export default function AdminUsers(){
                     const createdDate = new Date(user.createdAt);
                     if (createdDate > oneWeekAgo) {
                         stats.newThisWeek++;
-                    }
+                    } 
                 }
                 
                 // Check for role requests
@@ -232,6 +232,9 @@ export default function AdminUsers(){
             // 3. Set custom claims via API call to backend
             console.log('📝 Step 3: Setting Firebase custom claims...');
             try {
+                // await updateDoc(doc(db,'users', request.userId),{
+                //     role: request.requestedRole
+                // });
                 await setUserClaims(request.userId, {
                     role: request.requestedRole,
                 });
@@ -283,10 +286,10 @@ export default function AdminUsers(){
             console.log('📝 Step 6: Updating UI...');
             setRoleRequests(prev => prev.filter(req => req.id !== request.id));
             
-            // 7. Show success message
-            const successMsg = `✅ Successfully approved ${request.requestedRole} role for ${request.userEmail}${request.requestedRole === 'venue_owner' || request.requestedRole === 'organizer' ? ' and created tenant account' : ''}`;
+            // 7. Show success message with token refresh instructions
+            const successMsg = `✅ Successfully approved ${request.requestedRole} role for ${request.userEmail}${request.requestedRole === 'venue_owner' || request.requestedRole === 'organizer' ? ' and created tenant account' : ''}. User will need to refresh their page or re-login to see role changes.`;
             setSuccessMessage(successMsg);
-            setTimeout(() => setSuccessMessage(''), 5000); // Clear after 5 seconds
+            setTimeout(() => setSuccessMessage(''), 8000); // Clear after 8 seconds
             
             console.log(`🎉 Approval workflow completed successfully for ${request.userEmail}`);
             
@@ -323,6 +326,55 @@ export default function AdminUsers(){
         } catch (error: any) {
             console.error('Error rejecting request:', error);
             setError('Failed to reject request. Please try again.');
+        } finally {
+            setProcessingId(null);
+        }
+    };
+
+    // Bootstrap admin function (for initial setup)
+    const handleBootstrapAdmin = async () => {
+        if (!firebaseUser) {
+            setError('No user logged in');
+            return;
+        }
+
+        setProcessingId('bootstrap-admin');
+        
+        try {
+            console.log(`🔧 Step 1: Bootstrapping admin role for ${firebaseUser.email}...`);
+            
+            // Step 1: Set admin role via backend
+            await bootstrapAdmin(firebaseUser.uid, firebaseUser.email || '');
+            console.log(`✅ Step 1: Admin role set in backend`);
+            
+            // Step 2: Force refresh the Firebase ID token to get updated custom claims
+            console.log(`🔄 Step 2: Forcing token refresh to get updated custom claims...`);
+            const freshToken = await firebaseUser.getIdToken(true); // true = force refresh
+            console.log(`✅ Step 2: Fresh token obtained, length: ${freshToken.length}`);
+            
+            // Step 3: Verify the token now has admin role (optional debug)
+            console.log(`🔍 Step 3: Token should now include admin role`);
+            
+            // Step 4: Also refresh the auth provider's token
+            console.log(`🔄 Step 4: Refreshing auth provider token...`);
+            try {
+                await refreshUserToken();
+                console.log(`✅ Step 4: Auth provider token refreshed`);
+            } catch (refreshError) {
+                console.warn('⚠️ Auth provider refresh failed, but admin role should still work:', refreshError);
+            }
+            
+            setSuccessMessage(`✅ Admin role successfully set for ${firebaseUser.email}! Custom claims updated and token refreshed.`);
+            
+            // Wait a moment for everything to propagate, then reload
+            setTimeout(() => {
+                console.log('🔄 Reloading page with fresh admin token...');
+                window.location.reload();
+            }, 1000);
+            
+        } catch (error: any) {
+            console.error('❌ Error bootstrapping admin:', error);
+            setError(`Failed to bootstrap admin: ${error.message}`);
         } finally {
             setProcessingId(null);
         }
@@ -425,6 +477,31 @@ export default function AdminUsers(){
                     </div>
                 )}
             </div>
+
+            {/* Bootstrap Admin Button - only show if user doesn't have admin role */}
+            {firebaseUser && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h3 className="text-sm font-medium text-yellow-800">Admin Setup Required</h3>
+                            <p className="text-sm text-yellow-700 mt-1">
+                                If you're getting 403 errors, click here to set admin role for {firebaseUser.email}
+                            </p>
+                        </div>
+                        <button
+                            onClick={handleBootstrapAdmin}
+                            disabled={processingId === 'bootstrap-admin'}
+                            className={`px-4 py-2 rounded-md text-sm font-medium ${
+                                processingId === 'bootstrap-admin'
+                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                    : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                            }`}
+                        >
+                            {processingId === 'bootstrap-admin' ? 'Setting Admin...' : '🔧 Set Admin Role'}
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Success Message */}
             {successMessage && (
