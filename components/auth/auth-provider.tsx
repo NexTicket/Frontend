@@ -21,7 +21,7 @@ const db = getFirestore();
 interface UserProfile {
   uid: string;
   email: string;
-  role: 'admin' | 'organizer' | 'customer';
+  role: 'admin' | 'organizer' | 'customer' | 'venue_owner';
   firstName?: string;
   lastName?: string;
   displayName?: string;
@@ -51,13 +51,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
 
   // Determine user role based on email or other criteria
-  const determineUserRole = (email: string): 'admin' | 'organizer' | 'customer' => {
+  const determineUserRole = (email: string): 'admin' | 'organizer' | 'customer' | 'venue_owner' => {
     // Admin emails (you can modify this list)
     const adminEmails = ['admin@nexticket.com', 'admin@company.com'];
     
     // Organizer domain patterns (you can modify these)
     const organizerDomains = ['organizer@nexticket.com'];
     const organizerPatterns = ['@events.', '@venue.', '@entertainment.'];
+    
+    // Venue owner patterns
+    const venueOwnerDomains = ['venue@nexticket.com'];
+    const venueOwnerPatterns = ['@venue-owner.'];
     
     if (adminEmails.includes(email.toLowerCase())) {
       return 'admin';
@@ -66,6 +70,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (organizerDomains.includes(email.toLowerCase()) || 
         organizerPatterns.some(pattern => email.toLowerCase().includes(pattern))) {
       return 'organizer';
+    }
+    
+    if (venueOwnerDomains.includes(email.toLowerCase()) || 
+        venueOwnerPatterns.some(pattern => email.toLowerCase().includes(pattern))) {
+      return 'venue_owner';
     }
     
     // Default to customer
