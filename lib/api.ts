@@ -31,31 +31,87 @@ export async function updateVenue(id: string, venueData: any) {
 }
 
 export async function uploadVenueImage(id: string, imageFile: File) {
+  console.log('📤 API: Starting image upload for venue', id);
+  console.log('📤 API: Image file details:', {
+    name: imageFile.name,
+    size: imageFile.size,
+    type: imageFile.type
+  });
+
   const formData = new FormData();
   formData.append('image', imageFile);
   
+  console.log('📤 API: FormData created with field name "image"');
+  console.log('📤 API: FormData instanceof FormData:', formData instanceof FormData);
+  console.log('📤 API: typeof formData:', typeof formData);
+  console.log('📤 API: Making request to:', `${process.env.NEXT_PUBLIC_API_URL}/venues/${id}/image`);
+  
   const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/venues/${id}/image`, {
     method: 'POST',
-    body: formData,
-    headers: {} // Remove Content-Type to let browser set it with boundary
+    body: formData
+    // No headers - let secureFetch and browser handle Content-Type
   });
-  if (!res.ok) throw new Error("Failed to upload venue image");
-  return res.json();
+  
+  console.log('📤 API: Response status:', res.status);
+  console.log('📤 API: Response headers:', Object.fromEntries(res.headers.entries()));
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error('📤 API: Error response body:', errorText);
+    
+    let errorData;
+    try {
+      errorData = JSON.parse(errorText);
+    } catch {
+      errorData = { message: errorText };
+    }
+    
+    throw new Error(`Failed to upload venue image: ${res.status} - ${JSON.stringify(errorData)}`);
+  }
+  
+  const result = await res.json();
+  console.log('✅ API: Upload successful:', result);
+  return result;
 }
 
 export async function uploadVenueImages(id: string, imageFiles: File[]) {
-  const formData = new FormData();
-  imageFiles.forEach(file => {
-    formData.append('images', file);
+  // Take only the first image for single image upload
+  const firstImage = imageFiles[0];
+  
+  if (!firstImage) {
+    throw new Error("No image file provided");
+  }
+  
+  console.log('📤 Preparing image upload:', {
+    venueId: id,
+    fileName: firstImage.name,
+    fileSize: firstImage.size,
+    fileType: firstImage.type
   });
+  
+  const formData = new FormData();
+  formData.append('images', firstImage); // Use 'images' to match the route
+  
+  console.log('📤 FormData created with image field name: images');
+  console.log('📤 Uploading to URL:', `${process.env.NEXT_PUBLIC_API_URL}/venues/${id}/images`);
   
   const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/venues/${id}/images`, {
     method: 'POST',
-    body: formData,
-    headers: {} // Remove Content-Type to let browser set it with boundary
+    body: formData
+    // No headers - let secureFetch and browser handle Content-Type
   });
-  if (!res.ok) throw new Error("Failed to upload venue images");
-  return res.json();
+  
+  console.log('📤 Upload response status:', res.status);
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error('📤 Upload failed with response:', errorText);
+    throw new Error(`Failed to upload venue image: ${res.status} ${errorText}`);
+  }
+  
+  const result = await res.json();
+  console.log('✅ Upload successful:', result);
+  return result;
 }
 
 export async function fetchEvents() {
