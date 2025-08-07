@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, use } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { 
@@ -13,17 +13,16 @@ import {
 import { mockEvents, mockSeats } from '@/lib/mock-data';
 
 interface SeatingPageProps {
-  params: Promise<{
+  params: {
     id: string;
-  }>;
+  };
 }
 
 export default function SeatingPage({ params }: SeatingPageProps) {
-  const resolvedParams = use(params);
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
   const [seats, setSeats] = useState(mockSeats);
   
-  const event = mockEvents.find(e => e.id === resolvedParams.id);
+  const event = mockEvents.find(e => e.id === params.id);
 
   if (!event) {
     return (
@@ -75,7 +74,7 @@ export default function SeatingPage({ params }: SeatingPageProps) {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center space-x-4">
-            <Link href={`/events/${resolvedParams.id}`} className="inline-flex items-center text-muted-foreground hover:text-foreground">
+            <Link href={`/events/${params.id}`} className="inline-flex items-center text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Event
             </Link>

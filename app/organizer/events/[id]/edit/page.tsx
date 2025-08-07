@@ -1,6 +1,6 @@
 "use client"
 import * as React from 'react';
-import { useState, use } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { 
@@ -16,14 +16,13 @@ import {
 import { mockEvents, mockVenues } from '@/lib/mock-data';
 
 interface EventEditPageProps {
-  params: Promise<{
+  params: {
     id: string;
-  }>;
+  };
 }
 
 export default function EventEditPage({ params }: EventEditPageProps) {
-  const resolvedParams = use(params);
-  const event = mockEvents.find(e => e.id === resolvedParams.id);
+  const event = mockEvents.find(e => e.id === params.id);
   
   const [formData, setFormData] = useState({
     title: event?.title || '',
@@ -89,7 +88,7 @@ export default function EventEditPage({ params }: EventEditPageProps) {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center space-x-4">
-            <Link href={`/organizer/events/${resolvedParams.id}/view`} className="inline-flex items-center text-muted-foreground hover:text-foreground">
+            <Link href={`/organizer/events/${params.id}/view`} className="inline-flex items-center text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Event View
             </Link>
@@ -99,7 +98,7 @@ export default function EventEditPage({ params }: EventEditPageProps) {
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            <Link href={`/organizer/events/${resolvedParams.id}/seating-edit`}>
+            <Link href={`/organizer/events/${params.id}/seating-edit`}>
               <Button variant="outline">
                 Edit Seating
               </Button>
@@ -306,7 +305,7 @@ export default function EventEditPage({ params }: EventEditPageProps) {
 
           {/* Action Buttons */}
           <div className="flex items-center justify-end space-x-4 mt-8 pt-6 border-t">
-            <Link href={`/organizer/events/${resolvedParams.id}/view`}>
+            <Link href={`/organizer/events/${params.id}/view`}>
               <Button variant="outline">Cancel</Button>
             </Link>
             <Button onClick={handleSave} disabled={isSaving}>

@@ -1,11 +1,9 @@
 "use client"
-
 import React from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { ProfileDropdown } from '@/components/ui/profile-dropdown';
-import { useAuth } from '@/components/auth/auth-provider';
 import { 
   Calendar, 
   MapPin, 
@@ -18,7 +16,8 @@ import {
   QrCode,
   Sparkles
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState,useEffect } from 'react';
+import { useAuth } from '@/components/auth/auth-provider';
 
 export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -53,10 +52,10 @@ export function Navbar() {
           { href: '/admin/events', label: 'Manage Events', icon: Calendar },
           { href: '/admin/users', label: 'Manage Users', icon: Users }
         ];
-      case 'checkin_officer':
-        return [
-          { href: '/checkin/dashboard', label: 'Check-in Dashboard', icon: QrCode },
-        ];
+      // case 'checkin_officer':
+      //   return [
+      //     { href: '/checkin/dashboard', label: 'Check-in Dashboard', icon: QrCode },
+      //   ];
       default:
         return [];
     }
@@ -72,14 +71,9 @@ export function Navbar() {
     }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          {/* Enhanced Logo */}
-          <Link href="/" className="flex items-center space-x-2 group">
-            <div className="bg-gradient-to-r from-primary to-purple-600 p-2 rounded-xl group-hover:scale-110 transition-transform duration-300">
-              <Sparkles className="h-6 w-6 text-white" />
-            </div>
-            <span className="text-2xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
-              NexTicket
-            </span>
+          {/* Logo */}
+          <Link href="/" className="text-2xl font-bold text-primary">
+            NexTicket
           </Link>
 
           {/* Desktop Navigation */}
@@ -93,7 +87,7 @@ export function Navbar() {
               <MapPin className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
               Venues
             </Link>
-
+            
             {/* Role-specific Navigation */}
             {roleLinks.map((link) => {
               const Icon = link.icon;
@@ -135,7 +129,7 @@ export function Navbar() {
           </div>
         </div>
 
-        {/* Enhanced Mobile Navigation */}
+        {/* Mobile Navigation */}
         {isMenuOpen && (
           <div className="lg:hidden border-t bg-white/95 backdrop-blur-lg">
             <div className="px-2 pt-2 pb-3 space-y-1">
@@ -156,7 +150,6 @@ export function Navbar() {
                 <MapPin className="w-5 h-5 mr-3 group-hover:scale-110 transition-transform" />
                 Venues
               </Link>
-
               {/* Role-specific Navigation */}
               {roleLinks.length > 0 && (
                 <>

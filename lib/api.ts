@@ -1,16 +1,38 @@
 import { secureFetch } from "@/utils/secureFetch";
 
+// Public fetch function for endpoints that don't require authentication
+export async function publicFetch(url: string, options: RequestInit = {}) {
+  const headers: Record<string, string> = {};
+  
+  // Only set Content-Type to application/json if body is not FormData
+  if (!(options.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  // Add any existing headers
+  if (options.headers) {
+    const existingHeaders = options.headers as Record<string, string>;
+    Object.assign(headers, existingHeaders);
+  }
+
+  return fetch(url, {
+    ...options,
+    headers
+  });
+}
+
 export async function fetchVenues() {
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/venues/`);
+  // Use publicFetch since venues should be accessible to everyone
+  const res = await publicFetch(`${process.env.NEXT_PUBLIC_API_URL}/venues/`);
   if (!res.ok) throw new Error("Failed to fetch venues");
   return res.json();
 }
 
-export async function fetchVenueById(id: string) {
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/venues/getvenuebyid/${id}`);
+export const fetchVenueById = async (id: number) => {
+  const res = await publicFetch(`${process.env.NEXT_PUBLIC_API_URL}/venues/${id}`);
   if (!res.ok) throw new Error("Failed to fetch venue");
   return res.json();
-}
+};
 
 export async function createVenue(venueData: any) {
   const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/venues/`, {
@@ -190,5 +212,13 @@ export async function bootstrapAdmin(firebaseUid: string, email: string) {
     body: JSON.stringify({ firebaseUid, email })
   });
   if (!res.ok) throw new Error("Failed to bootstrap admin");
+  return res.json();
+}
+
+export async function deleteVenue(id: string) {
+  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/venues/deletevenue/${id}`, {
+    method: 'DELETE'
+  });
+  if (!res.ok) throw new Error("Failed to delete venue");
   return res.json();
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import React,{ useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { collection, getDocs, doc, updateDoc, deleteDoc, getDoc, query, orderBy, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/components/auth/auth-provider';
@@ -48,13 +48,12 @@ export default function AdminUsers(){
     });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [successMessage, setSuccessMessage] = useState('');
     const [processingId, setProcessingId] = useState<string | null>(null);
     const [expandedRequests, setExpandedRequests] = useState<Set<string>>(new Set());
         const [activeTab, setActiveTab] = useState<'requests' | 'users'>('requests');
     const [searchTerm, setSearchTerm] = useState('');
     const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'organizer' | 'customer'>('all');
-    
+    const [successMessage, setSuccessMessage] = useState('');
     // Ref to prevent duplicate API calls in React Strict Mode
     const hasFetched = useRef(false);
     
@@ -80,7 +79,6 @@ export default function AdminUsers(){
             
             // Test connection first
             console.log('Admin Users: Testing Firebase connection...');
-            
             // Get all users to check their request subcollections and collect user data
             const usersSnapshot = await getDocs(collection(db, 'users'));
             console.log(`Admin Users: Found ${usersSnapshot.docs.length} users to check`);
@@ -92,8 +90,8 @@ export default function AdminUsers(){
                 total: 0,
                 admins: 0,
                 organizers: 0,
-                venue_owners: 0,
                 customers: 0,
+                venue_owners: 0,
                 newThisWeek: 0
             };
             
@@ -218,7 +216,6 @@ export default function AdminUsers(){
             await updateDoc(doc(db, 'users', request.userId), {
                 role: request.requestedRole
             });
-            console.log('✅ Step 1 complete: Firebase user role updated');
             
             // 2. Update the request status to approved in Firebase
             console.log('📝 Step 2: Marking request as approved...');
@@ -232,9 +229,6 @@ export default function AdminUsers(){
             // 3. Set custom claims via API call to backend
             console.log('📝 Step 3: Setting Firebase custom claims...');
             try {
-                // await updateDoc(doc(db,'users', request.userId),{
-                //     role: request.requestedRole
-                // });
                 await setUserClaims(request.userId, {
                     role: request.requestedRole,
                 });
@@ -282,6 +276,7 @@ export default function AdminUsers(){
                 }
             }
             
+            // Remove from the pending list
             // 6. Remove from the pending list in UI
             console.log('📝 Step 6: Updating UI...');
             setRoleRequests(prev => prev.filter(req => req.id !== request.id));
@@ -294,13 +289,8 @@ export default function AdminUsers(){
             console.log(`🎉 Approval workflow completed successfully for ${request.userEmail}`);
             
         } catch (error: any) {
-            console.error('💥 Approval workflow failed:', error);
-            console.error('💥 Error details:', {
-                message: error.message,
-                stack: error.stack,
-                name: error.name
-            });
-            setError(`Failed to approve request for ${request.userEmail}: ${error.message}`);
+            console.error('Error approving request:', error);
+            setError('Failed to approve request. Please try again.');
         } finally {
             setProcessingId(null);
         }
@@ -428,8 +418,8 @@ export default function AdminUsers(){
         switch (role) {
             case 'admin': return 'bg-red-100 text-red-800';
             case 'organizer': return 'bg-blue-100 text-blue-800';
-            case 'venue_owner': return 'bg-indigo-100 text-indigo-800';
             case 'customer': return 'bg-gray-100 text-gray-800';
+            case 'venue_owner': return 'bg-indigo-100 text-indigo-800';
             default: return 'bg-gray-100 text-gray-800';
         }
     };
@@ -451,7 +441,6 @@ export default function AdminUsers(){
             <div className="border-b pb-4">
                 <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
                 <p className="text-gray-600 mt-2">Manage role upgrade requests and user permissions</p>
-                
                 {/* Debug Info - only show in development */}
                 {process.env.NODE_ENV === 'development' && (
                     <div className="mt-2 text-xs text-gray-500 bg-gray-50 p-2 rounded">
@@ -591,20 +580,6 @@ export default function AdminUsers(){
                             <div className="ml-4">
                                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Admins</p>
                                 <p className="text-2xl font-bold text-gray-900 dark:text-white">{userStats.admins}</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                        <div className="flex items-center">
-                            <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
-                                <svg className="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V6a2 2 0 012 2v6a2 2 0 01-2 2H8a2 2 0 01-2-2V8a2 2 0 012-2V6" />
-                                </svg>
-                            </div>
-                            <div className="ml-4">
-                                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Organizers</p>
-                                <p className="text-2xl font-bold text-gray-900 dark:text-white">{userStats.organizers}</p>
                             </div>
                         </div>
                     </div>
