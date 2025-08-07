@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { createVenue, uploadVenueImages } from '@/lib/api';
+import { createVenue, uploadVenueImage } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import '@/utils/test-venue-creation'; // Load test utilities
 import { 
@@ -276,59 +276,57 @@ export default function CreateVenue() {
     });
   };
 
-  // Image handling functions
+  // Image handling function for single image
   const handleFileUpload = async (files: FileList | null) => {
-    if (!files) return;
+    if (!files || files.length === 0) return;
     
     setUploadingImages(true);
-    const newImages: string[] = [];
-    const newFiles: File[] = [];
     
     try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        if (file.type.startsWith('image/')) {
-          // Convert to base64 for preview only
-          const reader = new FileReader();
-          const base64 = await new Promise<string>((resolve) => {
-            reader.onload = () => resolve(reader.result as string);
-            reader.readAsDataURL(file);
-          });
-          newImages.push(base64);
-          newFiles.push(file); // Store the actual file object
-        }
+      // Take only the first file (single image upload)
+      const file = files[0];
+      
+      if (file.type.startsWith('image/')) {
+        // Convert to base64 for preview
+        const reader = new FileReader();
+        const base64 = await new Promise<string>((resolve) => {
+          reader.onload = () => resolve(reader.result as string);
+          reader.readAsDataURL(file);
+        });
+        
+        // Replace any existing image (single image only)
+        setFormData(prev => ({
+          ...prev,
+          images: [base64], // Single image array
+          featuredImage: base64
+        }));
+        
+        // Store the actual file object (single file)
+        setImageFiles([file]);
+        
+        console.log('📸 Single image selected:', {
+          name: file.name,
+          size: file.size,
+          type: file.type
+        });
       }
       
-      // Update preview URLs in formData
-      setFormData(prev => ({
-        ...prev,
-        images: [...prev.images, ...newImages],
-        featuredImage: prev.featuredImage || newImages[0] || ''
-      }));
-      
-      // Update file objects separately
-      setImageFiles(prev => [...prev, ...newFiles]);
-      
     } catch (error) {
-      console.error('Error processing images:', error);
+      console.error('Error processing image:', error);
     } finally {
       setUploadingImages(false);
     }
   };
 
-  const removeImage = (index: number) => {
-    const newImages = formData.images.filter((_, i) => i !== index);
-    const newFiles = imageFiles.filter((_, i) => i !== index);
-    
+  const removeImage = () => {
+    // Clear the single image
     setFormData(prev => ({
       ...prev,
-      images: newImages,
-      featuredImage: prev.featuredImage === prev.images[index] 
-        ? newImages[0] || '' 
-        : prev.featuredImage
+      images: [],
+      featuredImage: ''
     }));
     
-    setImageFiles(newFiles);
+    setImageFiles([]);
   };
 
   const setFeaturedImage = (imageUrl: string) => {
@@ -416,6 +414,11 @@ export default function CreateVenue() {
   };
 
   const handleSubmit = async () => {
+    console.log("🔍 Debugging image files:");
+    console.log("imageFiles length:", imageFiles.length);
+    console.log("imageFiles data:", imageFiles);
+    console.log("formData.images length:", formData.images.length);
+    
     try {
       setIsSubmitting(true);
       
@@ -423,7 +426,7 @@ export default function CreateVenue() {
       if (!formData.name.trim() || !formData.location.trim() || !formData.capacity) {
         throw new Error('Please fill in all required fields (Name, Location, Capacity)');
       }
-
+      
       // Confirm if no images
       if (imageFiles.length === 0) {
         const confirmWithoutImages = window.confirm(
@@ -468,16 +471,22 @@ export default function CreateVenue() {
       const newVenueId = createResponse.data.id;
       console.log('🆔 New venue ID:', newVenueId);
 
-      // Step 2: Upload images if any exist
+      // Step 2: Upload image if any exists
       if (imageFiles.length > 0) {
-        console.log(`🖼️ Step 2: Uploading ${imageFiles.length} images to venue ${newVenueId}...`);
+        console.log(`🖼️ Step 2: Uploading single image to venue ${newVenueId}...`);
+        console.log('🖼️ Image file details:', {
+          name: imageFiles[0].name,
+          size: imageFiles[0].size,
+          type: imageFiles[0].type
+        });
         
         try {
-          const uploadResponse = await uploadVenueImages(newVenueId.toString(), imageFiles);
-          console.log('✅ Images uploaded successfully:', uploadResponse);
+          // Use the single image upload function
+          const uploadResponse = await uploadVenueImage(newVenueId.toString(), imageFiles[0]);
+          console.log('✅ Image uploaded successfully:', uploadResponse);
           
-          // Show success message with image count
-          alert(`✅ Venue "${createResponse.data.name}" created successfully with ${uploadResponse.data.uploadedImages.length} images!`);
+          // Show success message
+          alert(`✅ Venue "${createResponse.data.name}" created successfully with image!`);
         } catch (imageError) {
           console.warn('⚠️ Venue created but image upload failed:', imageError);
           alert(`⚠️ Venue "${createResponse.data.name}" was created successfully, but image upload failed. You can add images later by editing the venue.`);
@@ -690,14 +699,13 @@ export default function CreateVenue() {
                           <ImageIcon className="h-16 w-16 text-muted-foreground" />
                         </div>
                         <div>
-                          <h3 className="text-lg font-semibold mb-2">Upload Venue Images</h3>
+                          <h3 className="text-lg font-semibold mb-2">Upload Venue Image</h3>
                           <p className="text-muted-foreground mb-4">
-                            Drag and drop images here, or click to browse
+                            Drag and drop an image here, or click to browse
                           </p>
                           <input
                             type="file"
                             id="image-upload"
-                            multiple
                             accept="image/*"
                             onChange={(e) => handleFileUpload(e.target.files)}
                             className="hidden"
@@ -707,7 +715,7 @@ export default function CreateVenue() {
                             className="inline-flex items-center px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 cursor-pointer transition-colors"
                           >
                             <Plus className="h-4 w-4 mr-2" />
-                            Choose Images
+                            Choose Image
                           </label>
                         </div>
                         <p className="text-xs text-muted-foreground">
@@ -717,89 +725,44 @@ export default function CreateVenue() {
                     )}
                   </div>
 
-                  {/* Uploaded Images Grid */}
+                  {/* Uploaded Image Display */}
                   {formData.images.length > 0 && (
                     <div className="space-y-4">
-                      <h3 className="text-lg font-semibold">Uploaded Images ({formData.images.length})</h3>
+                      <h3 className="text-lg font-semibold">Uploaded Image</h3>
                       
-                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {formData.images.map((image, index) => (
-                          <motion.div
-                            key={index}
-                            initial={{ opacity: 0, scale: 0.8 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ duration: 0.3, delay: index * 0.1 }}
-                            className="relative group"
-                          >
-                            <div className="aspect-square rounded-lg overflow-hidden bg-gray-100">
-                              <img
-                                src={image}
-                                alt={`Venue image ${index + 1}`}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                            
-                            {/* Image Controls */}
-                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center space-x-2">
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                onClick={() => setFeaturedImage(image)}
-                                className={`${
-                                  formData.featuredImage === image
-                                    ? 'bg-primary text-primary-foreground'
-                                    : 'bg-white/90 text-gray-900'
-                                }`}
-                              >
-                                <Eye className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => removeImage(index)}
-                              >
-                                <X className="h-3 w-3" />
-                              </Button>
-                            </div>
-                            
-                            {/* Featured Badge */}
-                            {formData.featuredImage === image && (
-                              <div className="absolute top-2 left-2 bg-primary text-primary-foreground text-xs px-2 py-1 rounded-full font-medium">
-                                Featured
-                              </div>
-                            )}
-                          </motion.div>
-                        ))}
+                      <div className="flex justify-center">
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ duration: 0.3 }}
+                          className="relative group w-64"
+                        >
+                          <div className="aspect-square rounded-lg overflow-hidden bg-gray-100">
+                            <img
+                              src={formData.images[0]}
+                              alt="Venue image"
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          
+                          {/* Image Controls */}
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => removeImage()}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </motion.div>
                       </div>
 
-                      {/* Featured Image Selection */}
-                      <div className="bg-background/50 rounded-lg p-4 border">
-                        <h4 className="font-medium mb-3 flex items-center">
-                          <Eye className="h-4 w-4 mr-2" />
-                          Featured Image
-                        </h4>
-                        <p className="text-sm text-muted-foreground mb-3">
-                          The featured image will be displayed as the main venue photo in listings.
+                      {/* Image Info */}
+                      <div className="bg-background/50 rounded-lg p-4 border text-center">
+                        <p className="text-sm text-muted-foreground">
+                          This image will be used as the main venue photo in listings.
                         </p>
-                        {formData.featuredImage ? (
-                          <div className="flex items-center space-x-3">
-                            <img
-                              src={formData.featuredImage}
-                              alt="Featured image"
-                              className="w-16 h-16 object-cover rounded-lg"
-                            />
-                            <div>
-                              <p className="font-medium">Featured image selected</p>
-                              <p className="text-sm text-muted-foreground">
-                                Click the eye icon on any image to change the featured image
-                              </p>
-                            </div>
-                          </div>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">
-                            No featured image selected. The first uploaded image will be used by default.
-                          </p>
-                        )}
                       </div>
                     </div>
                   )}
