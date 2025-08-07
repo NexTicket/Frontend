@@ -21,7 +21,7 @@ const db = getFirestore();
 interface UserProfile {
   uid: string;
   email: string;
-  role: 'admin' | 'organizer' | 'customer' | 'venue_owner' | 'event_admin' | 'checkin_officer';
+  role: 'admin' | 'organizer' | 'customer';
   firstName?: string;
   lastName?: string;
   displayName?: string;

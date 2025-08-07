@@ -1,551 +1,375 @@
 "use client"
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { 
   ArrowLeft, 
   Calendar, 
-  MapPin,
-  CheckCircle,
-  Send,
-  Building,
+  MapPin, 
+  Clock, 
+  DollarSign,
   Users,
-  Star,
+  Image as ImageIcon,
   Plus,
   X,
-  Settings,
-  UserCheck,
-  ShieldCheck,
-  AlertCircle,
-  Eye,
-  DollarSign
+  Upload
 } from 'lucide-react';
 import { mockVenues } from '@/lib/mock-data';
 
 export default function NewEventPage() {
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState(1);
-  const [selectedVenue, setSelectedVenue] = useState<any>(null);
-  const [showSubmissionModal, setShowSubmissionModal] = useState(false);
-  const [loading, setLoading] = useState(false);
-  
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     category: '',
     date: '',
     time: '',
-    endTime: '',
-    expectedAttendance: '',
-    tags: [] as string[],
     venueId: '',
-    ticketTypes: [
-      { name: 'General Admission', price: '', description: 'Standard entry' }
-    ],
-    requestMessage: '',
-    requiredStaff: {
-      eventAdmins: 1,
-      checkinOfficers: 2,
-    },
-    specialRequirements: '',
+    price: '',
+    capacity: '',
+    tags: [] as string[],
+    image: null as File | null
   });
-
   const [newTag, setNewTag] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const categories = [
     'Music', 'Technology', 'Theater', 'Food', 'Art', 'Sports', 
-    'Business', 'Education', 'Health', 'Fashion', 'Conference', 'Other'
-  ];
-
-  const steps = [
-    { id: 1, title: 'Event Details', description: 'Basic information' },
-    { id: 2, title: 'Venue Selection', description: 'Choose venue' },
-    { id: 3, title: 'Pricing & Tickets', description: 'Set pricing' },
-    { id: 4, title: 'Staff & Approval', description: 'Request approval' },
+    'Business', 'Education', 'Health', 'Fashion', 'Other'
   ];
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleVenueSelect = (venue: any) => {
-    setSelectedVenue(venue);
-    setFormData({ ...formData, venueId: venue.id });
-  };
-
-  const handleTicketTypeChange = (index: number, field: string, value: string) => {
-    const updatedTicketTypes = [...formData.ticketTypes];
-    updatedTicketTypes[index] = { ...updatedTicketTypes[index], [field]: value };
-    setFormData({ ...formData, ticketTypes: updatedTicketTypes });
-  };
-
-  const addTicketType = () => {
     setFormData({
       ...formData,
-      ticketTypes: [...formData.ticketTypes, { name: '', price: '', description: '' }]
-    });
-  };
-
-  const removeTicketType = (index: number) => {
-    setFormData({
-      ...formData,
-      ticketTypes: formData.ticketTypes.filter((_, i) => i !== index)
+      [e.target.name]: e.target.value
     });
   };
 
   const handleAddTag = () => {
     if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
-      setFormData({ ...formData, tags: [...formData.tags, newTag.trim()] });
+      setFormData({
+        ...formData,
+        tags: [...formData.tags, newTag.trim()]
+      });
       setNewTag('');
     }
   };
 
   const handleRemoveTag = (tagToRemove: string) => {
-    setFormData({ ...formData, tags: formData.tags.filter(tag => tag !== tagToRemove) });
+    setFormData({
+      ...formData,
+      tags: formData.tags.filter(tag => tag !== tagToRemove)
+    });
   };
-
-  const nextStep = () => setCurrentStep(Math.min(currentStep + 1, 4));
-  const prevStep = () => setCurrentStep(Math.max(currentStep - 1, 1));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    
+    // Simulate API call
     setTimeout(() => {
+      console.log('Event created:', formData);
       setLoading(false);
-      setShowSubmissionModal(true);
-    }, 2000);
+      router.push('/organizer/dashboard');
+    }, 1000);
   };
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
           <Link href="/organizer/dashboard" className="inline-flex items-center text-muted-foreground hover:text-foreground mb-4">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Dashboard
           </Link>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
-            Create New Event
-          </h1>
-          <p className="text-muted-foreground">Submit your event for admin approval and staff assignment</p>
+          <h1 className="text-3xl font-bold">Create New Event</h1>
+          <p className="text-muted-foreground">Fill in the details for your new event</p>
         </div>
 
-        {/* Progress Steps */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            {steps.map((step, index) => (
-              <div key={step.id} className="flex-1">
-                <div className="flex items-center">
-                  <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all duration-300 ${
-                    currentStep >= step.id ? 'bg-primary border-primary text-primary-foreground shadow-lg' : 'border-muted-foreground text-muted-foreground'
-                  }`}>
-                    {currentStep > step.id ? <CheckCircle className="h-5 w-5" /> : <span className="text-sm font-medium">{step.id}</span>}
-                  </div>
-                  {index < steps.length - 1 && <div className={`flex-1 h-0.5 mx-4 transition-all duration-300 ${currentStep > step.id ? 'bg-primary' : 'bg-muted'}`} />}
-                </div>
-                <div className="mt-2">
-                  <p className="text-sm font-medium">{step.title}</p>
-                  <p className="text-xs text-muted-foreground">{step.description}</p>
-                </div>
+        <form onSubmit={handleSubmit} className="space-y-8">
+          {/* Basic Information */}
+          <div className="bg-card rounded-lg border p-6">
+            <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="title" className="block text-sm font-medium mb-2">
+                  Event Title *
+                </label>
+                <input
+                  type="text"
+                  id="title"
+                  name="title"
+                  value={formData.title}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border rounded-md bg-background"
+                  placeholder="Enter event title"
+                  required
+                />
               </div>
-            ))}
-          </div>
-        </div>
 
-        <form onSubmit={handleSubmit}>
-          {/* Step 1: Event Details */}
-          {currentStep === 1 && (
-            <div className="space-y-6 animate-fadeInScale">
-              <div className="bg-card rounded-lg border p-6 shadow-sm">
-                <h3 className="text-lg font-semibold mb-4 flex items-center">
-                  <Calendar className="h-5 w-5 mr-2 text-primary" />
-                  Basic Information
-                </h3>
-                <div className="space-y-4">
-                  <div>
-                    <label htmlFor="title" className="block text-sm font-medium mb-2">Event Title *</label>
-                    <input
-                      type="text" id="title" name="title" value={formData.title} onChange={handleInputChange}
-                      className="w-full px-3 py-2 border rounded-md bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-all"
-                      placeholder="Enter an exciting event title" required
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="description" className="block text-sm font-medium mb-2">Description *</label>
-                    <textarea
-                      id="description" name="description" value={formData.description} onChange={handleInputChange} rows={4}
-                      className="w-full px-3 py-2 border rounded-md bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-all"
-                      placeholder="Describe your event in detail. What makes it special?" required
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label htmlFor="category" className="block text-sm font-medium mb-2">Category *</label>
-                      <select
-                        id="category" name="category" value={formData.category} onChange={handleInputChange}
-                        className="w-full px-3 py-2 border rounded-md bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-all" required
+              <div>
+                <label htmlFor="description" className="block text-sm font-medium mb-2">
+                  Description *
+                </label>
+                <textarea
+                  id="description"
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  rows={4}
+                  className="w-full px-3 py-2 border rounded-md bg-background"
+                  placeholder="Describe your event..."
+                  required
+                />
+              </div>
+
+              <div>
+                <label htmlFor="category" className="block text-sm font-medium mb-2">
+                  Category *
+                </label>
+                <select
+                  id="category"
+                  name="category"
+                  value={formData.category}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border rounded-md bg-background"
+                  required
+                >
+                  <option value="">Select a category</option>
+                  {categories.map(category => (
+                    <option key={category} value={category}>{category}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">Tags</label>
+                <div className="flex items-center space-x-2 mb-2">
+                  <input
+                    type="text"
+                    value={newTag}
+                    onChange={(e) => setNewTag(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
+                    className="flex-1 px-3 py-2 border rounded-md bg-background"
+                    placeholder="Add a tag"
+                  />
+                  <Button type="button" onClick={handleAddTag} variant="outline" size="sm">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {formData.tags.map(tag => (
+                    <span key={tag} className="inline-flex items-center px-2 py-1 bg-primary/10 text-primary text-sm rounded-full">
+                      {tag}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveTag(tag)}
+                        className="ml-1 hover:text-primary/80"
                       >
-                        <option value="">Select category</option>
-                        {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label htmlFor="expectedAttendance" className="block text-sm font-medium mb-2">Expected Attendance *</label>
-                      <input
-                        type="number" id="expectedAttendance" name="expectedAttendance" value={formData.expectedAttendance} onChange={handleInputChange}
-                        className="w-full px-3 py-2 border rounded-md bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-all"
-                        placeholder="Number of attendees" min="1" required
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label htmlFor="date" className="block text-sm font-medium mb-2">Event Date *</label>
-                      <input
-                        type="date" id="date" name="date" value={formData.date} onChange={handleInputChange}
-                        className="w-full px-3 py-2 border rounded-md bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-all" required
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="time" className="block text-sm font-medium mb-2">Start Time *</label>
-                      <input
-                        type="time" id="time" name="time" value={formData.time} onChange={handleInputChange}
-                        className="w-full px-3 py-2 border rounded-md bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-all" required
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="endTime" className="block text-sm font-medium mb-2">End Time *</label>
-                      <input
-                        type="time" id="endTime" name="endTime" value={formData.endTime} onChange={handleInputChange}
-                        className="w-full px-3 py-2 border rounded-md bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-all" required
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Tags</label>
-                    <div className="flex items-center space-x-2 mb-2">
-                      <input
-                        type="text" value={newTag} onChange={(e) => setNewTag(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
-                        className="flex-1 px-3 py-2 border rounded-md bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-all"
-                        placeholder="Add a tag (e.g., networking, family-friendly)"
-                      />
-                      <Button type="button" onClick={handleAddTag} variant="outline" size="sm" className="hover:bg-primary hover:text-primary-foreground">
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {formData.tags.map(tag => (
-                        <span key={tag} className="inline-flex items-center px-3 py-1 bg-primary/10 text-primary text-sm rounded-full border border-primary/20">
-                          {tag}
-                          <button type="button" onClick={() => handleRemoveTag(tag)} className="ml-2 hover:text-primary/80 transition-colors">
-                            <X className="h-3 w-3" />
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
                 </div>
-              </div>
-              <div className="flex justify-end">
-                <Button type="button" onClick={nextStep} className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90">
-                  Next: Select Venue →
-                </Button>
               </div>
             </div>
-          )}
+          </div>
 
-          {/* Step 2: Venue Selection */}
-          {currentStep === 2 && (
-            <div className="space-y-6 animate-fadeInScale">
-              <div className="bg-card rounded-lg border p-6 shadow-sm">
-                <h3 className="text-lg font-semibold mb-4 flex items-center">
-                  <MapPin className="h-5 w-5 mr-2 text-primary" />
-                  Select Your Perfect Venue
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Date & Time */}
+          <div className="bg-card rounded-lg border p-6">
+            <h3 className="text-lg font-semibold mb-4">Date & Time</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="date" className="block text-sm font-medium mb-2">
+                  <Calendar className="h-4 w-4 inline mr-2" />
+                  Event Date *
+                </label>
+                <input
+                  type="date"
+                  id="date"
+                  name="date"
+                  value={formData.date}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border rounded-md bg-background"
+                  required
+                />
+              </div>
+
+              <div>
+                <label htmlFor="time" className="block text-sm font-medium mb-2">
+                  <Clock className="h-4 w-4 inline mr-2" />
+                  Start Time *
+                </label>
+                <input
+                  type="time"
+                  id="time"
+                  name="time"
+                  value={formData.time}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border rounded-md bg-background"
+                  required
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Venue & Capacity */}
+          <div className="bg-card rounded-lg border p-6">
+            <h3 className="text-lg font-semibold mb-4">Venue & Capacity</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="venueId" className="block text-sm font-medium mb-2">
+                  <MapPin className="h-4 w-4 inline mr-2" />
+                  Venue *
+                </label>
+                <select
+                  id="venueId"
+                  name="venueId"
+                  value={formData.venueId}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border rounded-md bg-background"
+                  required
+                >
+                  <option value="">Select a venue</option>
                   {mockVenues.map(venue => (
-                    <div 
-                      key={venue.id}
-                      className={`border rounded-lg p-4 cursor-pointer transition-all duration-300 hover:shadow-lg ${
-                        selectedVenue?.id === venue.id 
-                          ? 'border-primary bg-primary/5 ring-2 ring-primary/20 shadow-lg' 
-                          : 'border-border hover:border-primary/50 hover:shadow-md'
-                      }`}
-                      onClick={() => handleVenueSelect(venue)}
-                    >
-                      <div className="aspect-video bg-gradient-to-br from-primary/10 to-purple-600/10 rounded-lg mb-3 flex items-center justify-center">
-                        <Building className="h-8 w-8 text-primary/60" />
-                      </div>
-                      <h4 className="font-semibold text-lg mb-2">{venue.name}</h4>
-                      <p className="text-muted-foreground text-sm mb-2">{venue.address}, {venue.city}</p>
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center text-sm text-muted-foreground">
-                          <Users className="h-4 w-4 mr-1" />
-                          <span>{venue.capacity.toLocaleString()}</span>
-                        </div>
-                        <div className="flex items-center">
-                          <Star className="h-4 w-4 text-yellow-500 mr-1" />
-                          <span className="text-sm">4.8</span>
-                        </div>
-                      </div>
-                      <div className="flex flex-wrap gap-1 mb-4">
-                        {venue.amenities.slice(0, 3).map(amenity => (
-                          <span key={amenity} className="text-xs bg-muted px-2 py-1 rounded-full">{amenity}</span>
-                        ))}
-                        {venue.amenities.length > 3 && (
-                          <span className="text-xs text-muted-foreground px-2 py-1">+{venue.amenities.length - 3} more</span>
-                        )}
-                      </div>
-                      <Button 
-                        variant={selectedVenue?.id === venue.id ? "default" : "outline"} 
-                        size="sm" className="w-full" type="button"
-                      >
-                        {selectedVenue?.id === venue.id ? (
-                          <><CheckCircle className="h-4 w-4 mr-2" />Selected</>
-                        ) : 'Select Venue'}
-                      </Button>
-                    </div>
+                    <option key={venue.id} value={venue.id}>
+                      {venue.name} - {venue.city}
+                    </option>
                   ))}
-                </div>
-                {selectedVenue && (
-                  <div className="mt-6 p-4 bg-gradient-to-r from-primary/5 to-purple-600/5 border border-primary/20 rounded-lg">
-                    <h5 className="font-medium mb-2 flex items-center text-primary">
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      Selected: {selectedVenue.name}
-                    </h5>
-                    <p className="text-sm text-muted-foreground mb-3">{selectedVenue.description}</p>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="font-medium">Address:</span>
-                        <p className="text-muted-foreground">{selectedVenue.address}, {selectedVenue.city}</p>
-                      </div>
-                      <div>
-                        <span className="font-medium">Contact:</span>
-                        <p className="text-muted-foreground">{selectedVenue.contact.phone}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                </select>
               </div>
-              <div className="flex justify-between">
-                <Button type="button" variant="outline" onClick={prevStep}>← Previous</Button>
-                <Button type="button" onClick={nextStep} disabled={!selectedVenue} className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90">
-                  Next: Set Pricing →
-                </Button>
+
+              <div>
+                <label htmlFor="capacity" className="block text-sm font-medium mb-2">
+                  <Users className="h-4 w-4 inline mr-2" />
+                  Capacity *
+                </label>
+                <input
+                  type="number"
+                  id="capacity"
+                  name="capacity"
+                  value={formData.capacity}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border rounded-md bg-background"
+                  placeholder="Maximum attendees"
+                  min="1"
+                  required
+                />
               </div>
             </div>
-          )}
+          </div>
 
-          {/* Step 3: Pricing & Tickets */}
-          {currentStep === 3 && (
-            <div className="space-y-6 animate-fadeInScale">
-              <div className="bg-card rounded-lg border p-6 shadow-sm">
-                <h3 className="text-lg font-semibold mb-4 flex items-center">
-                  <DollarSign className="h-5 w-5 mr-2 text-primary" />
-                  Pricing & Ticket Types
-                </h3>
-                <div className="space-y-4">
-                  {formData.ticketTypes.map((ticketType, index) => (
-                    <div key={index} className="border rounded-lg p-4 bg-muted/20">
-                      <div className="flex items-center justify-between mb-3">
-                        <h5 className="font-medium">Ticket Type {index + 1}</h5>
-                        {formData.ticketTypes.length > 1 && (
-                          <Button 
-                            type="button" variant="ghost" size="sm"
-                            onClick={() => removeTicketType(index)}
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium mb-2">Name *</label>
-                          <input
-                            type="text" value={ticketType.name}
-                            onChange={(e) => handleTicketTypeChange(index, 'name', e.target.value)}
-                            className="w-full px-3 py-2 border rounded-md bg-background focus:ring-2 focus:ring-primary"
-                            placeholder="e.g., General Admission" required
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-2">Price ($) *</label>
-                          <input
-                            type="number" value={ticketType.price}
-                            onChange={(e) => handleTicketTypeChange(index, 'price', e.target.value)}
-                            className="w-full px-3 py-2 border rounded-md bg-background focus:ring-2 focus:ring-primary"
-                            placeholder="0.00" min="0" step="0.01" required
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-2">Description</label>
-                          <input
-                            type="text" value={ticketType.description}
-                            onChange={(e) => handleTicketTypeChange(index, 'description', e.target.value)}
-                            className="w-full px-3 py-2 border rounded-md bg-background focus:ring-2 focus:ring-primary"
-                            placeholder="Brief description"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  <Button type="button" variant="outline" onClick={addTicketType} className="w-full border-dashed border-2">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Another Ticket Type
-                  </Button>
-                </div>
+          {/* Pricing */}
+          <div className="bg-card rounded-lg border p-6">
+            <h3 className="text-lg font-semibold mb-4">Pricing</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="price" className="block text-sm font-medium mb-2">
+                  <DollarSign className="h-4 w-4 inline mr-2" />
+                  Ticket Price *
+                </label>
+                <input
+                  type="number"
+                  id="price"
+                  name="price"
+                  value={formData.price}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border rounded-md bg-background"
+                  placeholder="0.00"
+                  min="0"
+                  step="0.01"
+                  required
+                />
               </div>
-              <div className="flex justify-between">
-                <Button type="button" variant="outline" onClick={prevStep}>← Previous</Button>
-                <Button type="button" onClick={nextStep} className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90">
-                  Next: Request Approval →
-                </Button>
-              </div>
-            </div>
-          )}
 
-          {/* Step 4: Staff & Approval */}
-          {currentStep === 4 && (
-            <div className="space-y-6 animate-fadeInScale">
-              <div className="bg-card rounded-lg border p-6 shadow-sm">
-                <h3 className="text-lg font-semibold mb-4 flex items-center">
-                  <ShieldCheck className="h-5 w-5 mr-2 text-primary" />
-                  Staff Requirements & Admin Approval
-                </h3>
-                <div className="space-y-6">
-                  <div>
-                    <label htmlFor="requestMessage" className="block text-sm font-medium mb-2">Message to Admin *</label>
-                    <textarea
-                      id="requestMessage" name="requestMessage" value={formData.requestMessage} onChange={handleInputChange} rows={4}
-                      className="w-full px-3 py-2 border rounded-md bg-background focus:ring-2 focus:ring-primary"
-                      placeholder="Explain your event concept, target audience, and why this event should be approved. Include any special requirements or considerations..." required
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="border rounded-lg p-4 bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/20">
-                      <h5 className="font-medium mb-3 flex items-center text-blue-700 dark:text-blue-300">
-                        <Settings className="h-4 w-4 mr-2" />Event Admin Staff
-                      </h5>
-                      <p className="text-sm text-muted-foreground mb-3">
-                        Event admins help manage your event, handle attendee issues, and coordinate with venue staff.
-                      </p>
-                      <select
-                        value={formData.requiredStaff.eventAdmins}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          requiredStaff: { ...formData.requiredStaff, eventAdmins: parseInt(e.target.value) }
-                        })}
-                        className="w-full px-3 py-2 border rounded-md bg-background focus:ring-2 focus:ring-primary"
-                      >
-                        <option value={1}>1 Event Admin</option>
-                        <option value={2}>2 Event Admins</option>
-                        <option value={3}>3 Event Admins</option>
-                        <option value={4}>4+ Event Admins</option>
-                      </select>
-                    </div>
-                    <div className="border rounded-lg p-4 bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-900/20 dark:to-green-800/20">
-                      <h5 className="font-medium mb-3 flex items-center text-green-700 dark:text-green-300">
-                        <UserCheck className="h-4 w-4 mr-2" />Check-in Officers
-                      </h5>
-                      <p className="text-sm text-muted-foreground mb-3">
-                        Check-in officers handle ticket validation, attendee registration, and entry management.
-                      </p>
-                      <select
-                        value={formData.requiredStaff.checkinOfficers}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          requiredStaff: { ...formData.requiredStaff, checkinOfficers: parseInt(e.target.value) }
-                        })}
-                        className="w-full px-3 py-2 border rounded-md bg-background focus:ring-2 focus:ring-primary"
-                      >
-                        <option value={1}>1 Check-in Officer</option>
-                        <option value={2}>2 Check-in Officers</option>
-                        <option value={3}>3 Check-in Officers</option>
-                        <option value={4}>4 Check-in Officers</option>
-                        <option value={5}>5+ Check-in Officers</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label htmlFor="specialRequirements" className="block text-sm font-medium mb-2">Special Requirements</label>
-                    <textarea
-                      id="specialRequirements" name="specialRequirements" value={formData.specialRequirements} onChange={handleInputChange} rows={3}
-                      className="w-full px-3 py-2 border rounded-md bg-background focus:ring-2 focus:ring-primary"
-                      placeholder="Any special equipment, setup, security, accessibility, or other requirements..."
-                    />
-                  </div>
-                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                    <div className="flex items-start">
-                      <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 mr-3 flex-shrink-0" />
-                      <div>
-                        <h5 className="font-medium text-blue-900 dark:text-blue-100">Approval Process</h5>
-                        <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                          After submission, our admin team will review your event and assign qualified staff members.
-                        </p>
-                        <ul className="text-sm text-blue-700 dark:text-blue-300 mt-2 space-y-1 list-disc list-inside">
-                          <li>Review event details and venue selection</li>
-                          <li>Verify venue availability and suitability</li>
-                          <li>Assign qualified event admins and check-in officers</li>
-                          <li>Provide staff credentials and contact information</li>
-                          <li>Send approval notification (usually within 24-48 hours)</li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="flex justify-between">
-                <Button type="button" variant="outline" onClick={prevStep}>← Previous</Button>
-                <Button type="submit" disabled={loading} className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 shadow-lg">
-                  {loading ? (
-                    <><div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>Submitting...</>
-                  ) : (
-                    <><Send className="h-4 w-4 mr-2" />Submit for Approval</>
-                  )}
-                </Button>
-              </div>
-            </div>
-          )}
-        </form>
-
-        {/* Success Modal */}
-        {showSubmissionModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fadeIn">
-            <div className="bg-background rounded-lg p-8 max-w-md w-full mx-4 border shadow-xl animate-fadeInScale">
-              <div className="text-center">
-                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/20 mb-4">
-                  <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
-                </div>
-                <h3 className="text-lg font-medium mb-2">Event Submitted Successfully!</h3>
-                <p className="text-muted-foreground mb-6">
-                  Your event "{formData.title}" has been submitted for admin approval. You'll receive notification once reviewed.
-                </p>
-                <div className="bg-muted rounded-lg p-4 mb-6 text-left">
-                  <h4 className="font-medium mb-2">What happens next:</h4>
-                  <ul className="text-sm text-muted-foreground space-y-1">
-                    <li>✓ Admin team reviews your event (24-48 hours)</li>
-                    <li>✓ Staff members are assigned to your event</li>
-                    <li>✓ You receive credentials and contact information</li>
-                    <li>✓ Event goes live for ticket sales upon approval</li>
-                  </ul>
-                </div>
-                <div className="flex space-x-3">
-                  <Button variant="outline" onClick={() => setShowSubmissionModal(false)} className="flex-1">
-                    <Eye className="h-4 w-4 mr-2" />View Details
-                  </Button>
-                  <Button onClick={() => router.push('/organizer/dashboard')} className="flex-1">
-                    Go to Dashboard
-                  </Button>
+              <div className="flex items-end">
+                <div className="text-sm text-muted-foreground">
+                  <p>Service fee: 5% + $2.50</p>
+                  <p>Total price for buyers: ${formData.price ? (parseFloat(formData.price) * 1.05 + 2.50).toFixed(2) : '0.00'}</p>
                 </div>
               </div>
             </div>
           </div>
-        )}
+
+          {/* Image Upload */}
+          <div className="bg-card rounded-lg border p-6">
+            <h3 className="text-lg font-semibold mb-4">Event Image</h3>
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+              <ImageIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground mb-4">
+                Upload an image for your event (optional)
+              </p>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setFormData({ ...formData, image: e.target.files?.[0] || null })}
+                className="hidden"
+                id="image-upload"
+              />
+              <label htmlFor="image-upload">
+                <Button type="button" variant="outline" className="cursor-pointer">
+                  <Upload className="h-4 w-4 mr-2" />
+                  Choose Image
+                </Button>
+              </label>
+              {formData.image && (
+                <p className="text-sm text-muted-foreground mt-2">
+                  Selected: {formData.image.name}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Seating Arrangement */}
+          <div className="bg-card rounded-lg border p-6">
+            <h3 className="text-lg font-semibold mb-4">Seating Arrangement</h3>
+            <div className="space-y-4">
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="general-admission"
+                    name="seating"
+                    value="general"
+                    defaultChecked
+                    className="h-4 w-4 text-primary focus:ring-primary"
+                  />
+                  <label htmlFor="general-admission" className="text-sm font-medium">
+                    General Admission
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="assigned-seating"
+                    name="seating"
+                    value="assigned"
+                    className="h-4 w-4 text-primary focus:ring-primary"
+                  />
+                  <label htmlFor="assigned-seating" className="text-sm font-medium">
+                    Assigned Seating
+                  </label>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Choose whether attendees can pick specific seats or if it's general admission
+              </p>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center justify-end space-x-4">
+            <Link href="/organizer/dashboard">
+              <Button variant="outline">Cancel</Button>
+            </Link>
+            <Button type="submit" disabled={loading}>
+              {loading ? 'Creating...' : 'Create Event'}
+            </Button>
+          </div>
+        </form>
       </div>
     </div>
   );

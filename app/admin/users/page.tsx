@@ -29,7 +29,7 @@ interface User {
   firstName?: string;
   lastName?: string;
   displayName?: string;
-  role: 'admin' | 'organizer' | 'customer' | 'venue_owner';
+  role: 'admin' | 'organizer' | 'customer';
   createdAt: any;
   updatedAt: any;
 }
@@ -42,13 +42,11 @@ export default function AdminUsers(){
         total: 0,
         admins: 0,
         organizers: 0,
-        venue_owners: 0,
         customers: 0,
         newThisWeek: 0
     });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [successMessage, setSuccessMessage] = useState('');
     const [processingId, setProcessingId] = useState<string | null>(null);
     const [expandedRequests, setExpandedRequests] = useState<Set<string>>(new Set());
         const [activeTab, setActiveTab] = useState<'requests' | 'users'>('requests');
@@ -69,17 +67,12 @@ export default function AdminUsers(){
         }
         
         console.log('Admin Users: Starting to fetch all user data');
-        console.log('Admin Users: Firebase User:', firebaseUser?.email);
-        console.log('Admin Users: Firebase User UID:', firebaseUser?.uid);
         setLoading(true);
         setError('');
         
         try {
             const requests: RoleRequest[] = [];
             const users: User[] = [];
-            
-            // Test connection first
-            console.log('Admin Users: Testing Firebase connection...');
             
             // Get all users to check their request subcollections and collect user data
             const usersSnapshot = await getDocs(collection(db, 'users'));
@@ -92,7 +85,6 @@ export default function AdminUsers(){
                 total: 0,
                 admins: 0,
                 organizers: 0,
-                venue_owners: 0,
                 customers: 0,
                 newThisWeek: 0
             };
@@ -119,7 +111,6 @@ export default function AdminUsers(){
                 stats.total++;
                 if (user.role === 'admin') stats.admins++;
                 else if (user.role === 'organizer') stats.organizers++;
-                else if (user.role === 'venue_owner') stats.venue_owners++;
                 else stats.customers++;
                 
                 // Check if user was created this week
@@ -185,22 +176,7 @@ export default function AdminUsers(){
             
         } catch (error: any) {
             console.error('Error fetching user data:', error);
-            console.error('Error details:', {
-                message: error.message,
-                code: error.code,
-                stack: error.stack
-            });
-            
-            // Provide more specific error messages based on error type
-            if (error.code === 'permission-denied') {
-                setError('Permission denied. Please ensure you have admin privileges and Firebase security rules allow access.');
-            } else if (error.code === 'unavailable') {
-                setError('Firebase service is currently unavailable. Please try again later.');
-            } else if (error.message?.includes('network')) {
-                setError('Network error. Please check your internet connection and try again.');
-            } else {
-                setError(`Failed to load user data: ${error.message || 'Unknown error'}. Please try again.`);
-            }
+            setError('Failed to load user data. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -211,17 +187,12 @@ export default function AdminUsers(){
         setProcessingId(request.id);
         
         try {
-            console.log(`🎯 Processing approval for ${request.userEmail}: ${request.currentRole} → ${request.requestedRole}`);
-            
-            // 1. Update the user's role in their main Firebase profile
-            console.log('📝 Step 1: Updating Firebase user role...');
+            // Update the user's role in their main profile
             await updateDoc(doc(db, 'users', request.userId), {
                 role: request.requestedRole
             });
-            console.log('✅ Step 1 complete: Firebase user role updated');
             
-            // 2. Update the request status to approved in Firebase
-            console.log('📝 Step 2: Marking request as approved...');
+            // Update the request status to approved
             await updateDoc(doc(db, 'users', request.userId, 'requests', 'roleRequest'), {
                 status: 'approved',
                 approvedAt: new Date().toISOString(),
@@ -294,13 +265,8 @@ export default function AdminUsers(){
             console.log(`🎉 Approval workflow completed successfully for ${request.userEmail}`);
             
         } catch (error: any) {
-            console.error('💥 Approval workflow failed:', error);
-            console.error('💥 Error details:', {
-                message: error.message,
-                stack: error.stack,
-                name: error.name
-            });
-            setError(`Failed to approve request for ${request.userEmail}: ${error.message}`);
+            console.error('Error approving request:', error);
+            setError('Failed to approve request. Please try again.');
         } finally {
             setProcessingId(null);
         }
@@ -428,7 +394,6 @@ export default function AdminUsers(){
         switch (role) {
             case 'admin': return 'bg-red-100 text-red-800';
             case 'organizer': return 'bg-blue-100 text-blue-800';
-            case 'venue_owner': return 'bg-indigo-100 text-indigo-800';
             case 'customer': return 'bg-gray-100 text-gray-800';
             default: return 'bg-gray-100 text-gray-800';
         }
@@ -451,31 +416,6 @@ export default function AdminUsers(){
             <div className="border-b pb-4">
                 <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
                 <p className="text-gray-600 mt-2">Manage role upgrade requests and user permissions</p>
-                
-                {/* Debug Info - only show in development */}
-                {process.env.NODE_ENV === 'development' && (
-                    <div className="mt-2 text-xs text-gray-500 bg-gray-50 p-2 rounded">
-                        <div className="flex justify-between items-center">
-                            <div>
-                                <strong>Debug:</strong> User: {firebaseUser?.email || 'Not authenticated'} | 
-                                Loading: {loading ? 'Yes' : 'No'} | 
-                                Requests: {roleRequests.length} | 
-                                Users: {allUsers.length}
-                            </div>
-                            <button 
-                                onClick={async () => {
-                                    console.log('🧪 Running debug workflow test...');
-                                    const results = await debugApprovalWorkflow.runCompleteTest();
-                                    console.log('🎯 Debug test complete:', results);
-                                    alert('Debug test complete - check console for results');
-                                }}
-                                className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs hover:bg-blue-200"
-                            >
-                                🧪 Test Workflow
-                            </button>
-                        </div>
-                    </div>
-                )}
             </div>
 
             {/* Bootstrap Admin Button - only show if user doesn't have admin role */}
@@ -530,35 +470,13 @@ export default function AdminUsers(){
             {/* Error Message */}
             {error && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                    <div className="flex items-start">
-                        <div className="flex-shrink-0">
-                            <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                            </svg>
-                        </div>
-                        <div className="ml-3 flex-1">
-                            <h3 className="text-sm font-medium text-red-800">Error Loading Data</h3>
-                            <p className="mt-1 text-sm text-red-700">{error}</p>
-                            <div className="mt-3 flex space-x-2">
-                                <button 
-                                    onClick={() => {
-                                        setError('');
-                                        console.log('Retrying data fetch...');
-                                        fetchAllData();
-                                    }}
-                                    className="bg-red-100 px-3 py-1 rounded-md text-sm text-red-800 hover:bg-red-200 transition-colors"
-                                >
-                                    Retry
-                                </button>
-                                <button 
-                                    onClick={() => setError('')}
-                                    className="text-red-600 hover:text-red-800 text-sm underline"
-                                >
-                                    Dismiss
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                    <p className="text-red-700">{error}</p>
+                    <button 
+                        onClick={() => setError('')}
+                        className="text-red-600 hover:text-red-800 text-sm mt-2 underline"
+                    >
+                        Dismiss
+                    </button>
                 </div>
             )}
 
@@ -566,7 +484,7 @@ export default function AdminUsers(){
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">User Management</h1>
                 
                 {/* Statistics Dashboard */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                         <div className="flex items-center">
                             <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
@@ -605,20 +523,6 @@ export default function AdminUsers(){
                             <div className="ml-4">
                                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Organizers</p>
                                 <p className="text-2xl font-bold text-gray-900 dark:text-white">{userStats.organizers}</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                        <div className="flex items-center">
-                            <div className="p-2 bg-indigo-100 dark:bg-indigo-900 rounded-lg">
-                                <svg className="w-6 h-6 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                                </svg>
-                            </div>
-                            <div className="ml-4">
-                                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Venue Owners</p>
-                                <p className="text-2xl font-bold text-gray-900 dark:text-white">{userStats.venue_owners}</p>
                             </div>
                         </div>
                     </div>
@@ -762,11 +666,11 @@ export default function AdminUsers(){
                                                     <p className="text-sm text-gray-600 truncate">{request.userEmail}</p>
                                                     <div className="flex items-center space-x-2 mt-1">
                                                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getRoleBadgeColor(request.currentRole)}`}>
-                                                            {request.currentRole === 'venue_owner' ? 'Venue Owner' : request.currentRole}
+                                                            {request.currentRole}
                                                         </span>
                                                         <span className="text-gray-400">→</span>
                                                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getRoleBadgeColor(request.requestedRole)}`}>
-                                                            {request.requestedRole === 'venue_owner' ? 'Venue Owner' : request.requestedRole}
+                                                            {request.requestedRole}
                                                         </span>
                                                     </div>
                                                 </div>
@@ -897,7 +801,7 @@ export default function AdminUsers(){
                                                             <div className="flex items-center justify-between">
                                                                 <span className="text-gray-600">From:</span>
                                                                 <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getRoleBadgeColor(request.currentRole)}`}>
-                                                                    {request.currentRole === 'venue_owner' ? 'Venue Owner' : request.currentRole}
+                                                                    {request.currentRole}
                                                                 </span>
                                                             </div>
                                                             <div className="flex items-center justify-center">
@@ -908,7 +812,7 @@ export default function AdminUsers(){
                                                             <div className="flex items-center justify-between">
                                                                 <span className="text-gray-600">To:</span>
                                                                 <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getRoleBadgeColor(request.requestedRole)}`}>
-                                                                    {request.requestedRole === 'venue_owner' ? 'Venue Owner' : request.requestedRole}
+                                                                    {request.requestedRole}
                                                                 </span>
                                                             </div>
                                                         </div>
@@ -996,10 +900,9 @@ export default function AdminUsers(){
                                                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                                                         user.role === 'admin' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
                                                         user.role === 'organizer' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' :
-                                                        user.role === 'venue_owner' ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200' :
                                                         'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
                                                     }`}>
-                                                        {user.role === 'venue_owner' ? 'Venue Owner' : user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                                                        {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">

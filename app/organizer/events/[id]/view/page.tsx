@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, use } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { 
@@ -18,14 +18,13 @@ import {
 import { mockEvents, mockSeats } from '@/lib/mock-data';
 
 interface EventViewPageProps {
-  params: Promise<{
+  params: {
     id: string;
-  }>;
+  };
 }
 
 export default function EventViewPage({ params }: EventViewPageProps) {
-  const resolvedParams = use(params);
-  const event = mockEvents.find(e => e.id === resolvedParams.id);
+  const event = mockEvents.find(e => e.id === params.id);
   const eventSeats = mockSeats.filter(seat => seat.section !== ""); // Get all seats for this event
 
   if (!event) {
@@ -71,7 +70,7 @@ export default function EventViewPage({ params }: EventViewPageProps) {
             </Link>
           </div>
           <div className="flex items-center space-x-2">
-            <Link href={`/organizer/events/${resolvedParams.id}/edit`}>
+            <Link href={`/organizer/events/${params.id}/edit`}>
               <Button>
                 <Edit className="h-4 w-4 mr-2" />
                 Edit Event
@@ -176,13 +175,13 @@ export default function EventViewPage({ params }: EventViewPageProps) {
             <div className="bg-card rounded-lg border p-6">
               <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
               <div className="space-y-2">
-                <Link href={`/organizer/events/${resolvedParams.id}/edit`}>
+                <Link href={`/organizer/events/${params.id}/edit`}>
                   <Button className="w-full justify-start" variant="outline">
                     <Edit className="h-4 w-4 mr-2" />
                     Edit Event Details
                   </Button>
                 </Link>
-                <Link href={`/organizer/events/${resolvedParams.id}/seating-edit`}>
+                <Link href={`/organizer/events/${params.id}/seating-edit`}>
                   <Button className="w-full justify-start" variant="outline">
                     <Settings className="h-4 w-4 mr-2" />
                     Edit Seating Layout
