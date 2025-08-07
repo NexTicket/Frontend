@@ -62,8 +62,6 @@ export default function NewEventPage() {
     { id: 1, title: 'Event Details', description: 'Basic information' },
     { id: 2, title: 'Venue Selection', description: 'Choose venue' },
     { id: 3, title: 'Event Poster', description: 'Upload poster image' },
-    { id: 4, title: 'Pricing & Tickets', description: 'Set pricing (Optional)' },
-    { id: 5, title: 'Staff & Approval', description: 'Request approval (Optional)' },
   ];
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -93,7 +91,7 @@ export default function NewEventPage() {
     setImagePreview(null);
   };
 
-  const nextStep = () => setCurrentStep(Math.min(currentStep + 1, 5));
+  const nextStep = () => setCurrentStep(Math.min(currentStep + 1, 3));
   const prevStep = () => setCurrentStep(Math.max(currentStep - 1, 1));
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -101,9 +99,6 @@ export default function NewEventPage() {
     setLoading(true);
     
     try {
-      console.log('🚀 Creating event with data:', formData);
-      console.log('🏢 Selected venue:', selectedVenue);
-      
       // Create the event data object
       const eventData = {
         title: formData.title,
@@ -118,25 +113,19 @@ export default function NewEventPage() {
         venueId: selectedVenue?.id || ''
       };
 
-      console.log('📤 Sending event data to API:', eventData);
-
       // Create the event first
       const response = await createEvent(eventData);
-      console.log('✅ Event created successfully:', response);
-      
       const eventId = response.data?.id;
 
       // Upload image if one is selected
       if (selectedImage && eventId) {
         setImageUploading(true);
         try {
-          console.log('📤 Uploading image for event:', eventId);
           await uploadEventImage(eventId.toString(), selectedImage);
-          console.log('✅ Event image uploaded successfully');
+          console.log('Event image uploaded successfully');
         } catch (imageError) {
-          console.error('❌ Failed to upload event image:', imageError);
+          console.error('Failed to upload event image:', imageError);
           // Don't fail the whole process if image upload fails
-          alert('Event created successfully, but image upload failed. You can upload an image later.');
         } finally {
           setImageUploading(false);
         }
@@ -144,8 +133,8 @@ export default function NewEventPage() {
 
       setShowSubmissionModal(true);
     } catch (error) {
-      console.error('❌ Failed to create event:', error);
-      alert(`Failed to create event: ${error instanceof Error ? error.message : 'Unknown error'}. Please check the console for details.`);
+      console.error('Failed to create event:', error);
+      alert('Failed to create event. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -386,92 +375,6 @@ export default function NewEventPage() {
                         </div>
                       </div>
                     )}
-                  </div>
-                </div>
-                <div className="flex justify-between">
-                  <Button type="button" variant="outline" onClick={prevStep}>← Previous</Button>
-                  <div className="flex space-x-3">
-                    <Button 
-                      type="submit" 
-                      variant="outline"
-                      disabled={loading || imageUploading}
-                      className="bg-green-600 hover:bg-green-700 text-white border-green-600"
-                    >
-                      {loading || imageUploading ? 'Creating...' : 'Create Event'} ✨
-                    </Button>
-                    <Button 
-                      type="button" 
-                      onClick={nextStep}
-                      className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"
-                    >
-                      Next: Pricing →
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Step 4: Pricing & Tickets (Optional) */}
-            {currentStep === 4 && (
-              <div className="space-y-6 animate-fadeInScale">
-                <div className="bg-card rounded-lg border p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold mb-4 flex items-center">
-                    <Film className="h-5 w-5 mr-2 text-primary" />
-                    Pricing & Tickets (Optional)
-                  </h3>
-                  <div className="space-y-4">
-                    <p className="text-muted-foreground">
-                      This section is optional for now. You can set up ticketing later when the system is ready.
-                    </p>
-                    <div className="bg-muted/20 border rounded-lg p-4">
-                      <p className="text-sm font-medium mb-2">Coming Soon</p>
-                      <p className="text-xs text-muted-foreground">
-                        Ticket pricing, types, and sales features will be available in the next update.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex justify-between">
-                  <Button type="button" variant="outline" onClick={prevStep}>← Previous</Button>
-                  <div className="flex space-x-3">
-                    <Button 
-                      type="submit" 
-                      variant="outline"
-                      disabled={loading || imageUploading}
-                      className="bg-green-600 hover:bg-green-700 text-white border-green-600"
-                    >
-                      {loading || imageUploading ? 'Creating...' : 'Create Event'} ✨
-                    </Button>
-                    <Button 
-                      type="button" 
-                      onClick={nextStep}
-                      className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"
-                    >
-                      Next: Final Step →
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Step 5: Staff & Approval (Optional) */}
-            {currentStep === 5 && (
-              <div className="space-y-6 animate-fadeInScale">
-                <div className="bg-card rounded-lg border p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold mb-4 flex items-center">
-                    <Users className="h-5 w-5 mr-2 text-primary" />
-                    Staff & Approval (Optional)
-                  </h3>
-                  <div className="space-y-4">
-                    <p className="text-muted-foreground">
-                      This section is optional for now. Staff management and approval workflows will be implemented later.
-                    </p>
-                    <div className="bg-muted/20 border rounded-lg p-4">
-                      <p className="text-sm font-medium mb-2">Coming Soon</p>
-                      <p className="text-xs text-muted-foreground">
-                        Staff assignment, approval workflows, and event management features will be available soon.
-                      </p>
-                    </div>
                   </div>
                 </div>
                 <div className="flex justify-between">

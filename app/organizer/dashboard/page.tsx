@@ -24,12 +24,15 @@ import {
   ArrowLeft
 } from 'lucide-react';
 import { mockEvents, mockVenues } from '@/lib/mock-data';
+import { fetchEvents, deleteEvent, Event } from '@/lib/api';
 import RouteGuard from '@/components/auth/routeGuard';
 
 export default function OrganizerDashboard() {
   const { userProfile, firebaseUser, logout, isLoading } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('overview');
+  const [events, setEvents] = useState<Event[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(true);
 
   // Check authentication and organizer role
   useEffect(() => {
@@ -39,6 +42,41 @@ export default function OrganizerDashboard() {
       router.push('/dashboard'); // Redirect non-organizer users
     }
   }, [isLoading, firebaseUser, userProfile, router]);
+
+  // Load events
+  useEffect(() => {
+    async function loadEvents() {
+      try {
+        setEventsLoading(true);
+        const eventsData = await fetchEvents();
+        setEvents(Array.isArray(eventsData) ? eventsData : []);
+      } catch (error) {
+        console.error('Failed to load events:', error);
+        setEvents([]); // Ensure events is always an array
+      } finally {
+        setEventsLoading(false);
+      }
+    }
+
+    if (userProfile?.role === 'organizer') {
+      loadEvents();
+    }
+  }, [userProfile]);
+
+  const handleDeleteEvent = async (eventId: string) => {
+    if (confirm('Are you sure you want to delete this event?')) {
+      try {
+        await deleteEvent(eventId);
+        // Refresh events list
+        const eventsData = await fetchEvents();
+        setEvents(Array.isArray(eventsData) ? eventsData : []);
+        alert('Event deleted successfully!');
+      } catch (error) {
+        console.error('Failed to delete event:', error);
+        alert('Failed to delete event');
+      }
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -78,15 +116,15 @@ export default function OrganizerDashboard() {
 
   // Mock organizer data
   const organizer = {
-    name: 'Event Organizer',
-    email: 'organizer@nexticket.com',
-    totalEvents: 15,
-    totalRevenue: 45000,
-    totalTicketsSold: 2500,
+    name: userProfile?.email?.split('@')[0] || 'Event Organizer',
+    email: userProfile?.email || 'organizer@nexticket.com',
+    totalEvents: Array.isArray(events) ? events.length : 0,
+    totalRevenue: Array.isArray(events) ? events.reduce((sum, event) => sum + ((event.price || 0) * ((event.capacity || 0) - (event.availableTickets || 0))), 0) : 0,
+    totalTicketsSold: Array.isArray(events) ? events.reduce((sum, event) => sum + ((event.capacity || 0) - (event.availableTickets || 0)), 0) : 0,
     averageRating: 4.7
   };
 
-  const organizerEvents = mockEvents.slice(0, 4); // sliced for simplicity
+  const organizerEvents = Array.isArray(events) ? events : []; // Use real events
   const organizerVenues = mockVenues.slice(0, 2);
 
   const stats = [
@@ -234,7 +272,7 @@ export default function OrganizerDashboard() {
                         <div>
                           <h4 className="font-medium group-hover:text-primary transition-colors duration-300">{event.title}</h4>
                           <p className="text-sm text-muted-foreground">
-                            {new Date(event.date).toLocaleDateString()} • {event.venue}
+                            {new Date(event.startDate).toLocaleDateString()} • {event.venueId || 'Venue TBD'}
                           </p>
                         </div>
                       </div>
@@ -303,11 +341,11 @@ export default function OrganizerDashboard() {
                       <h4 className="font-medium text-sm group-hover:text-primary transition-colors duration-300">{event.title}</h4>
                       <div className="flex items-center text-xs text-muted-foreground mt-1">
                         <Calendar className="h-3 w-3 mr-1 group-hover:text-primary transition-colors duration-300" />
-                        {new Date(event.date).toLocaleDateString()}
+                        {new Date(event.startDate).toLocaleDateString()}
                       </div>
                       <div className="flex items-center text-xs text-muted-foreground">
                         <Users className="h-3 w-3 mr-1 group-hover:text-primary transition-colors duration-300" />
-                        {event.availableTickets} tickets available
+                        {event.availableTickets || 0} tickets available
                       </div>
                     </div>
                   ))}
@@ -329,7 +367,25 @@ export default function OrganizerDashboard() {
               </Link>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {eventsLoading ? (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                <p className="text-muted-foreground">Loading events...</p>
+              </div>
+            ) : organizerEvents.length === 0 ? (
+              <div className="text-center py-12 bg-card rounded-lg border">
+                <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No Events Yet</h3>
+                <p className="text-muted-foreground mb-6">Start by creating your first event!</p>
+                <Link href="/organizer/events/new">
+                  <Button className="hover:shadow-lg hover:shadow-primary/20 dark:hover:shadow-primary/30 hover:scale-105 transition-all duration-300">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create Your First Event
+                  </Button>
+                </Link>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {organizerEvents.map(event => (
                 <div key={event.id} className="bg-card rounded-lg border p-6 hover:shadow-lg hover:shadow-primary/5 dark:hover:shadow-primary/10 transition-all duration-300 group cursor-pointer hover:border-primary/20 dark:hover:border-primary/30 hover:scale-105">
                   <div className="aspect-video bg-gradient-to-br from-primary/20 to-primary/10 dark:from-primary/30 dark:to-primary/20 rounded-lg mb-4 flex items-center justify-center group-hover:from-primary/30 group-hover:to-primary/20 dark:group-hover:from-primary/40 dark:group-hover:to-primary/30 transition-all duration-300">
@@ -340,20 +396,20 @@ export default function OrganizerDashboard() {
                   <div className="space-y-1 text-sm text-muted-foreground mb-4">
                     <div className="flex items-center">
                       <Calendar className="h-4 w-4 mr-2 group-hover:text-primary transition-colors duration-300" />
-                      {new Date(event.date).toLocaleDateString()}
+                      {new Date(event.startDate).toLocaleDateString()}
                     </div>
                     <div className="flex items-center">
                       <MapPin className="h-4 w-4 mr-2 group-hover:text-primary transition-colors duration-300" />
-                      {event.venue}
+                      {event.venueId || 'Venue TBD'}
                     </div>
                     <div className="flex items-center">
                       <Users className="h-4 w-4 mr-2 group-hover:text-primary transition-colors duration-300" />
-                      {event.availableTickets} / {event.capacity} available
+                      {event.availableTickets || 0} / {event.capacity || 0} available
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <span className="text-lg font-bold text-primary group-hover:text-primary/80 transition-colors duration-300">${event.price}</span>
+                    <span className="text-lg font-bold text-primary group-hover:text-primary/80 transition-colors duration-300">${event.price || 0}</span>
                     <div className="flex items-center space-x-2">
                       <Link href={`/organizer/events/${event.id}/edit`}>
                         <Button variant="outline" size="sm" className="hover:bg-primary/10 dark:hover:bg-primary/20 hover:border-primary/30 transition-all duration-200">
@@ -365,11 +421,20 @@ export default function OrganizerDashboard() {
                           <Eye className="h-4 w-4" />
                         </Button>
                       </Link>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleDeleteEvent(event.id!)}
+                        className="hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-200 dark:hover:border-red-800 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200"
+                      >
+                        🗑️
+                      </Button>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
+            )}
           </div>
         )}
 
@@ -465,10 +530,10 @@ export default function OrganizerDashboard() {
                       <tr key={event.id} className="border-b hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors duration-200 cursor-pointer group">
                         <td className="py-2 font-medium group-hover:text-primary transition-colors duration-300">{event.title}</td>
                         <td className="py-2 text-muted-foreground">
-                          {new Date(event.date).toLocaleDateString()}
+                          {new Date(event.startDate).toLocaleDateString()}
                         </td>
-                        <td className="py-2">{event.capacity - event.availableTickets}</td>
-                        <td className="py-2 group-hover:text-primary transition-colors duration-300">${(event.price * (event.capacity - event.availableTickets)).toLocaleString()}</td>
+                        <td className="py-2">{(event.capacity || 0) - (event.availableTickets || 0)}</td>
+                        <td className="py-2 group-hover:text-primary transition-colors duration-300">${((event.price || 0) * ((event.capacity || 0) - (event.availableTickets || 0))).toLocaleString()}</td>
                         <td className="py-2">4.{Math.floor(Math.random() * 5) + 5}</td>
                       </tr>
                     ))}

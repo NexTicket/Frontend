@@ -1,19 +1,26 @@
 import { secureFetch } from "@/utils/secureFetch";
 
 export async function fetchVenues() {
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/venues/`);
+  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/venues/`);
   if (!res.ok) throw new Error("Failed to fetch venues");
   return res.json();
 }
 
 export async function fetchVenueById(id: string) {
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/venues/getvenuebyid/${id}`);
+  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/venues/getvenuebyid/${id}`);
   if (!res.ok) throw new Error("Failed to fetch venue");
   return res.json();
 }
 
-export async function createVenue(venueData: any) {
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/venues/`, {
+export interface Venue {
+  name: string;
+  address: string;
+  capacity: number;
+  // Add other fields as needed
+}
+
+export async function createVenue(venueData: Venue) {
+  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/venues/`, {
     method: 'POST',
     body: JSON.stringify(venueData)
   });
@@ -21,8 +28,8 @@ export async function createVenue(venueData: any) {
   return res.json();
 }
 
-export async function updateVenue(id: string, venueData: any) {
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/venues/${id}`, {
+export async function updateVenue(id: string, venueData: Venue) {
+  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/venues/${id}`, {
     method: 'PUT',
     body: JSON.stringify(venueData)
   });
@@ -44,9 +51,9 @@ export async function uploadVenueImage(id: string, imageFile: File) {
   console.log('📤 API: FormData created with field name "image"');
   console.log('📤 API: FormData instanceof FormData:', formData instanceof FormData);
   console.log('📤 API: typeof formData:', typeof formData);
-  console.log('📤 API: Making request to:', `${process.env.NEXT_PUBLIC_API_URL}/venues/${id}/image`);
+  console.log('📤 API: Making request to:', `${process.env.NEXT_PUBLIC_API_URL}/api/venues/${id}/image`);
   
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/venues/${id}/image`, {
+  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/venues/${id}/image`, {
     method: 'POST',
     body: formData
     // No headers - let secureFetch and browser handle Content-Type
@@ -93,9 +100,9 @@ export async function uploadVenueImages(id: string, imageFiles: File[]) {
   formData.append('images', firstImage); // Use 'images' to match the route
   
   console.log('📤 FormData created with image field name: images');
-  console.log('📤 Uploading to URL:', `${process.env.NEXT_PUBLIC_API_URL}/venues/${id}/images`);
+  console.log('📤 Uploading to URL:', `${process.env.NEXT_PUBLIC_API_URL}/api/venues/${id}/images`);
   
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/venues/${id}/images`, {
+  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/venues/${id}/images`, {
     method: 'POST',
     body: formData
     // No headers - let secureFetch and browser handle Content-Type
@@ -114,21 +121,115 @@ export async function uploadVenueImages(id: string, imageFiles: File[]) {
   return result;
 }
 
+export async function fetchmyVenues() {
+  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/venues/myvenues`);
+  if (!res.ok) throw new Error("Failed to fetch my venues");
+  return res.json();
+}
+
+// Event types enum matching backend
+export enum EventType {
+  MOVIE = 'MOVIE',
+  EVENT = 'EVENT'
+}
+
+// Event interface
+export interface Event {
+  id?: string;
+  title: string;
+  description: string;
+  category: string;
+  type: EventType;
+  startDate: string;
+  endDate?: string;
+  venueId: string;
+  imageUrl?: string;
+  price?: number;
+  capacity?: number;
+  availableTickets?: number;
+  // Add other fields as needed
+}
+
+
+
+
+
+
+
+
+
 export async function fetchEvents() {
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/events/`);
+  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events/`);
   if (!res.ok) throw new Error("Failed to fetch events");
   return res.json();
 }
 
 export async function fetchEventById(id: string) {
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/events/${id}`);
+  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events/geteventbyid/${id}`);
   if (!res.ok) throw new Error("Failed to fetch event");
+  return res.json();
+}
+
+export async function createEvent(eventData: Event) {
+  try {
+    const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events`, {
+      method: 'POST',
+      body: JSON.stringify(eventData)
+    });
+    
+    if (!res.ok) {
+      let errorMessage = "Failed to create event";
+      try {
+        const errorData = await res.json();
+        errorMessage = errorData.error || errorData.message || errorMessage;
+      } catch {
+        // If JSON parsing fails, use text
+        const errorText = await res.text();
+        errorMessage = errorText || errorMessage;
+      }
+      throw new Error(`${errorMessage} (Status: ${res.status})`);
+    }
+    
+    return res.json();
+  } catch (error) {
+    console.error('Create event error:', error);
+    throw error;
+  }
+}
+
+export async function updateEvent(id: string, eventData: Event) {
+  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events/update-event/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(eventData)
+  });
+  if (!res.ok) throw new Error("Failed to update event");
+  return res.json();
+}
+
+export async function deleteEvent(id: string) {
+  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events/delete-event/${id}`, {
+    method: 'DELETE'
+  });
+  if (!res.ok) throw new Error("Failed to delete event");
+  return res.json();
+}
+
+export async function uploadEventImage(id: string, imageFile: File) {
+  const formData = new FormData();
+  formData.append('image', imageFile);
+  
+  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events/${id}/image`, {
+    method: 'POST',
+    body: formData
+  });
+  
+  if (!res.ok) throw new Error("Failed to upload event image");
   return res.json();
 }
 
 //approveEvent and rejectEvent functions
 export async function approveEvent(id: string) {
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/events/${id}/approve`, {
+  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events/${id}/approve`, {
     method: 'POST'
   });
   if (!res.ok) throw new Error("Failed to approve event");
@@ -136,18 +237,25 @@ export async function approveEvent(id: string) {
 }
 
 export async function rejectEvent(id: string) {
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/events/${id}/reject`, {
+  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events/${id}/reject`, {
     method: 'POST'
   });
   if (!res.ok) throw new Error("Failed to reject event");
   return res.json();
 }
 
-export async function fetchmyVenues() {
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/venues/myvenues`);
-  if (!res.ok) throw new Error("Failed to fetch my venues");
-  return res.json();
-}
+
+
+
+
+
+
+
+
+
+
+
+
 
 // Tenant management functions
 export async function createTenant(tenantData: {
@@ -156,7 +264,7 @@ export async function createTenant(tenantData: {
   email: string;
   role: string;
 }) {
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/tenants`, {
+  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tenants`, {
     method: 'POST',
     body: JSON.stringify(tenantData)
   });
@@ -165,14 +273,14 @@ export async function createTenant(tenantData: {
 }
 
 export async function getTenantByFirebaseUid(firebaseUid: string) {
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/tenants/firebase/${firebaseUid}`);
+  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tenants/firebase/${firebaseUid}`);
   if (!res.ok) throw new Error("Failed to fetch tenant");
   return res.json();
 }
 
 // Set Firebase custom claims for users
 export async function setUserClaims(firebaseUid: string, claims: { role: string }) {
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/users/set-claims`, {
+  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/set-claims`, {
     method: 'POST',
     body: JSON.stringify({ firebaseUid, claims })
   });
@@ -182,7 +290,7 @@ export async function setUserClaims(firebaseUid: string, claims: { role: string 
 
 // Bootstrap admin role (no auth required - only for initial setup)
 export async function bootstrapAdmin(firebaseUid: string, email: string) {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/bootstrap-admin`, {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/bootstrap-admin`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
