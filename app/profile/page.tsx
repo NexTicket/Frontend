@@ -312,16 +312,13 @@ export default function ProfilePage() {
                 >
                   <option value="">Select a role...</option>
                   <option value="organizer">Organizer</option>
-                  <option value="venue_owner">Venue Owner</option>
                   <option value="admin">Admin</option>
                 </select>
                 
                 {selectedRole && (
                   <div className="mt-4 p-4 bg-primary/5 rounded-lg border border-primary/20">
                     <h4 className="font-medium text-sm mb-2">
-                      {selectedRole === 'organizer' ? 'Organizer Role Benefits:' : 
-                       selectedRole === 'venue_owner' ? 'Venue Owner Role Benefits:' : 
-                       'Admin Role Benefits:'}
+                      {selectedRole === 'organizer' ? 'Organizer Role Benefits:' : 'Admin Role Benefits:'}
                     </h4>
                     <ul className="text-xs text-muted-foreground space-y-1">
                       {selectedRole === 'organizer' ? (
@@ -330,14 +327,6 @@ export default function ProfilePage() {
                           <li>• Access to analytics dashboard</li>
                           <li>• Revenue tracking</li>
                           <li>• Venue management tools</li>
-                        </>
-                      ) : selectedRole === 'venue_owner' ? (
-                        <>
-                          <li>• Create and manage venues</li>
-                          <li>• Advanced seating layout designer</li>
-                          <li>• Venue booking management</li>
-                          <li>• Revenue analytics for venues</li>
-                          <li>• Venue-specific dashboard</li>
                         </>
                       ) : (
                         <>

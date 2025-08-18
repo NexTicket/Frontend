@@ -1,520 +1,376 @@
 "use client"
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { 
   ArrowLeft, 
   Calendar, 
-  MapPin,
-  CheckCircle,
-  Building,
+  MapPin, 
+  Clock, 
+  DollarSign,
   Users,
-  Star,
+  Image as ImageIcon,
+  Plus,
   X,
-  Eye,
-  Film
+  Upload
 } from 'lucide-react';
 import { mockVenues } from '@/lib/mock-data';
-import { createEvent, EventType, uploadEventImage } from '@/lib/api';
-import RouteGuard from '@/components/auth/routeGuard';
-
-interface Venue {
-  id: string;
-  name: string;
-  address: string;
-  city: string;
-  capacity: number;
-  amenities: string[];
-  description?: string;
-  contact?: {
-    phone: string;
-  };
-}
 
 export default function NewEventPage() {
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState(1);
-  const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
-  const [showSubmissionModal, setShowSubmissionModal] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [imageUploading, setImageUploading] = useState(false);
-  
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     category: '',
-    type: EventType.EVENT, // Default to EVENT
-    startDate: '',
-    endDate: '',
+    date: '',
+    time: '',
     venueId: '',
+    price: '',
+    capacity: '',
+    tags: [] as string[],
+    image: null as File | null
   });
+  const [newTag, setNewTag] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const categories = [
     'Music', 'Technology', 'Theater', 'Food', 'Art', 'Sports', 
-    'Business', 'Education', 'Health', 'Fashion', 'Conference', 'Other'
-  ];
-
-  const steps = [
-    { id: 1, title: 'Event Details', description: 'Basic information' },
-    { id: 2, title: 'Venue Selection', description: 'Choose venue' },
-    { id: 3, title: 'Event Poster', description: 'Upload poster image' },
-    { id: 4, title: 'Pricing & Tickets', description: 'Set pricing (Optional)' },
-    { id: 5, title: 'Staff & Approval', description: 'Request approval (Optional)' },
+    'Business', 'Education', 'Health', 'Fashion', 'Other'
   ];
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
   };
 
-  const handleVenueSelect = (venue: Venue) => {
-    setSelectedVenue(venue);
-    setFormData({ ...formData, venueId: venue.id });
-  };
-
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.type.startsWith('image/')) {
-        setSelectedImage(file);
-        const previewUrl = URL.createObjectURL(file);
-        setImagePreview(previewUrl);
-      } else {
-        alert('Please select a valid image file');
-      }
+  const handleAddTag = () => {
+    if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
+      setFormData({
+        ...formData,
+        tags: [...formData.tags, newTag.trim()]
+      });
+      setNewTag('');
     }
   };
 
-  const removeImage = () => {
-    setSelectedImage(null);
-    setImagePreview(null);
+  const handleRemoveTag = (tagToRemove: string) => {
+    setFormData({
+      ...formData,
+      tags: formData.tags.filter(tag => tag !== tagToRemove)
+    });
   };
-
-  const nextStep = () => setCurrentStep(Math.min(currentStep + 1, 5));
-  const prevStep = () => setCurrentStep(Math.max(currentStep - 1, 1));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     
-    try {
-      console.log('🚀 Creating event with data:', formData);
-      console.log('🏢 Selected venue:', selectedVenue);
-      
-      // Create the event data object
-      const eventData = {
-        title: formData.title,
-        description: formData.description,
-        category: formData.category,
-        type: formData.type,
-        startDate: formData.startDate,
-        // Only include endDate for EVENT type, not for MOVIE type
-        ...(formData.type === EventType.EVENT && {
-          endDate: formData.endDate
-        }),
-        venueId: selectedVenue?.id || ''
-      };
-
-      console.log('📤 Sending event data to API:', eventData);
-
-      // Create the event first
-      const response = await createEvent(eventData);
-      console.log('✅ Event created successfully:', response);
-      
-      const eventId = response.data?.id;
-
-      // Upload image if one is selected
-      if (selectedImage && eventId) {
-        setImageUploading(true);
-        try {
-          console.log('📤 Uploading image for event:', eventId);
-          await uploadEventImage(eventId.toString(), selectedImage);
-          console.log('✅ Event image uploaded successfully');
-        } catch (imageError) {
-          console.error('❌ Failed to upload event image:', imageError);
-          // Don't fail the whole process if image upload fails
-          alert('Event created successfully, but image upload failed. You can upload an image later.');
-        } finally {
-          setImageUploading(false);
-        }
-      }
-
-      setShowSubmissionModal(true);
-    } catch (error) {
-      console.error('❌ Failed to create event:', error);
-      alert(`Failed to create event: ${error instanceof Error ? error.message : 'Unknown error'}. Please check the console for details.`);
-    } finally {
+    // Simulate API call
+    setTimeout(() => {
+      console.log('Event created:', formData);
       setLoading(false);
-    }
+      router.push('/organizer/dashboard');
+    }, 1000);
   };
 
   return (
-    <RouteGuard requiredRole="organizer">
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 py-8">
-        <div className="max-w-4xl mx-auto px-4">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center space-x-4">
-              <Link href="/organizer/dashboard">
-                <Button variant="ghost" size="sm" className="hover:bg-muted">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to Dashboard
-                </Button>
-              </Link>
-              <div>
-                <h1 className="text-2xl font-bold">Create New Event</h1>
-                <p className="text-muted-foreground">Fill in the details to create your event</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Progress Steps */}
-          <div className="flex items-center justify-center mb-8">
-            {steps.map((step, index) => (
-              <div key={step.id} className="flex items-center">
-                <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all ${
-                  currentStep >= step.id 
-                    ? 'border-primary bg-primary text-primary-foreground' 
-                    : 'border-muted-foreground/30 text-muted-foreground'
-                }`}>
-                  {currentStep > step.id ? (
-                    <CheckCircle className="h-5 w-5" />
-                  ) : (
-                    <span className="text-sm font-medium">{step.id}</span>
-                  )}
-                </div>
-                <div className="ml-3 text-left">
-                  <p className={`text-sm font-medium ${currentStep >= step.id ? 'text-foreground' : 'text-muted-foreground'}`}>
-                    {step.title}
-                  </p>
-                  <p className="text-xs text-muted-foreground">{step.description}</p>
-                </div>
-                {index < steps.length - 1 && (
-                  <div className={`h-px w-16 mx-4 ${currentStep > step.id ? 'bg-primary' : 'bg-muted-foreground/30'}`} />
-                )}
-              </div>
-            ))}
-          </div>
-
-          <form onSubmit={handleSubmit}>
-            {/* Step 1: Event Details */}
-            {currentStep === 1 && (
-              <div className="space-y-6 animate-fadeInScale">
-                <div className="bg-card rounded-lg border p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold mb-4 flex items-center">
-                    <Calendar className="h-5 w-5 mr-2 text-primary" />
-                    Event Information
-                  </h3>
-                  <div className="space-y-4">
-                    <div>
-                      <label htmlFor="title" className="block text-sm font-medium mb-2">Event Title *</label>
-                      <input
-                        type="text" id="title" name="title" value={formData.title} onChange={handleInputChange}
-                        placeholder="Enter your event title"
-                        className="w-full px-3 py-2 border rounded-md bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-all" required
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="description" className="block text-sm font-medium mb-2">Description *</label>
-                      <textarea
-                        id="description" name="description" value={formData.description} onChange={handleInputChange}
-                        placeholder="Describe your event..." rows={3}
-                        className="w-full px-3 py-2 border rounded-md bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-all resize-none" required
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label htmlFor="category" className="block text-sm font-medium mb-2">Category *</label>
-                        <select
-                          id="category" name="category" value={formData.category} onChange={handleInputChange}
-                          className="w-full px-3 py-2 border rounded-md bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-all" required
-                        >
-                          <option value="">Select category</option>
-                          {categories.map(cat => (
-                            <option key={cat} value={cat}>{cat}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label htmlFor="type" className="block text-sm font-medium mb-2">Event Type *</label>
-                        <select
-                          id="type" name="type" value={formData.type} onChange={handleInputChange}
-                          className="w-full px-3 py-2 border rounded-md bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-all" required
-                        >
-                          <option value={EventType.EVENT}>Event (Multiple Days)</option>
-                          <option value={EventType.MOVIE}>Movie (Single Day)</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div>
-                      <label htmlFor="startDate" className="block text-sm font-medium mb-2">Start Date *</label>
-                      <input
-                        type="date" id="startDate" name="startDate" value={formData.startDate} onChange={handleInputChange}
-                        className="w-full px-3 py-2 border rounded-md bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-all" required
-                      />
-                    </div>
-                    {formData.type === EventType.EVENT && (
-                      <div>
-                        <label htmlFor="endDate" className="block text-sm font-medium mb-2">End Date *</label>
-                        <input
-                          type="date" id="endDate" name="endDate" value={formData.endDate} onChange={handleInputChange}
-                          className="w-full px-3 py-2 border rounded-md bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-all" required
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div className="flex justify-between">
-                  <div></div>
-                  <Button type="button" onClick={nextStep} className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90">
-                    Next: Choose Venue →
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* Step 2: Venue Selection */}
-            {currentStep === 2 && (
-              <div className="space-y-6 animate-fadeInScale">
-                <div className="bg-card rounded-lg border p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold mb-4 flex items-center">
-                    <MapPin className="h-5 w-5 mr-2 text-primary" />
-                    Select Venue
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {mockVenues.slice(0, 6).map((venue) => (
-                      <div
-                        key={venue.id}
-                        onClick={() => handleVenueSelect(venue)}
-                        className={`border rounded-lg p-4 cursor-pointer transition-all hover:shadow-md ${
-                          selectedVenue?.id === venue.id 
-                            ? 'border-primary bg-primary/5 shadow-md' 
-                            : 'border-muted hover:border-primary/50'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <h4 className="font-semibold text-sm">{venue.name}</h4>
-                          {selectedVenue?.id === venue.id && (
-                            <CheckCircle className="h-5 w-5 text-primary flex-shrink-0" />
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground mb-2">{venue.address}, {venue.city}</p>
-                        <div className="flex items-center justify-between text-xs">
-                          <div className="flex items-center space-x-3">
-                            <span className="flex items-center">
-                              <Users className="h-3 w-3 mr-1" />
-                              {venue.capacity}
-                            </span>
-                            <span className="flex items-center">
-                              <Building className="h-3 w-3 mr-1" />
-                              {venue.amenities.length} amenities
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex justify-between">
-                  <Button type="button" variant="outline" onClick={prevStep}>← Previous</Button>
-                  <Button type="button" onClick={nextStep} disabled={!selectedVenue} className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90">
-                    Next: Upload Poster →
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* Step 3: Event Poster */}
-            {currentStep === 3 && (
-              <div className="space-y-6 animate-fadeInScale">
-                <div className="bg-card rounded-lg border p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold mb-4 flex items-center">
-                    <Film className="h-5 w-5 mr-2 text-primary" />
-                    Event Poster
-                  </h3>
-                  <div className="space-y-4">
-                    <p className="text-muted-foreground">
-                      Upload a high-quality poster image for your event. This will be displayed on event listings and promotional materials.
-                    </p>
-                    
-                    {!imagePreview ? (
-                      <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center">
-                        <Film className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium">Choose an event poster</p>
-                          <p className="text-xs text-muted-foreground">PNG, JPG, or JPEG (max 5MB)</p>
-                        </div>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleImageSelect}
-                          className="hidden"
-                          id="poster-upload"
-                        />
-                        <label htmlFor="poster-upload">
-                          <Button type="button" variant="outline" className="mt-4" onClick={() => document.getElementById('poster-upload')?.click()}>
-                            Select Image
-                          </Button>
-                        </label>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        <div className="relative">
-                          <img
-                            src={imagePreview}
-                            alt="Event poster preview"
-                            className="w-full max-w-md mx-auto rounded-lg shadow-md"
-                          />
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            size="sm"
-                            onClick={removeImage}
-                            className="absolute top-2 right-2"
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-sm font-medium">Poster selected successfully!</p>
-                          <p className="text-xs text-muted-foreground">
-                            {selectedImage?.name} ({Math.round((selectedImage?.size || 0) / 1024)}KB)
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div className="flex justify-between">
-                  <Button type="button" variant="outline" onClick={prevStep}>← Previous</Button>
-                  <div className="flex space-x-3">
-                    <Button 
-                      type="submit" 
-                      variant="outline"
-                      disabled={loading || imageUploading}
-                      className="bg-green-600 hover:bg-green-700 text-white border-green-600"
-                    >
-                      {loading || imageUploading ? 'Creating...' : 'Create Event'} ✨
-                    </Button>
-                    <Button 
-                      type="button" 
-                      onClick={nextStep}
-                      className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"
-                    >
-                      Next: Pricing →
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Step 4: Pricing & Tickets (Optional) */}
-            {currentStep === 4 && (
-              <div className="space-y-6 animate-fadeInScale">
-                <div className="bg-card rounded-lg border p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold mb-4 flex items-center">
-                    <Film className="h-5 w-5 mr-2 text-primary" />
-                    Pricing & Tickets (Optional)
-                  </h3>
-                  <div className="space-y-4">
-                    <p className="text-muted-foreground">
-                      This section is optional for now. You can set up ticketing later when the system is ready.
-                    </p>
-                    <div className="bg-muted/20 border rounded-lg p-4">
-                      <p className="text-sm font-medium mb-2">Coming Soon</p>
-                      <p className="text-xs text-muted-foreground">
-                        Ticket pricing, types, and sales features will be available in the next update.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex justify-between">
-                  <Button type="button" variant="outline" onClick={prevStep}>← Previous</Button>
-                  <div className="flex space-x-3">
-                    <Button 
-                      type="submit" 
-                      variant="outline"
-                      disabled={loading || imageUploading}
-                      className="bg-green-600 hover:bg-green-700 text-white border-green-600"
-                    >
-                      {loading || imageUploading ? 'Creating...' : 'Create Event'} ✨
-                    </Button>
-                    <Button 
-                      type="button" 
-                      onClick={nextStep}
-                      className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"
-                    >
-                      Next: Final Step →
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Step 5: Staff & Approval (Optional) */}
-            {currentStep === 5 && (
-              <div className="space-y-6 animate-fadeInScale">
-                <div className="bg-card rounded-lg border p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold mb-4 flex items-center">
-                    <Users className="h-5 w-5 mr-2 text-primary" />
-                    Staff & Approval (Optional)
-                  </h3>
-                  <div className="space-y-4">
-                    <p className="text-muted-foreground">
-                      This section is optional for now. Staff management and approval workflows will be implemented later.
-                    </p>
-                    <div className="bg-muted/20 border rounded-lg p-4">
-                      <p className="text-sm font-medium mb-2">Coming Soon</p>
-                      <p className="text-xs text-muted-foreground">
-                        Staff assignment, approval workflows, and event management features will be available soon.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex justify-between">
-                  <Button type="button" variant="outline" onClick={prevStep}>← Previous</Button>
-                  <Button 
-                    type="submit" 
-                    disabled={loading || imageUploading}
-                    className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"
-                  >
-                    {loading || imageUploading ? 'Creating Event...' : 'Create Event'} ✨
-                  </Button>
-                </div>
-              </div>
-            )}
-          </form>
-
-          {/* Submission Success Modal */}
-          {showSubmissionModal && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-              <div className="bg-card rounded-lg border p-8 max-w-md w-full mx-4 shadow-2xl animate-fadeInScale">
-                <div className="text-center space-y-4">
-                  <div className="mx-auto w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
-                    <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
-                  </div>
-                  <h3 className="text-xl font-semibold">Event Created Successfully! 🎉</h3>
-                  <p className="text-muted-foreground">
-                    Your event "{formData.title}" has been created and saved to the database. 
-                    {selectedImage && " The poster image has been uploaded to Cloudinary."}
-                  </p>
-                  <div className="flex space-x-3">
-                    <Button onClick={() => router.push('/organizer/events')} className="flex-1">
-                      View My Events
-                    </Button>
-                    <Button variant="outline" onClick={() => router.push('/organizer/dashboard')} className="flex-1">
-                      Dashboard
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+    <div className="min-h-screen bg-background">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <Link href="/organizer/dashboard" className="inline-flex items-center text-muted-foreground hover:text-foreground mb-4">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Dashboard
+          </Link>
+          <h1 className="text-3xl font-bold">Create New Event</h1>
+          <p className="text-muted-foreground">Fill in the details for your new event</p>
         </div>
+
+        <form onSubmit={handleSubmit} className="space-y-8">
+          {/* Basic Information */}
+          <div className="bg-card rounded-lg border p-6">
+            <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="title" className="block text-sm font-medium mb-2">
+                  Event Title *
+                </label>
+                <input
+                  type="text"
+                  id="title"
+                  name="title"
+                  value={formData.title}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border rounded-md bg-background"
+                  placeholder="Enter event title"
+                  required
+                />
+              </div>
+
+              <div>
+                <label htmlFor="description" className="block text-sm font-medium mb-2">
+                  Description *
+                </label>
+                <textarea
+                  id="description"
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  rows={4}
+                  className="w-full px-3 py-2 border rounded-md bg-background"
+                  placeholder="Describe your event..."
+                  required
+                />
+              </div>
+
+              <div>
+                <label htmlFor="category" className="block text-sm font-medium mb-2">
+                  Category *
+                </label>
+                <select
+                  id="category"
+                  name="category"
+                  value={formData.category}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border rounded-md bg-background"
+                  required
+                >
+                  <option value="">Select a category</option>
+                  {categories.map(category => (
+                    <option key={category} value={category}>{category}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">Tags</label>
+                <div className="flex items-center space-x-2 mb-2">
+                  <input
+                    type="text"
+                    value={newTag}
+                    onChange={(e) => setNewTag(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
+                    className="flex-1 px-3 py-2 border rounded-md bg-background"
+                    placeholder="Add a tag"
+                  />
+                  <Button type="button" onClick={handleAddTag} variant="outline" size="sm">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {formData.tags.map(tag => (
+                    <span key={tag} className="inline-flex items-center px-2 py-1 bg-primary/10 text-primary text-sm rounded-full">
+                      {tag}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveTag(tag)}
+                        className="ml-1 hover:text-primary/80"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Date & Time */}
+          <div className="bg-card rounded-lg border p-6">
+            <h3 className="text-lg font-semibold mb-4">Date & Time</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="date" className="block text-sm font-medium mb-2">
+                  <Calendar className="h-4 w-4 inline mr-2" />
+                  Event Date *
+                </label>
+                <input
+                  type="date"
+                  id="date"
+                  name="date"
+                  value={formData.date}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border rounded-md bg-background"
+                  required
+                />
+              </div>
+
+              <div>
+                <label htmlFor="time" className="block text-sm font-medium mb-2">
+                  <Clock className="h-4 w-4 inline mr-2" />
+                  Start Time *
+                </label>
+                <input
+                  type="time"
+                  id="time"
+                  name="time"
+                  value={formData.time}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border rounded-md bg-background"
+                  required
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Venue & Capacity */}
+          <div className="bg-card rounded-lg border p-6">
+            <h3 className="text-lg font-semibold mb-4">Venue & Capacity</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="venueId" className="block text-sm font-medium mb-2">
+                  <MapPin className="h-4 w-4 inline mr-2" />
+                  Venue *
+                </label>
+                <select
+                  id="venueId"
+                  name="venueId"
+                  value={formData.venueId}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border rounded-md bg-background"
+                  required
+                >
+                  <option value="">Select a venue</option>
+                  {mockVenues.map(venue => (
+                    <option key={venue.id} value={venue.id}>
+                      {venue.name} - {venue.city}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="capacity" className="block text-sm font-medium mb-2">
+                  <Users className="h-4 w-4 inline mr-2" />
+                  Capacity *
+                </label>
+                <input
+                  type="number"
+                  id="capacity"
+                  name="capacity"
+                  value={formData.capacity}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border rounded-md bg-background"
+                  placeholder="Maximum attendees"
+                  min="1"
+                  required
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Pricing */}
+          <div className="bg-card rounded-lg border p-6">
+            <h3 className="text-lg font-semibold mb-4">Pricing</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="price" className="block text-sm font-medium mb-2">
+                  <DollarSign className="h-4 w-4 inline mr-2" />
+                  Ticket Price *
+                </label>
+                <input
+                  type="number"
+                  id="price"
+                  name="price"
+                  value={formData.price}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border rounded-md bg-background"
+                  placeholder="0.00"
+                  min="0"
+                  step="0.01"
+                  required
+                />
+              </div>
+
+              <div className="flex items-end">
+                <div className="text-sm text-muted-foreground">
+                  <p>Service fee: 5% + $2.50</p>
+                  <p>Total price for buyers: ${formData.price ? (parseFloat(formData.price) * 1.05 + 2.50).toFixed(2) : '0.00'}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Image Upload */}
+          <div className="bg-card rounded-lg border p-6">
+            <h3 className="text-lg font-semibold mb-4">Event Image</h3>
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+              <ImageIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground mb-4">
+                Upload an image for your event (optional)
+              </p>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setFormData({ ...formData, image: e.target.files?.[0] || null })}
+                className="hidden"
+                id="image-upload"
+              />
+              <label htmlFor="image-upload">
+                <Button type="button" variant="outline" className="cursor-pointer">
+                  <Upload className="h-4 w-4 mr-2" />
+                  Choose Image
+                </Button>
+              </label>
+              {formData.image && (
+                <p className="text-sm text-muted-foreground mt-2">
+                  Selected: {formData.image.name}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Seating Arrangement */}
+          <div className="bg-card rounded-lg border p-6">
+            <h3 className="text-lg font-semibold mb-4">Seating Arrangement</h3>
+            <div className="space-y-4">
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="general-admission"
+                    name="seating"
+                    value="general"
+                    defaultChecked
+                    className="h-4 w-4 text-primary focus:ring-primary"
+                  />
+                  <label htmlFor="general-admission" className="text-sm font-medium">
+                    General Admission
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="assigned-seating"
+                    name="seating"
+                    value="assigned"
+                    className="h-4 w-4 text-primary focus:ring-primary"
+                  />
+                  <label htmlFor="assigned-seating" className="text-sm font-medium">
+                    Assigned Seating
+                  </label>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Choose whether attendees can pick specific seats or if it's general admission
+              </p>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center justify-end space-x-4">
+            <Link href="/organizer/dashboard">
+              <Button variant="outline">Cancel</Button>
+            </Link>
+            <Button type="submit" disabled={loading}>
+              {loading ? 'Creating...' : 'Create Event'}
+            </Button>
+          </div>
+        </form>
       </div>
-    </RouteGuard>
+    </div>
   );
 }
