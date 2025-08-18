@@ -3,30 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/auth/auth-provider';
-import { 
-  Box, 
-  Typography, 
-  Paper, 
-  Card, 
-  CardContent, 
-  Avatar, 
-  Chip, 
-  LinearProgress,
-  IconButton,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemAvatar,
-  Divider,
-  Alert,
-  Fab,
-  Badge,
-  Container
-} from '@mui/material';
+import { motion } from 'framer-motion';
 import {
   TrendingUp,
   TrendingDown,
@@ -35,7 +12,6 @@ import {
   DollarSign,
   Activity,
   MapPin,
-  Clock,
   Star,
   AlertTriangle,
   RefreshCw,
@@ -44,16 +20,24 @@ import {
   Bell,
   Download,
   LogOut,
-  ArrowLeft
+  ArrowLeft,
+  BarChart3,
+  PieChart,
+  LineChart,
+  Eye,
+  Edit,
+  Trash2,
+  MoreVertical
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import {
   AreaChart,
   Area,
   BarChart,
   Bar,
-  LineChart,
+  LineChart as RechartsLineChart,
   Line,
-  PieChart,
+  PieChart as RechartsPieChart,
   Pie,
   Cell,
   XAxis,
@@ -65,6 +49,29 @@ import {
 } from 'recharts';
 import { format, subDays, startOfWeek, endOfWeek } from 'date-fns';
 import RouteGuard from '@/components/auth/routeGuard';
+
+// Animation variants for smooth transitions
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      delayChildren: 0.1,
+      staggerChildren: 0.05
+    }
+  }
+};
+
+const itemVariants = {
+  hidden: { y: 20, opacity: 0 },
+  visible: {
+    y: 0,
+    opacity: 1,
+    transition: {
+      duration: 0.5
+    }
+  }
+};
 
 // Mock data for analytics
 const revenueData = [
@@ -122,50 +129,38 @@ interface StatCardProps {
 
 const StatCard: React.FC<StatCardProps> = ({ title, value, icon, trend, color, subtitle }) => {
   const TrendIcon = trend && trend > 0 ? TrendingUp : TrendingDown;
-  const trendColor = trend && trend > 0 ? '#10b981' : '#ef4444';
+  const trendColor = trend && trend > 0 ? 'text-green-500' : 'text-red-500';
 
   return (
-    <RouteGuard requiredRole="admin">
-    <Card elevation={2} sx={{ height: '100%', position: 'relative', overflow: 'visible' }}>
-      <CardContent>
-        <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-          <Box>
-            <Typography variant="body2" color="text.secondary" gutterBottom>
-              {title}
-            </Typography>
-            <Typography variant="h4" fontWeight="bold" color={color}>
-              {value}
-            </Typography>
+    <motion.div
+      variants={itemVariants}
+      whileHover={{ scale: 1.05, y: -5 }}
+      className="relative backdrop-blur-xl bg-white/80 border border-purple-200/50 rounded-2xl p-6 shadow-xl shadow-purple-100/50 hover:shadow-2xl hover:shadow-purple-200/50 transition-all duration-300"
+    >
+      <div className="absolute inset-0 bg-gradient-to-br from-orange-50/30 via-purple-50/30 to-orange-50/30 rounded-2xl"></div>
+      <div className="relative z-10">
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex-1">
+            <p className="text-purple-600/80 text-sm font-medium mb-2">{title}</p>
+            <div className="text-3xl font-black text-purple-900 mb-1">{value}</div>
             {subtitle && (
-              <Typography variant="body2" color="text.secondary" mt={0.5}>
-                {subtitle}
-              </Typography>
+              <p className="text-purple-500/70 text-xs">{subtitle}</p>
             )}
             {trend && (
-              <Box display="flex" alignItems="center" mt={1}>
-                <TrendIcon size={16} color={trendColor} />
-                <Typography variant="body2" color={trendColor} ml={0.5}>
+              <div className="flex items-center mt-2">
+                <TrendIcon size={14} className={trendColor} />
+                <span className={`text-xs ml-1 font-medium ${trendColor}`}>
                   {Math.abs(trend)}% from last month
-                </Typography>
-              </Box>
+                </span>
+              </div>
             )}
-          </Box>
-          <Box
-            sx={{
-              backgroundColor: `${color}20`,
-              borderRadius: 2,
-              p: 1,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
+          </div>
+          <div className="bg-gradient-to-br from-purple-100 to-orange-100 rounded-xl p-3 shadow-lg">
             {icon}
-          </Box>
-        </Box>
-      </CardContent>
-    </Card>
-    </RouteGuard>
+          </div>
+        </div>
+      </div>
+    </motion.div>
   );
 };
 
@@ -203,26 +198,35 @@ export default function AdminDashboard() {
   // Show loading if auth is still loading
   if (isLoading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
-        <Typography variant="h6">Loading admin dashboard...</Typography>
-      </Box>
+      <div className="min-h-screen bg-gradient-to-br from-white via-orange-50 to-purple-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-4 border-purple-200 border-t-purple-600 mx-auto"></div>
+          <p className="mt-4 text-purple-800 text-lg font-semibold">Loading admin dashboard...</p>
+        </div>
+      </div>
     );
   }
 
   // Show access denied if not authenticated or not admin
   if (!firebaseUser || !userProfile || userProfile.role !== 'admin') {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
-        <Paper sx={{ p: 4, textAlign: 'center' }}>
-          <Typography variant="h5" gutterBottom>Access Denied</Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+      <div className="min-h-screen bg-gradient-to-br from-white via-orange-50 to-purple-50 flex items-center justify-center">
+        <div className="backdrop-blur-xl bg-white/80 border border-purple-200 rounded-3xl p-8 shadow-2xl shadow-purple-100 text-center max-w-md">
+          <div className="w-16 h-16 bg-gradient-to-br from-red-100 to-red-200 rounded-full flex items-center justify-center mx-auto mb-6">
+            <AlertTriangle className="h-8 w-8 text-red-600" />
+          </div>
+          <h1 className="text-2xl font-bold text-purple-900 mb-4">Access Denied</h1>
+          <p className="text-purple-700 mb-6">
             You need admin privileges to access this page.
-          </Typography>
-          <Button variant="contained" onClick={() => router.push('/auth/signin')}>
+          </p>
+          <Button 
+            onClick={() => router.push('/auth/signin')}
+            className="bg-gradient-to-r from-purple-500 to-orange-500 hover:from-purple-600 hover:to-orange-600"
+          >
             Sign In
           </Button>
-        </Paper>
-      </Box>
+        </div>
+      </div>
     );
   }
 
@@ -230,554 +234,351 @@ export default function AdminDashboard() {
     {
       title: 'Total Users',
       value: '2,847',
-      icon: <Users size={24} color="#3b82f6" />,
+      icon: <Users size={24} className="text-purple-600" />,
       trend: 12.5,
-      color: '#3b82f6',
+      color: '#8b5cf6',
       subtitle: '145 new this week'
     },
     {
       title: 'Active Events',
       value: '186',
-      icon: <Calendar size={24} color="#10b981" />,
+      icon: <Calendar size={24} className="text-orange-600" />,
       trend: 8.2,
-      color: '#10b981',
+      color: '#ea580c',
       subtitle: '23 ending soon'
     },
     {
       title: 'Monthly Revenue',
       value: 'LKR 847K',
-      icon: <DollarSign size={24} color="#f59e0b" />,
+      icon: <DollarSign size={24} className="text-green-600" />,
       trend: 15.8,
-      color: '#f59e0b',
+      color: '#16a34a',
       subtitle: 'Target: LKR 1M'
     },
     {
       title: 'Tickets Sold',
       value: '12,493',
-      icon: <Activity size={24} color="#8b5cf6" />,
+      icon: <Activity size={24} className="text-blue-600" />,
       trend: 23.1,
-      color: '#8b5cf6',
+      color: '#2563eb',
       subtitle: '1,847 today'
     },
     {
       title: 'Active Venues',
       value: '67',
-      icon: <MapPin size={24} color="#ef4444" />,
+      icon: <MapPin size={24} className="text-red-600" />,
       trend: 5.4,
-      color: '#ef4444',
+      color: '#dc2626',
       subtitle: '12 pending approval'
     },
     {
       title: 'Avg. Rating',
       value: '4.8',
-      icon: <Star size={24} color="#f97316" />,
+      icon: <Star size={24} className="text-yellow-600" />,
       trend: 2.1,
-      color: '#f97316',
+      color: '#ca8a04',
       subtitle: 'From 2,847 reviews'
     }
   ];
 
   return (
-    <Box sx={{ backgroundColor: '#f8fafc', minHeight: '100vh' }}>
-      <Container maxWidth="xl" sx={{ py: 4 }}>
-        {/* Header */}
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
-          <Box>
-            <Typography variant="h4" fontWeight="bold" color="#1e293b">
-              Admin Dashboard
-            </Typography>
-            <Typography variant="body1" color="text.secondary" mt={0.5}>
-              Welcome back, {userProfile.firstName || 'Admin'}! Here's what's happening with NexTicket today.
-            </Typography>
-          </Box>
-          <Box display="flex" gap={2} alignItems="center">
-            <Button
-              variant="outlined"
-              startIcon={<ArrowLeft />}
-              onClick={() => router.push('/dashboard')}
-              sx={{ mr: 1 }}
-            >
-              Dashboard
-            </Button>
-            <Button
-              variant="contained"
-              startIcon={<Users size={16} />}
-              onClick={() => router.push('/admin/users')}
-              sx={{ 
-                textTransform: 'none',
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)',
-                '&:hover': {
-                  background: 'linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%)',
-                  boxShadow: '0 6px 20px rgba(102, 126, 234, 0.6)',
-                  transform: 'translateY(-2px)'
-                },
-                transition: 'all 0.3s ease'
-              }}
-            >
-              Manage Users
-            </Button>
-            <IconButton 
-              onClick={handleRefresh} 
-              disabled={refreshing}
-              sx={{ backgroundColor: 'white', boxShadow: 1 }}
-            >
-              <RefreshCw className={refreshing ? 'animate-spin' : ''} size={20} />
-            </IconButton>
-            <Badge badgeContent={notifications} color="error">
-              <IconButton sx={{ backgroundColor: 'white', boxShadow: 1 }}>
-                <Bell size={20} />
-              </IconButton>
-            </Badge>
-            <Button
-              variant="contained"
-              startIcon={<Download size={16} />}
-              sx={{ textTransform: 'none' }}
-            >
-              Export Report
-            </Button>
-            <Button
-              variant="outlined"
-              startIcon={<LogOut size={16} />}
-              onClick={handleLogout}
-              sx={{ 
-                textTransform: 'none',
-                color: '#dc2626',
-                borderColor: '#dc2626',
-                '&:hover': {
-                  borderColor: '#b91c1c',
-                  backgroundColor: 'rgba(220, 38, 38, 0.04)'
-                }
-              }}
-            >
-              Logout
-            </Button>
-          </Box>
-        </Box>
+    <div className="min-h-screen bg-gradient-to-br from-white via-orange-50 to-purple-50">
+      {/* Background Elements */}
+      <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-5"></div>
+      <div className="absolute top-0 right-0 w-96 h-96 bg-purple-200/30 rounded-full blur-3xl"></div>
+      <div className="absolute bottom-0 left-0 w-96 h-96 bg-orange-200/30 rounded-full blur-3xl"></div>
+      
+      {/* Content Container */}
+      <div className="relative z-10 pt-8 px-8">
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={containerVariants}
+          className="max-w-7xl mx-auto"
+        >
+          {/* Elegant Header */}
+          <motion.div variants={itemVariants} className="mb-16">
+            <div className="relative backdrop-blur-xl bg-white/80 border border-purple-200 rounded-3xl p-12 shadow-2xl shadow-purple-100">
+              <div className="absolute inset-0 bg-gradient-to-r from-orange-50/50 via-purple-50/50 to-orange-50/50 rounded-3xl"></div>
+              <div className="relative z-10">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-6">
+                    <motion.h1 
+                      initial={{ opacity: 0, x: -50 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.8, ease: "easeOut" }}
+                      className="text-7xl font-black text-purple-900 leading-tight"
+                    >
+                      Admin Dashboard
+                    </motion.h1>
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3, duration: 0.6 }}
+                      className="flex items-center space-x-6"
+                    >
+                      <div className="h-2 w-24 bg-gradient-to-r from-purple-500 to-orange-500 rounded-full shadow-lg"></div>
+                      <p className="text-purple-800 text-xl font-semibold">
+                        System Control • Welcome back, {userProfile.firstName || 'Admin'}!
+                      </p>
+                    </motion.div>
+                    <motion.p
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.5, duration: 0.6 }}
+                      className="text-purple-700/90 text-lg max-w-2xl leading-relaxed"
+                    >
+                      Monitor and manage your NexTicket platform with comprehensive analytics and control tools designed for administrators.
+                    </motion.p>
+                  </div>
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.5, duration: 0.5 }}
+                    className="flex items-center space-x-6"
+                  >
+                    <Button 
+                      variant="ghost" 
+                      onClick={handleRefresh}
+                      disabled={refreshing}
+                      className="relative overflow-hidden group bg-purple-100 hover:bg-purple-200 border border-purple-300 hover:border-purple-400 text-purple-800 hover:text-purple-900 backdrop-blur-sm transition-all duration-300 px-6 py-4"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-purple-200/20 to-orange-200/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                      <RefreshCw className={`h-5 w-5 mr-3 relative z-10 ${refreshing ? 'animate-spin' : ''}`} />
+                      <span className="relative z-10 font-semibold">Refresh Data</span>
+                    </Button>
+                    <Button 
+                      onClick={() => router.push('/admin/users')}
+                      className="relative overflow-hidden group bg-gradient-to-r from-orange-500 to-purple-500 hover:from-orange-600 hover:to-purple-600 border-0 text-white font-bold px-8 py-4 rounded-2xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl shadow-orange-400/20"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                      <Users className="h-6 w-6 mr-3 relative z-10" />
+                      <span className="relative z-10 text-lg">Manage Users</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={handleLogout}
+                      className="border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400"
+                    >
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Logout
+                    </Button>
+                  </motion.div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
 
-        {/* System Alerts */}
-        <Box mb={3}>
-          <Alert 
-            severity="warning" 
-            icon={<AlertTriangle size={20} />}
-            action={
-              <Button color="inherit" size="small">
-                Review
-              </Button>
-            }
-          >
-            <strong>System Maintenance:</strong> Scheduled maintenance on July 25, 2025 from 2:00 AM - 4:00 AM LKT
-          </Alert>
-        </Box>
+          {/* System Alert */}
+          <motion.div variants={itemVariants} className="mb-12">
+            <div className="backdrop-blur-xl bg-amber-50/80 border border-amber-200 rounded-2xl p-6 shadow-lg">
+              <div className="flex items-center">
+                <div className="bg-amber-100 rounded-full p-3 mr-4">
+                  <AlertTriangle className="h-6 w-6 text-amber-600" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-amber-800 font-semibold">System Maintenance Notice</h3>
+                  <p className="text-amber-700">Scheduled maintenance on July 25, 2025 from 2:00 AM - 4:00 AM LKT</p>
+                </div>
+                <Button variant="outline" size="sm" className="border-amber-300 text-amber-700 hover:bg-amber-100">
+                  Review
+                </Button>
+              </div>
+            </div>
+          </motion.div>
 
-        {/* Stats Grid */}
-        <Box display="grid" 
-             gridTemplateColumns={{ 
-               xs: '1fr', 
-               sm: 'repeat(2, 1fr)', 
-               md: 'repeat(3, 1fr)', 
-               lg: 'repeat(6, 1fr)' 
-             }} 
-             gap={3} 
-             mb={4}>
-          {stats.map((stat, index) => (
-            <StatCard key={index} {...stat} />
-          ))}
-        </Box>
+          {/* Stats Grid */}
+          <motion.div variants={itemVariants} className="mb-16">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
+              {stats.map((stat, index) => (
+                <StatCard key={index} {...stat} />
+              ))}
+            </div>
+          </motion.div>
+              {/* Quick Actions Dashboard */}
+          <motion.div variants={itemVariants} className="mb-16">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {/* Analytics Chart */}
+              <div className="lg:col-span-2 backdrop-blur-xl bg-white/80 border border-purple-200 rounded-2xl p-8 shadow-xl shadow-purple-100/50">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-2xl font-bold text-purple-900">Revenue Analytics</h3>
+                  <div className="flex items-center space-x-2">
+                    <BarChart3 className="h-5 w-5 text-purple-600" />
+                    <span className="text-purple-600 text-sm font-medium">Monthly View</span>
+                  </div>
+                </div>
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={revenueData}>
+                      <defs>
+                        <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis dataKey="name" stroke="#6b7280" />
+                      <YAxis stroke="#6b7280" />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'rgba(255, 255, 255, 0.95)', 
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '12px',
+                          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
+                        }}
+                      />
+                      <Area type="monotone" dataKey="revenue" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorRevenue)" strokeWidth={3}/>
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
 
-        {/* Quick Actions Section */}
-        <Box display="grid" 
-             gridTemplateColumns={{ xs: '1fr', md: 'repeat(3, 1fr)' }} 
-             gap={3} 
-             mb={4}>
-          {/* User Management Quick Action */}
-          <Paper 
-            elevation={3} 
-            sx={{ 
-              p: 3, 
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: 'white',
-              cursor: 'pointer',
-              transition: 'all 0.3s ease',
-              position: 'relative',
-              overflow: 'hidden',
-              '&:hover': {
-                transform: 'translateY(-4px)',
-                boxShadow: '0 8px 25px rgba(102, 126, 234, 0.4)',
-              },
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
-                opacity: 0,
-                transition: 'opacity 0.3s ease',
-              },
-              '&:hover::before': {
-                opacity: 1,
-              }
-            }}
-            onClick={() => router.push('/admin/users')}
-          >
-            <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
-              <Box>
-                <Typography variant="h6" fontWeight="bold" gutterBottom>
-                  👥 User Management
-                </Typography>
-                <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                  Manage role requests, user permissions, and account settings
-                </Typography>
-              </Box>
-              <Box
-                sx={{
-                  backgroundColor: 'rgba(255,255,255,0.2)',
-                  borderRadius: 2,
-                  p: 1.5,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                <Users size={32} />
-              </Box>
-            </Box>
-            <Box display="flex" alignItems="center" justifyContent="space-between">
-              <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                • Review role upgrade requests<br/>
-                • Approve/reject permissions<br/>
-                • View user statistics
-              </Typography>
-              <Button
-                variant="contained"
-                size="small"
-                sx={{
-                  backgroundColor: 'rgba(255,255,255,0.2)',
-                  color: 'white',
-                  '&:hover': {
-                    backgroundColor: 'rgba(255,255,255,0.3)',
-                  }
-                }}
-              >
-                Go →
-              </Button>
-            </Box>
-          </Paper>
-
-          {/* Events Management */}
-          <Paper 
-            elevation={3} 
-            sx={{ 
-              p: 3, 
-              background: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
-              color: '#8b4513',
-              cursor: 'pointer',
-              transition: 'all 0.3s ease',
-              '&:hover': {
-                transform: 'translateY(-4px)',
-                boxShadow: '0 8px 25px rgba(252, 182, 159, 0.4)',
-              }
-            }}
-            onClick={() => router.push('/admin/events')}
-          >
-            <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
-              <Box>
-                <Typography variant="h6" fontWeight="bold" gutterBottom>
-                  🎪 Event Management
-                </Typography>
-                <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                  Oversee all events, approvals, and performance
-                </Typography>
-              </Box>
-              <Box
-                sx={{
-                  backgroundColor: 'rgba(139,69,19,0.1)',
-                  borderRadius: 2,
-                  p: 1.5,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                <Calendar size={32} />
-              </Box>
-            </Box>
-            <Typography variant="body2" sx={{ opacity: 0.8 }}>
-              186 active events • 23 pending approval
-            </Typography>
-          </Paper>
-
-          {/* Analytics & Reports */}
-          <Paper 
-            elevation={3} 
-            sx={{ 
-              p: 3, 
-              background: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
-              color: '#2d3748',
-              cursor: 'pointer',
-              transition: 'all 0.3s ease',
-              '&:hover': {
-                transform: 'translateY(-4px)',
-                boxShadow: '0 8px 25px rgba(168, 237, 234, 0.4)',
-              }
-            }}
-          >
-            <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
-              <Box>
-                <Typography variant="h6" fontWeight="bold" gutterBottom>
-                  📊 Analytics Hub
-                </Typography>
-                <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                  Deep insights and performance reports
-                </Typography>
-              </Box>
-              <Box
-                sx={{
-                  backgroundColor: 'rgba(45,55,72,0.1)',
-                  borderRadius: 2,
-                  p: 1.5,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                <Activity size={32} />
-              </Box>
-            </Box>
-            <Typography variant="body2" sx={{ opacity: 0.8 }}>
-              LKR 847K revenue • 15.8% growth this month
-            </Typography>
-          </Paper>
-        </Box>
-
-        {/* Charts Section */}
-        <Box display="grid" 
-             gridTemplateColumns={{ xs: '1fr', lg: '2fr 1fr' }} 
-             gap={3} 
-             mb={4}>
-          {/* Revenue Trend */}
-          <Paper elevation={2} sx={{ p: 3, height: 400 }}>
-            <Typography variant="h6" fontWeight="bold" mb={2}>
-              Revenue Trend
-            </Typography>
-            <ResponsiveContainer width="100%" height="90%">
-              <AreaChart data={revenueData}>
-                <defs>
-                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip 
-                  formatter={(value: any, name: string) => [
-                    name === 'revenue' ? `LKR ${value.toLocaleString()}` : value,
-                    name === 'revenue' ? 'Revenue' : name
-                  ]}
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="revenue" 
-                  stroke="#3b82f6" 
-                  fillOpacity={1} 
-                  fill="url(#colorRevenue)" 
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </Paper>
-
-          {/* Event Categories */}
-          <Paper elevation={2} sx={{ p: 3, height: 400 }}>
-            <Typography variant="h6" fontWeight="bold" mb={2}>
-              Event Categories
-            </Typography>
-            <ResponsiveContainer width="100%" height="90%">
-              <PieChart>
-                <Pie
-                  data={categoryData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {categoryData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
+              {/* Recent Activities */}
+              <div className="backdrop-blur-xl bg-white/80 border border-orange-200 rounded-2xl p-8 shadow-xl shadow-orange-100/50">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-2xl font-bold text-orange-900">Live Activities</h3>
+                  <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                </div>
+                <div className="space-y-4">
+                  {recentActivities.slice(0, 6).map((activity, index) => (
+                    <div key={activity.id} className="flex items-start space-x-4 p-3 rounded-xl hover:bg-purple-50/50 transition-colors duration-200">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-100 to-orange-100 flex items-center justify-center flex-shrink-0">
+                        <Activity className="h-4 w-4 text-purple-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-purple-900 truncate">{activity.user}</p>
+                        <p className="text-xs text-purple-600 truncate">{activity.action}</p>
+                        {activity.event && (
+                          <p className="text-xs text-orange-600 font-medium truncate">{activity.event}</p>
+                        )}
+                        <p className="text-xs text-purple-500 mt-1">{activity.time}</p>
+                      </div>
+                    </div>
                   ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </Paper>
-        </Box>
+                </div>
+                <Button 
+                  variant="outline" 
+                  className="w-full mt-4 border-purple-300 text-purple-700 hover:bg-purple-50"
+                  onClick={() => setActivityDialogOpen(true)}
+                >
+                  View All Activities
+                </Button>
+              </div>
+            </div>
+          </motion.div>
 
-        {/* Weekly Performance & Recent Activity */}
-        <Box display="grid" 
-             gridTemplateColumns={{ xs: '1fr', lg: '2fr 1fr' }} 
-             gap={3} 
-             mb={4}>
-          <Paper elevation={2} sx={{ p: 3, height: 400 }}>
-            <Typography variant="h6" fontWeight="bold" mb={2}>
-              Weekly Performance
-            </Typography>
-            <ResponsiveContainer width="100%" height="90%">
-              <BarChart data={weeklyData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="day" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="sales" fill="#10b981" name="Ticket Sales" />
-                <Bar dataKey="users" fill="#3b82f6" name="New Users" />
-              </BarChart>
-            </ResponsiveContainer>
-          </Paper>
+          {/* Top Events Performance */}
+          <motion.div variants={itemVariants} className="mb-16">
+            <div className="backdrop-blur-xl bg-white/80 border border-purple-200 rounded-2xl p-8 shadow-xl shadow-purple-100/50">
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-3xl font-bold text-purple-900">Top Performing Events</h3>
+                <div className="flex items-center space-x-4">
+                  <Button variant="outline" size="sm" className="border-purple-300 text-purple-700">
+                    <Download className="h-4 w-4 mr-2" />
+                    Export
+                  </Button>
+                  <Button size="sm" className="bg-gradient-to-r from-purple-500 to-orange-500">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Event
+                  </Button>
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-purple-200">
+                      <th className="text-left py-4 px-6 text-purple-800 font-semibold">Event Name</th>
+                      <th className="text-left py-4 px-6 text-purple-800 font-semibold">Tickets Sold</th>
+                      <th className="text-left py-4 px-6 text-purple-800 font-semibold">Revenue</th>
+                      <th className="text-left py-4 px-6 text-purple-800 font-semibold">Growth</th>
+                      <th className="text-left py-4 px-6 text-purple-800 font-semibold">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {topEvents.map((event, index) => (
+                      <tr key={event.id} className="border-b border-purple-100 hover:bg-purple-50/30 transition-colors duration-200">
+                        <td className="py-4 px-6">
+                          <div className="font-semibold text-purple-900">{event.name}</div>
+                        </td>
+                        <td className="py-4 px-6">
+                          <div className="font-medium text-purple-800">{event.tickets.toLocaleString()}</div>
+                        </td>
+                        <td className="py-4 px-6">
+                          <div className="font-bold text-green-600">LKR {event.revenue.toLocaleString()}</div>
+                        </td>
+                        <td className="py-4 px-6">
+                          <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                            event.growth >= 0 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {event.growth >= 0 ? (
+                              <TrendingUp className="h-4 w-4 mr-1" />
+                            ) : (
+                              <TrendingDown className="h-4 w-4 mr-1" />
+                            )}
+                            {Math.abs(event.growth)}%
+                          </div>
+                        </td>
+                        <td className="py-4 px-6">
+                          <div className="flex items-center space-x-2">
+                            <Button variant="ghost" size="sm">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm">
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </motion.div>
 
-          <Paper elevation={2} sx={{ p: 3, height: 400 }}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-              <Typography variant="h6" fontWeight="bold">
-                Recent Activity
-              </Typography>
+          {/* Quick Action Buttons */}
+          <motion.div variants={itemVariants} className="mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <Button 
-                size="small" 
-                onClick={() => setActivityDialogOpen(true)}
-                sx={{ textTransform: 'none' }}
+                onClick={() => router.push('/admin/users')}
+                className="h-20 bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold text-lg shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
               >
-                View All
+                <Users className="h-8 w-8 mr-3" />
+                Manage Users
               </Button>
-            </Box>
-            <List sx={{ maxHeight: 320, overflow: 'auto' }}>
-              {recentActivities.slice(0, 5).map((activity, index) => (
-                <React.Fragment key={activity.id}>
-                  <ListItem alignItems="flex-start" sx={{ px: 0 }}>
-                    <ListItemAvatar>
-                      <Avatar src={activity.avatar} sx={{ width: 32, height: 32 }} />
-                    </ListItemAvatar>
-                    <ListItemText
-                      primary={
-                        <Typography variant="body2">
-                          <strong>{activity.user}</strong> {activity.action}
-                          {activity.event && ` for ${activity.event}`}
-                        </Typography>
-                      }
-                      secondary={
-                        <Typography variant="caption" color="text.secondary">
-                          {activity.time}
-                        </Typography>
-                      }
-                    />
-                  </ListItem>
-                  {index < recentActivities.length - 1 && <Divider />}
-                </React.Fragment>
-              ))}
-            </List>
-          </Paper>
-        </Box>
+              <Button 
+                onClick={() => router.push('/admin/events')}
+                className="h-20 bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold text-lg shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
+              >
+                <Calendar className="h-8 w-8 mr-3" />
+                Manage Events
+              </Button>
+              <Button 
+                onClick={() => router.push('/admin/venues')}
+                className="h-20 bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-bold text-lg shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
+              >
+                <MapPin className="h-8 w-8 mr-3" />
+                Manage Venues
+              </Button>
+              <Button 
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="h-20 bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold text-lg shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 disabled:opacity-50"
+              >
+                <RefreshCw className={`h-8 w-8 mr-3 ${refreshing ? 'animate-spin' : ''}`} />
+                System Refresh
+              </Button>
+            </div>
+          </motion.div>
 
-        {/* Top Events */}
-        <Paper elevation={2} sx={{ p: 3 }}>
-          <Typography variant="h6" fontWeight="bold" mb={3}>
-            Top Performing Events
-          </Typography>
-          <Box display="grid" 
-               gridTemplateColumns={{ 
-                 xs: '1fr', 
-                 sm: 'repeat(2, 1fr)', 
-                 md: 'repeat(3, 1fr)', 
-                 lg: 'repeat(5, 1fr)' 
-               }} 
-               gap={2}>
-            {topEvents.map((event) => (
-              <Card variant="outlined" sx={{ height: '100%' }} key={event.id}>
-                <CardContent>
-                  <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-                    {event.name}
-                  </Typography>
-                  <Box display="flex" justifyContent="space-between" mb={1}>
-                    <Typography variant="body2" color="text.secondary">
-                      Tickets
-                    </Typography>
-                    <Typography variant="body2" fontWeight="bold">
-                      {event.tickets.toLocaleString()}
-                    </Typography>
-                  </Box>
-                  <Box display="flex" justifyContent="space-between" mb={2}>
-                    <Typography variant="body2" color="text.secondary">
-                      Revenue
-                    </Typography>
-                    <Typography variant="body2" fontWeight="bold">
-                      LKR {(event.revenue / 1000).toFixed(0)}K
-                    </Typography>
-                  </Box>
-                  <Box display="flex" alignItems="center" justifyContent="space-between">
-                    <Typography variant="caption" color="text.secondary">
-                      Growth
-                    </Typography>
-                    <Chip
-                      size="small"
-                      label={`${event.growth > 0 ? '+' : ''}${event.growth}%`}
-                      color={event.growth > 0 ? 'success' : 'error'}
-                      variant="outlined"
-                    />
-                  </Box>
-                </CardContent>
-              </Card>
-            ))}
-          </Box>
-        </Paper>
-
-        {/* Recent Activity Dialog */}
-        <Dialog 
-          open={activityDialogOpen} 
-          onClose={() => setActivityDialogOpen(false)}
-          maxWidth="md"
-          fullWidth
-        >
-          <DialogTitle>All Recent Activities</DialogTitle>
-          <DialogContent>
-            <List>
-              {recentActivities.map((activity, index) => (
-                <React.Fragment key={activity.id}>
-                  <ListItem alignItems="flex-start">
-                    <ListItemAvatar>
-                      <Avatar src={activity.avatar} />
-                    </ListItemAvatar>
-                    <ListItemText
-                      primary={
-                        <Typography variant="body1">
-                          <strong>{activity.user}</strong> {activity.action}
-                          {activity.event && ` for ${activity.event}`}
-                        </Typography>
-                      }
-                      secondary={activity.time}
-                    />
-                  </ListItem>
-                  {index < recentActivities.length - 1 && <Divider />}
-                </React.Fragment>
-              ))}
-            </List>
-          </DialogContent>
-        </Dialog>
-
-        {/* Floating Action Button */}
-        <Fab
-          color="primary"
-          aria-label="add"
-          sx={{
-            position: 'fixed',
-            bottom: 24,
-            right: 24,
-          }}
-        >
-          <Plus />
-        </Fab>
-      </Container>
-    </Box>
+        </motion.div>
+      </div>
+    </div>
   );
 }
+
