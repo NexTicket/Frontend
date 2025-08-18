@@ -66,7 +66,7 @@ export function Navbar() {
   return (
     <nav className={`sticky top-0 z-50 transition-all duration-300 ${
       isScrolled 
-        ? 'bg-white/80 backdrop-blur-lg border-b shadow-lg' 
+        ? 'bg-background/80 backdrop-blur-lg border-b shadow-lg' 
         : 'bg-background border-b'
     }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -131,7 +131,7 @@ export function Navbar() {
 
         {/* Mobile Navigation */}
         {isMenuOpen && (
-          <div className="lg:hidden border-t bg-white/95 backdrop-blur-lg">
+          <div className="lg:hidden border-t bg-background/95 backdrop-blur-lg">
             <div className="px-2 pt-2 pb-3 space-y-1">
               {/* Public Navigation */}
               <Link
