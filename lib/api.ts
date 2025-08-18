@@ -182,17 +182,19 @@ export async function createEvent(eventData: Event) {
       try {
         const errorData = await res.json();
         errorMessage = errorData.error || errorData.message || errorMessage;
+        console.error('❌ Event creation failed with error response:', errorData);
       } catch {
         // If JSON parsing fails, use text
         const errorText = await res.text();
         errorMessage = errorText || errorMessage;
+        console.error('❌ Event creation failed with text response:', errorText);
       }
       throw new Error(`${errorMessage} (Status: ${res.status})`);
     }
     
     return res.json();
   } catch (error) {
-    console.error('Create event error:', error);
+    console.error('❌ Create event error details:', error);
     throw error;
   }
 }
