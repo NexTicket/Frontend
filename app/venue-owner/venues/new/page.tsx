@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { createVenue, uploadVenueImage } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import '@/utils/test-venue-creation'; // Load test utilities
+import { SeatingLayoutDesigner, type SeatingDesign } from '@/components/venue';
 import { 
   Building2,
   MapPin,
@@ -15,16 +16,11 @@ import {
   ArrowLeft,
   ArrowRight,
   Plus,
-  Minus,
   Grid,
   Eye,
   Palette,
-  Settings,
-  Zap,
   Check,
   X,
-  RotateCcw,
-  Move,
   Square,
   Circle
 } from 'lucide-react';
@@ -50,6 +46,7 @@ interface SeatMapData {
   wheelchair_accessible: number[];
   special_features?: string[];
   layout_type?: string;
+  seatingDesign?: SeatingDesign;
 }
 
 interface VenueFormData {
@@ -85,7 +82,21 @@ const defaultSeatMap: SeatMapData = {
   aisles: [5],
   wheelchair_accessible: [1, 10],
   special_features: [],
-  layout_type: 'standard'
+  layout_type: 'standard',
+  seatingDesign: {
+    canvasWidth: 800,
+    canvasHeight: 600,
+    stages: [{
+      id: 'stage-1',
+      x: 350,
+      y: 50,
+      width: 100,
+      height: 40,
+      color: '#FFD700'
+    }],
+    seatingAreas: [],
+    floorLabel: 'F1'
+  }
 };
 
 const sectionColors = [
@@ -189,9 +200,20 @@ export default function CreateVenue() {
 
   // Calculate total capacity based on seat map
   useEffect(() => {
-    const capacity = formData.seatMap.sections.reduce((total, section) => {
-      return total + (section.rows * section.columns);
-    }, 0);
+    let capacity = 0;
+    
+    if (formData.seatMap.seatingDesign) {
+      // Use new Konva-based seating design
+      capacity = formData.seatMap.seatingDesign.seatingAreas.reduce((total, area) => {
+        return total + (area.rows * area.columns);
+      }, 0);
+    } else {
+      // Fallback to old section-based calculation
+      capacity = formData.seatMap.sections.reduce((total, section) => {
+        return total + (section.rows * section.columns);
+      }, 0);
+    }
+    
     setFormData(prev => ({ ...prev, capacity }));
   }, [formData.seatMap]);
 
@@ -363,6 +385,56 @@ export default function CreateVenue() {
   };
 
   const renderSeatMap = () => {
+    // If we have a custom seating design, show a simplified preview
+    if (formData.seatMap.seatingDesign) {
+      const design = formData.seatMap.seatingDesign;
+      return (
+        <div className="inline-block p-6 bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl">
+          <div className="text-center text-white mb-4">
+            <h4 className="text-lg font-semibold">Custom Seating Layout</h4>
+            <p className="text-sm text-gray-300">
+              {design.seatingAreas.length} seating areas, {design.stages.length} stages
+            </p>
+          </div>
+          
+          {/* Simplified visual representation */}
+          <div className="bg-gray-700 rounded-lg p-4 min-w-[300px] min-h-[200px] flex items-center justify-center">
+            <div className="text-center">
+              <div className="mb-3">
+                {design.stages.map((stage, idx) => (
+                  <div
+                    key={idx}
+                    className="inline-block px-4 py-2 bg-yellow-500 text-black rounded-lg mr-2 mb-2 text-xs font-semibold"
+                  >
+                    🎭 STAGE
+                  </div>
+                ))}
+              </div>
+              
+              <div className="grid grid-cols-2 gap-2">
+                {design.seatingAreas.map((area, idx) => (
+                  <div
+                    key={idx}
+                    className="p-3 rounded text-center text-xs font-medium text-white"
+                    style={{ backgroundColor: area.color }}
+                  >
+                    <div className="font-semibold">{area.name}</div>
+                    <div className="text-xs opacity-75">
+                      {area.rows}×{area.columns} • ${area.seatPrice}
+                    </div>
+                    <div className="text-xs opacity-50 capitalize">
+                      {area.seatType}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Fallback to original grid-based rendering
     const { rows, columns, sections, aisles } = formData.seatMap;
     const seats = [];
 
@@ -833,223 +905,31 @@ export default function CreateVenue() {
 
             {/* Step 4: Seating Layout Designer */}
             {currentStep === 4 && (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-2xl font-semibold flex items-center">
-                    <Settings className="h-6 w-6 mr-3 text-primary" />
-                    Seating Layout Designer
-                  </h2>
-                  
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant={isPreviewMode ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setIsPreviewMode(!isPreviewMode)}
-                    >
-                      <Eye className="h-4 w-4 mr-2" />
-                      {isPreviewMode ? 'Edit Mode' : 'Preview'}
-                    </Button>
-                    
-                    <Button variant="outline" size="sm" onClick={() => handleSeatMapChange(defaultSeatMap)}>
-                      <RotateCcw className="h-4 w-4 mr-2" />
-                      Reset
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                  {/* Controls */}
-                  {!isPreviewMode && (
-                    <div className="space-y-6">
-                      {/* Layout Settings */}
-                      <div className="bg-background/50 rounded-lg p-4 border">
-                        <h3 className="font-semibold mb-4 flex items-center">
-                          <Grid className="h-4 w-4 mr-2" />
-                          Layout Settings
-                        </h3>
-                        
-                        <div className="space-y-4">
-                          <div>
-                            <label className="block text-sm font-medium mb-2">Total Rows</label>
-                            <input
-                              type="number"
-                              min="1"
-                              max="50"
-                              value={formData.seatMap.rows}
-                              onChange={(e) => handleSeatMapChange({
-                                ...formData.seatMap,
-                                rows: parseInt(e.target.value) || 1
-                              })}
-                              className="w-full px-3 py-2 border rounded-lg bg-background text-sm"
-                            />
-                          </div>
-                          
-                          <div>
-                            <label className="block text-sm font-medium mb-2">Total Columns</label>
-                            <input
-                              type="number"
-                              min="1"
-                              max="50"
-                              value={formData.seatMap.columns}
-                              onChange={(e) => handleSeatMapChange({
-                                ...formData.seatMap,
-                                columns: parseInt(e.target.value) || 1
-                              })}
-                              className="w-full px-3 py-2 border rounded-lg bg-background text-sm"
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Sections */}
-                      <div className="bg-background/50 rounded-lg p-4 border">
-                        <div className="flex items-center justify-between mb-4">
-                          <h3 className="font-semibold flex items-center">
-                            <Palette className="h-4 w-4 mr-2" />
-                            Sections
-                          </h3>
-                          <Button size="sm" onClick={addSection}>
-                            <Plus className="h-3 w-3 mr-1" />
-                            Add
-                          </Button>
-                        </div>
-
-                        <div className="space-y-3 max-h-64 overflow-y-auto">
-                          {formData.seatMap.sections.map((section) => (
-                            <div
-                              key={section.id}
-                              className={`p-3 border rounded-lg transition-all cursor-pointer ${
-                                selectedSection === section.id
-                                  ? 'border-primary bg-primary/10'
-                                  : 'border-border hover:border-primary/50'
-                              }`}
-                              onClick={() => setSelectedSection(section.id)}
-                            >
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center">
-                                  <div
-                                    className="w-4 h-4 rounded mr-2"
-                                    style={{ backgroundColor: section.color }}
-                                  />
-                                  <input
-                                    type="text"
-                                    value={section.name}
-                                    onChange={(e) => updateSection(section.id, { name: e.target.value })}
-                                    className="text-sm font-medium bg-transparent border-none outline-none"
-                                    onClick={(e) => e.stopPropagation()}
-                                  />
-                                </div>
-                                {formData.seatMap.sections.length > 1 && (
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      removeSection(section.id);
-                                    }}
-                                    className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
-                                  >
-                                    <X className="h-3 w-3" />
-                                  </Button>
-                                )}
-                              </div>
-
-                              <div className="grid grid-cols-2 gap-2 text-xs">
-                                <div>
-                                  <label className="block text-muted-foreground">Rows</label>
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    value={section.rows}
-                                    onChange={(e) => updateSection(section.id, { 
-                                      rows: parseInt(e.target.value) || 1 
-                                    })}
-                                    className="w-full px-2 py-1 border rounded text-xs"
-                                    onClick={(e) => e.stopPropagation()}
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-muted-foreground">Cols</label>
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    value={section.columns}
-                                    onChange={(e) => updateSection(section.id, { 
-                                      columns: parseInt(e.target.value) || 1 
-                                    })}
-                                    className="w-full px-2 py-1 border rounded text-xs"
-                                    onClick={(e) => e.stopPropagation()}
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-muted-foreground">Price ×</label>
-                                  <input
-                                    type="number"
-                                    min="0.1"
-                                    step="0.1"
-                                    value={section.price_multiplier}
-                                    onChange={(e) => updateSection(section.id, { 
-                                      price_multiplier: parseFloat(e.target.value) || 1 
-                                    })}
-                                    className="w-full px-2 py-1 border rounded text-xs"
-                                    onClick={(e) => e.stopPropagation()}
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-muted-foreground">Color</label>
-                                  <input
-                                    type="color"
-                                    value={section.color}
-                                    onChange={(e) => updateSection(section.id, { color: e.target.value })}
-                                    className="w-full h-6 border rounded cursor-pointer"
-                                    onClick={(e) => e.stopPropagation()}
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Seating Map Visualization */}
-                  <div className={`${isPreviewMode ? 'lg:col-span-3' : 'lg:col-span-2'} flex flex-col items-center`}>
-                    <div className="mb-4">
-                      <div className="flex items-center justify-center space-x-6 text-sm">
-                        <div className="flex items-center">
-                          <Users className="h-4 w-4 mr-2 text-primary" />
-                          <span>Total Capacity: <strong>{formData.capacity}</strong></span>
-                        </div>
-                        <div className="flex items-center">
-                          <Grid className="h-4 w-4 mr-2 text-muted-foreground" />
-                          <span>{formData.seatMap.rows} × {formData.seatMap.columns}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="relative">
-                      {renderSeatMap()}
-                    </div>
-
-                    {/* Legend */}
-                    <div className="mt-6 flex flex-wrap justify-center gap-4">
-                      {formData.seatMap.sections.map((section) => (
-                        <div key={section.id} className="flex items-center space-x-2 text-sm">
-                          <div
-                            className="w-4 h-4 rounded"
-                            style={{ backgroundColor: section.color }}
-                          />
-                          <span>{section.name}</span>
-                          <span className="text-muted-foreground">
-                            ({section.rows}×{section.columns})
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <SeatingLayoutDesigner 
+                seatingDesign={formData.seatMap.seatingDesign || {
+                  canvasWidth: 800,
+                  canvasHeight: 600,
+                  stages: [{
+                    id: 'stage-1',
+                    x: 350,
+                    y: 50,
+                    width: 100,
+                    height: 40,
+                    color: '#FFD700'
+                  }],
+                  seatingAreas: [],
+                  floorLabel: 'F1'
+                }}
+                onSeatingDesignChange={(design) => {
+                  setFormData(prev => ({
+                    ...prev,
+                    seatMap: {
+                      ...prev.seatMap,
+                      seatingDesign: design
+                    }
+                  }));
+                }}
+              />
             )}
 
             {/* Step 5: Review & Submit */}
@@ -1141,29 +1021,78 @@ export default function CreateVenue() {
                     <div className="bg-background/50 rounded-lg p-6 border">
                       <h3 className="font-semibold mb-4">Seating Configuration</h3>
                       <div className="space-y-3">
-                        <div>
-                          <span className="text-sm text-muted-foreground">Layout:</span>
-                          <p className="font-medium">{formData.seatMap.rows} rows × {formData.seatMap.columns} columns</p>
-                        </div>
-                        <div>
-                          <span className="text-sm text-muted-foreground">Sections:</span>
-                          <div className="mt-2 space-y-2">
-                            {formData.seatMap.sections.map((section) => (
-                              <div key={section.id} className="flex items-center justify-between text-sm">
-                                <div className="flex items-center">
-                                  <div
-                                    className="w-3 h-3 rounded mr-2"
-                                    style={{ backgroundColor: section.color }}
-                                  />
-                                  <span>{section.name}</span>
-                                </div>
-                                <span className="text-muted-foreground">
-                                  {section.rows}×{section.columns} ({section.rows * section.columns} seats)
-                                </span>
+                        {formData.seatMap.seatingDesign ? (
+                          // Show custom seating design info
+                          <>
+                            <div>
+                              <span className="text-sm text-muted-foreground">Layout Type:</span>
+                              <p className="font-medium">Custom Drag & Drop Design</p>
+                            </div>
+                            <div>
+                              <span className="text-sm text-muted-foreground">Floor:</span>
+                              <p className="font-medium">{formData.seatMap.seatingDesign.floorLabel}</p>
+                            </div>
+                            <div>
+                              <span className="text-sm text-muted-foreground">Canvas Size:</span>
+                              <p className="font-medium">
+                                {formData.seatMap.seatingDesign.canvasWidth} × {formData.seatMap.seatingDesign.canvasHeight} px
+                              </p>
+                            </div>
+                            <div>
+                              <span className="text-sm text-muted-foreground">Stages:</span>
+                              <p className="font-medium">{formData.seatMap.seatingDesign.stages.length} stage(s)</p>
+                            </div>
+                            <div>
+                              <span className="text-sm text-muted-foreground">Seating Areas:</span>
+                              <div className="mt-2 space-y-2">
+                                {formData.seatMap.seatingDesign.seatingAreas.map((area) => (
+                                  <div key={area.id} className="flex items-center justify-between text-sm">
+                                    <div className="flex items-center">
+                                      <div
+                                        className="w-3 h-3 rounded mr-2"
+                                        style={{ backgroundColor: area.color }}
+                                      />
+                                      <span>{area.name}</span>
+                                      <span className="ml-2 px-2 py-1 bg-muted rounded text-xs capitalize">
+                                        {area.seatType}
+                                      </span>
+                                    </div>
+                                    <span className="text-muted-foreground">
+                                      {area.rows}×{area.columns} (${area.seatPrice})
+                                    </span>
+                                  </div>
+                                ))}
                               </div>
-                            ))}
-                          </div>
-                        </div>
+                            </div>
+                          </>
+                        ) : (
+                          // Show traditional grid layout info
+                          <>
+                            <div>
+                              <span className="text-sm text-muted-foreground">Layout:</span>
+                              <p className="font-medium">{formData.seatMap.rows} rows × {formData.seatMap.columns} columns</p>
+                            </div>
+                            <div>
+                              <span className="text-sm text-muted-foreground">Sections:</span>
+                              <div className="mt-2 space-y-2">
+                                {formData.seatMap.sections.map((section) => (
+                                  <div key={section.id} className="flex items-center justify-between text-sm">
+                                    <div className="flex items-center">
+                                      <div
+                                        className="w-3 h-3 rounded mr-2"
+                                        style={{ backgroundColor: section.color }}
+                                      />
+                                      <span>{section.name}</span>
+                                    </div>
+                                    <span className="text-muted-foreground">
+                                      {section.rows}×{section.columns} ({section.rows * section.columns} seats)
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
