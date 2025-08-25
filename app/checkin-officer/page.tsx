@@ -6,29 +6,18 @@ import { useRouter } from 'next/navigation';
 import { 
   QrCode,
   Users, 
-  Clock, 
   CheckCircle2,
-  XCircle,
   Search,
-  Filter,
   Eye,
   UserCheck,
-  AlertCircle,
   Calendar,
   MapPin,
-  Ticket,
   Activity,
   TrendingUp,
-  Bell,
-  Settings,
   RefreshCw,
   Download,
-  Upload,
   Scan,
   User,
-  Mail,
-  Phone,
-  Badge,
   Clock4
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -176,6 +165,82 @@ export default function CheckinOfficerDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [scannerActive, setScannerActive] = useState(false);
+  const [scannerModalOpen, setScannerModalOpen] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+
+  // Helper to open the scanner modal
+  const openScannerModal = () => {
+    setScannerModalOpen(true);
+    setCameraError(null);
+    // Show warning and try to access camera
+    setTimeout(() => {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices.getUserMedia({ video: true })
+          .then(stream => {
+            setCameraStream(stream);
+            setCameraError(null);
+          })
+          .catch(err => {
+            setCameraError('Unable to access camera. Please allow camera permission and ensure a camera is connected.');
+          });
+      } else {
+        setCameraError('Camera access is not supported in this browser.');
+      }
+    }, 300); // slight delay to allow modal to render
+  };
+
+  // Stop camera when modal closes
+  useEffect(() => {
+    if (!scannerModalOpen && cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+      setCameraStream(null);
+    }
+  }, [scannerModalOpen, cameraStream]);
+
+  // Open check-in page in a detached new tab to avoid opener-controlled redirects
+  const openCheckin = (eventId: string) => {
+    if (typeof window === 'undefined') return;
+    const targetPath = `/checkin/${eventId}`;
+    const fullUrl = `${window.location.origin}${targetPath}?detached=1`;
+
+    // Open an about:blank window and write a small intermediate document that
+    // immediately navigates to the real URL from inside the new tab.
+    // This helps prevent the opener or cross-tab listeners from later controlling it.
+    const newWin = window.open('about:blank', '_blank', 'noopener,noreferrer');
+    if (!newWin) return;
+    try {
+      // extra safety: detach opener
+      newWin.opener = null;
+
+      const html = `<!doctype html>
+        <html>
+          <head>
+            <meta http-equiv="refresh" content="0;url=${fullUrl}">
+            <meta name="referrer" content="no-referrer">
+            <title>Opening Check-in</title>
+            <script>
+              // attempt fast client-side redirect from inside the new tab
+              try {
+                window.location.replace(${JSON.stringify(fullUrl)});
+              } catch (e) {
+                // fallback to meta refresh above
+              }
+            </script>
+          </head>
+          <body>
+            <p>Opening check-in...</p>
+          </body>
+        </html>`;
+
+      newWin.document.open();
+      newWin.document.write(html);
+      newWin.document.close();
+    } catch (e) {
+      // fallback: set location on the new window
+      try { newWin.location.href = fullUrl; } catch (err) { /* ignore */ }
+    }
+  };
 
   // Redirect if not authenticated or not checkin officer
   useEffect(() => {
@@ -258,7 +323,7 @@ export default function CheckinOfficerDashboard() {
           <div className="backdrop-blur-xl bg-white/80 border border-green-100 rounded-2xl p-6 shadow-xl shadow-green-100/50 hover:shadow-2xl hover:shadow-green-200/50 transition-all duration-300">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 mb-1">Today's Check-ins</p>
+                <p className="text-sm text-gray-600 mb-1">Today&apos;s Check-ins</p>
                 <p className="text-3xl font-bold text-green-600">{todayCheckins}</p>
               </div>
               <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
@@ -337,22 +402,6 @@ export default function CheckinOfficerDashboard() {
                 </div>
               </button>
               <button
-                onClick={() => {
-                  setActiveTab('checkin');
-                  setScannerActive(true);
-                }}
-                className={`px-6 py-3 rounded-xl font-medium transition-all duration-200 ${
-                  activeTab === 'checkin'
-                    ? 'bg-gradient-to-r from-purple-500 to-orange-500 text-white shadow-md'
-                    : 'text-purple-700 hover:text-purple-900 hover:bg-orange-50/50'
-                }`}
-              >
-                <div className="flex items-center space-x-2">
-                  <QrCode className="w-4 h-4" />
-                  <span>Check-in</span>
-                </div>
-              </button>
-              <button
                 onClick={() => setActiveTab('attendees')}
                 className={`px-6 py-3 rounded-xl font-medium transition-all duration-200 ${
                   activeTab === 'attendees'
@@ -367,7 +416,7 @@ export default function CheckinOfficerDashboard() {
               </button>
             </div>
             
-            {(activeTab === 'attendees' || activeTab === 'checkin') && (
+            {activeTab === 'attendees' && (
               <div className="flex items-center space-x-4">
                 <select
                   value={selectedEvent}
@@ -437,7 +486,7 @@ export default function CheckinOfficerDashboard() {
                   <p className="text-sm text-gray-600 mb-4">Start scanning tickets for active events</p>
                   <Button 
                     className="w-full bg-gradient-to-r from-purple-500 to-orange-500 hover:from-purple-600 hover:to-orange-600"
-                    onClick={() => setActiveTab('checkin')}
+                    onClick={openScannerModal}
                   >
                     Start Scanning
                   </Button>
@@ -528,18 +577,24 @@ export default function CheckinOfficerDashboard() {
                 </div>
 
                 <div className="flex space-x-2">
-                  <Button 
-                    size="sm" 
-                    className="flex-1 bg-gradient-to-r from-purple-500 to-orange-500 hover:from-purple-600 hover:to-orange-600"
-                    onClick={() => {
-                      setSelectedEvent(event.id);
-                      setActiveTab('checkin');
-                      setScannerActive(true);
-                    }}
-                  >
-                    <Scan className="w-4 h-4 mr-1" />
-                    Check-in
-                  </Button>
+                  {event.status === 'active' ? (
+                    <button
+                      type="button"
+                      onClick={openScannerModal}
+                      className="flex-1 flex items-center justify-center h-10 px-4 py-2 rounded-md font-medium bg-gradient-to-r from-purple-500 to-orange-500 text-white shadow-md transition-all duration-200 hover:from-purple-600 hover:to-orange-600"
+                    >
+                      <Scan className="w-4 h-4 mr-1" />
+                      Check-in
+                    </button>
+                  ) : (
+                    <button
+                      className="flex-1 flex items-center justify-center h-10 px-4 py-2 rounded-md font-medium bg-gradient-to-r from-purple-500 to-orange-500 text-white shadow-md opacity-50 cursor-not-allowed"
+                      disabled
+                    >
+                      <Scan className="w-4 h-4 mr-1" />
+                      Check-in
+                    </button>
+                  )}
                   <Button 
                     size="sm" 
                     variant="outline"
@@ -761,6 +816,50 @@ export default function CheckinOfficerDashboard() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* Scanner Modal */}
+        {scannerModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+            <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full text-center relative">
+              <button
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+                onClick={() => setScannerModalOpen(false)}
+                aria-label="Close"
+              >
+                &times;
+              </button>
+              <div className="mx-auto mb-4 w-20 h-20 bg-purple-50 rounded-full flex items-center justify-center">
+                <QrCode className="w-10 h-10 text-purple-600" />
+              </div>
+              <h2 className="text-xl font-semibold mb-2">Check-in Scanner</h2>
+              <p className="text-sm text-gray-600 mb-4">Scan tickets for event</p>
+              {/* Camera preview or error */}
+              {cameraError ? (
+                <div className="border-2 border-red-200 rounded-lg p-6 mb-4 text-red-600">
+                  {cameraError}
+                </div>
+              ) : cameraStream ? (
+                <video
+                  autoPlay
+                  playsInline
+                  style={{ width: '100%', borderRadius: '0.5rem', marginBottom: '1rem' }}
+                  ref={video => {
+                    if (video && cameraStream) {
+                      video.srcObject = cameraStream;
+                    }
+                  }}
+                />
+              ) : (
+                <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 mb-4">
+                  <p className="text-sm text-gray-500">Scanner placeholder — integrate camera/QR scanner here.</p>
+                </div>
+              )}
+              <Button variant="outline" onClick={() => setScannerModalOpen(false)}>
+                Close
+              </Button>
             </div>
           </div>
         )}
