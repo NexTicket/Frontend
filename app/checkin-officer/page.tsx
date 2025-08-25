@@ -223,29 +223,29 @@ export default function CheckinOfficerDashboard() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
-        <div className="text-white text-lg">Loading...</div>
+      <div className="min-h-screen bg-gradient-to-br from-white via-orange-50 to-purple-50 flex items-center justify-center">
+        <div className="text-purple-800 text-lg">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-white via-orange-50 to-purple-50">
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-900 via-purple-800 to-indigo-900">
+      <div className="bg-gradient-to-r from-orange-50/50 via-purple-50/50 to-orange-50/50">
         <div className="max-w-7xl mx-auto px-6 py-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-white mb-2">Check-in Dashboard</h1>
-              <p className="text-purple-100">Scan tickets and manage event check-ins</p>
+              <h1 className="text-3xl font-bold text-purple-900 mb-2">Check-in Dashboard</h1>
+              <p className="text-purple-700">Scan tickets and manage event check-ins</p>
             </div>
             <div className="flex items-center space-x-4">
               <div className="text-right">
-                <div className="text-white font-medium">{userProfile?.displayName || 'Check-in Officer'}</div>
-                <div className="text-sm text-purple-100">Check-in Officer</div>
+                <div className="text-purple-900 font-medium">{userProfile?.displayName || 'Check-in Officer'}</div>
+                <div className="text-sm text-purple-700">Check-in Officer</div>
               </div>
-              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                <UserCheck className="w-5 h-5 text-white" />
+              <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                <UserCheck className="w-5 h-5 text-purple-600" />
               </div>
             </div>
           </div>
@@ -255,7 +255,7 @@ export default function CheckinOfficerDashboard() {
       <div className="max-w-7xl mx-auto p-6">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-green-100 hover:shadow-xl transition-shadow duration-300">
+          <div className="backdrop-blur-xl bg-white/80 border border-green-100 rounded-2xl p-6 shadow-xl shadow-green-100/50 hover:shadow-2xl hover:shadow-green-200/50 transition-all duration-300">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 mb-1">Today's Check-ins</p>
@@ -267,7 +267,7 @@ export default function CheckinOfficerDashboard() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-blue-100 hover:shadow-xl transition-shadow duration-300">
+          <div className="backdrop-blur-xl bg-white/80 border border-blue-100 rounded-2xl p-6 shadow-xl shadow-blue-100/50 hover:shadow-2xl hover:shadow-blue-200/50 transition-all duration-300">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 mb-1">Total Check-ins</p>
@@ -279,7 +279,7 @@ export default function CheckinOfficerDashboard() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-purple-100 hover:shadow-xl transition-shadow duration-300">
+          <div className="backdrop-blur-xl bg-white/80 border border-purple-100 rounded-2xl p-6 shadow-xl shadow-purple-100/50 hover:shadow-2xl hover:shadow-purple-200/50 transition-all duration-300">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 mb-1">Assigned Events</p>
@@ -291,7 +291,7 @@ export default function CheckinOfficerDashboard() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-orange-100 hover:shadow-xl transition-shadow duration-300">
+          <div className="backdrop-blur-xl bg-white/80 border border-orange-100 rounded-2xl p-6 shadow-xl shadow-orange-100/50 hover:shadow-2xl hover:shadow-orange-200/50 transition-all duration-300">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 mb-1">Active Events</p>
@@ -307,15 +307,15 @@ export default function CheckinOfficerDashboard() {
         </div>
 
         {/* Navigation Tabs */}
-        <div className="bg-white rounded-2xl p-6 shadow-lg mb-8">
+  <div className="backdrop-blur-xl bg-white/80 border border-purple-200 rounded-2xl p-6 shadow-xl shadow-purple-100/50 mb-8">
           <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => setActiveTab('overview')}
                 className={`px-6 py-3 rounded-xl font-medium transition-all duration-200 ${
                   activeTab === 'overview'
-                    ? 'bg-purple-600 text-white shadow-md'
-                    : 'text-gray-600 hover:text-purple-600 hover:bg-purple-50'
+                    ? 'bg-gradient-to-r from-purple-500 to-orange-500 text-white shadow-md'
+                    : 'text-purple-700 hover:text-purple-900 hover:bg-orange-50/50'
                 }`}
               >
                 <div className="flex items-center space-x-2">
@@ -327,8 +327,8 @@ export default function CheckinOfficerDashboard() {
                 onClick={() => setActiveTab('events')}
                 className={`px-6 py-3 rounded-xl font-medium transition-all duration-200 ${
                   activeTab === 'events'
-                    ? 'bg-purple-600 text-white shadow-md'
-                    : 'text-gray-600 hover:text-purple-600 hover:bg-purple-50'
+                    ? 'bg-gradient-to-r from-purple-500 to-orange-500 text-white shadow-md'
+                    : 'text-purple-700 hover:text-purple-900 hover:bg-orange-50/50'
                 }`}
               >
                 <div className="flex items-center space-x-2">
@@ -337,11 +337,14 @@ export default function CheckinOfficerDashboard() {
                 </div>
               </button>
               <button
-                onClick={() => setActiveTab('checkin')}
+                onClick={() => {
+                  setActiveTab('checkin');
+                  setScannerActive(true);
+                }}
                 className={`px-6 py-3 rounded-xl font-medium transition-all duration-200 ${
                   activeTab === 'checkin'
-                    ? 'bg-purple-600 text-white shadow-md'
-                    : 'text-gray-600 hover:text-purple-600 hover:bg-purple-50'
+                    ? 'bg-gradient-to-r from-purple-500 to-orange-500 text-white shadow-md'
+                    : 'text-purple-700 hover:text-purple-900 hover:bg-orange-50/50'
                 }`}
               >
                 <div className="flex items-center space-x-2">
@@ -353,8 +356,8 @@ export default function CheckinOfficerDashboard() {
                 onClick={() => setActiveTab('attendees')}
                 className={`px-6 py-3 rounded-xl font-medium transition-all duration-200 ${
                   activeTab === 'attendees'
-                    ? 'bg-purple-600 text-white shadow-md'
-                    : 'text-gray-600 hover:text-purple-600 hover:bg-purple-50'
+                    ? 'bg-gradient-to-r from-purple-500 to-orange-500 text-white shadow-md'
+                    : 'text-purple-700 hover:text-purple-900 hover:bg-orange-50/50'
                 }`}
               >
                 <div className="flex items-center space-x-2">
@@ -375,31 +378,6 @@ export default function CheckinOfficerDashboard() {
                     <option key={event.id} value={event.id}>{event.title}</option>
                   ))}
                 </select>
-                
-                {activeTab === 'attendees' && (
-                  <>
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                      <input
-                        type="text"
-                        placeholder="Search attendees..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      />
-                    </div>
-                    
-                    <select
-                      value={statusFilter}
-                      onChange={(e) => setStatusFilter(e.target.value)}
-                      className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    >
-                      <option value="all">All Status</option>
-                      <option value="checked_in">Checked In</option>
-                      <option value="pending">Pending</option>
-                    </select>
-                  </>
-                )}
               </div>
             )}
           </div>
@@ -409,7 +387,7 @@ export default function CheckinOfficerDashboard() {
         {activeTab === 'overview' && (
           <div className="space-y-6">
             {/* Recent Activity */}
-            <div className="bg-white rounded-2xl p-6 shadow-lg">
+            <div className="backdrop-blur-xl bg-white/80 border border-purple-200 rounded-2xl p-6 shadow-xl shadow-purple-100/50">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-semibold text-gray-900">Recent Check-ins</h3>
                 <Button 
@@ -450,7 +428,7 @@ export default function CheckinOfficerDashboard() {
 
             {/* Quick Actions */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-shadow duration-300">
+              <div className="backdrop-blur-xl bg-white/80 border border-purple-100 rounded-2xl p-6 shadow-xl shadow-purple-100/50 hover:shadow-2xl hover:shadow-purple-200/50 transition-all duration-300">
                 <div className="text-center">
                   <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <QrCode className="w-8 h-8 text-purple-600" />
@@ -458,7 +436,7 @@ export default function CheckinOfficerDashboard() {
                   <h3 className="text-lg font-medium text-gray-900 mb-2">Quick Scan</h3>
                   <p className="text-sm text-gray-600 mb-4">Start scanning tickets for active events</p>
                   <Button 
-                    className="w-full bg-purple-600 hover:bg-purple-700"
+                    className="w-full bg-gradient-to-r from-purple-500 to-orange-500 hover:from-purple-600 hover:to-orange-600"
                     onClick={() => setActiveTab('checkin')}
                   >
                     Start Scanning
@@ -466,7 +444,7 @@ export default function CheckinOfficerDashboard() {
                 </div>
               </div>
 
-              <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-shadow duration-300">
+              <div className="backdrop-blur-xl bg-white/80 border border-blue-100 rounded-2xl p-6 shadow-xl shadow-blue-100/50 hover:shadow-2xl hover:shadow-blue-200/50 transition-all duration-300">
                 <div className="text-center">
                   <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <Users className="w-8 h-8 text-blue-600" />
@@ -483,7 +461,7 @@ export default function CheckinOfficerDashboard() {
                 </div>
               </div>
 
-              <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-shadow duration-300">
+              <div className="backdrop-blur-xl bg-white/80 border border-green-100 rounded-2xl p-6 shadow-xl shadow-green-100/50 hover:shadow-2xl hover:shadow-green-200/50 transition-all duration-300">
                 <div className="text-center">
                   <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <Download className="w-8 h-8 text-green-600" />
@@ -505,7 +483,7 @@ export default function CheckinOfficerDashboard() {
         {activeTab === 'events' && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {mockAssignedEvents.map((event) => (
-              <div key={event.id} className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-shadow duration-300">
+              <div key={event.id} className="backdrop-blur-xl bg-white/80 border border-purple-200 rounded-2xl p-6 shadow-xl shadow-purple-100/50 hover:shadow-2xl hover:shadow-purple-200/50 transition-all duration-300">
                 <div className="flex items-start justify-between mb-4">
                   <div>
                     <h3 className="text-lg font-medium text-gray-900 mb-1">{event.title}</h3>
@@ -552,10 +530,11 @@ export default function CheckinOfficerDashboard() {
                 <div className="flex space-x-2">
                   <Button 
                     size="sm" 
-                    className="flex-1 bg-purple-600 hover:bg-purple-700"
+                    className="flex-1 bg-gradient-to-r from-purple-500 to-orange-500 hover:from-purple-600 hover:to-orange-600"
                     onClick={() => {
                       setSelectedEvent(event.id);
                       setActiveTab('checkin');
+                      setScannerActive(true);
                     }}
                   >
                     <Scan className="w-4 h-4 mr-1" />
@@ -581,7 +560,7 @@ export default function CheckinOfficerDashboard() {
         {activeTab === 'checkin' && selectedEventData && (
           <div className="space-y-6">
             {/* Event Info Card */}
-            <div className="bg-white rounded-2xl p-6 shadow-lg">
+            <div className="backdrop-blur-xl bg-white/80 border border-purple-200 rounded-2xl p-6 shadow-xl shadow-purple-100/50">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">{selectedEventData.title}</h3>
@@ -609,7 +588,7 @@ export default function CheckinOfficerDashboard() {
             </div>
 
             {/* QR Scanner */}
-            <div className="bg-white rounded-2xl p-6 shadow-lg text-center">
+            <div className="backdrop-blur-xl bg-white/80 border border-purple-200 rounded-2xl p-6 shadow-xl shadow-purple-100/50 text-center">
               <div className="max-w-md mx-auto">
                 {!scannerActive ? (
                   <>
@@ -622,7 +601,7 @@ export default function CheckinOfficerDashboard() {
                     </p>
                     <Button 
                       size="lg" 
-                      className="w-full bg-purple-600 hover:bg-purple-700"
+                      className="w-full bg-gradient-to-r from-purple-500 to-orange-500 hover:from-purple-600 hover:to-orange-600"
                       onClick={() => setScannerActive(true)}
                     >
                       <QrCode className="w-5 h-5 mr-2" />
@@ -658,7 +637,7 @@ export default function CheckinOfficerDashboard() {
         )}
 
         {activeTab === 'attendees' && (
-          <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+          <div className="backdrop-blur-xl bg-white/80 border border-purple-200 rounded-2xl shadow-xl shadow-purple-100/50 overflow-hidden">
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
@@ -678,8 +657,29 @@ export default function CheckinOfficerDashboard() {
                   </Button>
                 </div>
               </div>
+              {/* Attendees filter/search controls */}
+              <div className="flex flex-col md:flex-row gap-4 items-center mt-6">
+                <div className="relative w-full md:w-64">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <input
+                    type="text"
+                    placeholder="Search attendees..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent w-full"
+                  />
+                </div>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                >
+                  <option value="all">All Status</option>
+                  <option value="checked_in">Checked In</option>
+                  <option value="pending">Pending</option>
+                </select>
+              </div>
             </div>
-            
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
