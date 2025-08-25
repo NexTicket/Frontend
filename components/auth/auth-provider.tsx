@@ -21,7 +21,7 @@ const db = getFirestore();
 interface UserProfile {
   uid: string;
   email: string;
-  role: 'admin' | 'organizer' | 'customer' | 'venue_owner';
+  role: 'admin' | 'organizer' | 'customer' | 'venue_owner' | 'event_admin' | 'checkin_officer';
   firstName?: string;
   lastName?: string;
   displayName?: string;
@@ -51,9 +51,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
 
   // Determine user role based on email or other criteria
-  const determineUserRole = (email: string): 'admin' | 'organizer' | 'customer' | 'venue_owner' => {
+  const determineUserRole = (email: string): 'admin' | 'organizer' | 'customer' | 'venue_owner' | 'event_admin' | 'checkin_officer' => {
     // Admin emails (you can modify this list)
     const adminEmails = ['admin@nexticket.com', 'admin@company.com'];
+    
+    // Event Admin emails
+    const eventAdminEmails = ['eventadmin@nexticket.com', 'event-admin@nexticket.com'];
+    
+    // Check-in Officer emails
+    const checkinOfficerEmails = ['checkin@nexticket.com', 'checkin-officer@nexticket.com'];
     
     // Organizer domain patterns (you can modify these)
     const organizerDomains = ['organizer@nexticket.com'];
@@ -65,6 +71,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     
     if (adminEmails.includes(email.toLowerCase())) {
       return 'admin';
+    }
+    
+    if (eventAdminEmails.includes(email.toLowerCase())) {
+      return 'event_admin';
+    }
+    
+    if (checkinOfficerEmails.includes(email.toLowerCase())) {
+      return 'checkin_officer';
     }
     
     if (organizerDomains.includes(email.toLowerCase()) || 
@@ -222,7 +236,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           currentPath === '/auth/signup' ||
           (!currentPath.startsWith('/admin') && profile.role === 'admin') ||
           (!currentPath.startsWith('/organizer') && profile.role === 'organizer') ||
-          (!currentPath.startsWith('/venue-owner') && profile.role === 'venue_owner');
+          (!currentPath.startsWith('/venue-owner') && profile.role === 'venue_owner') ||
+          (!currentPath.startsWith('/event-admin') && profile.role === 'event_admin') ||
+          (!currentPath.startsWith('/checkin-officer') && profile.role === 'checkin_officer');
 
         if (shouldRedirect) {
           console.log(`Redirect needed: ${currentPath} for role: ${profile.role}`);
@@ -239,6 +255,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             case 'venue_owner':
               console.log('Redirecting centrally to venue owner dashboard');
               router.push('/venue-owner/dashboard');
+              break;
+            case 'event_admin':
+              console.log('Redirecting centrally to event admin dashboard');
+              router.push('/event-admin');
+              break;
+            case 'checkin_officer':
+              console.log('Redirecting centrally to checkin officer dashboard');
+              router.push('/checkin-officer');
               break;
             case 'customer':
               console.log('Redirecting centrally to customers dashboard');
