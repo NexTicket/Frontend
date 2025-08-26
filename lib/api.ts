@@ -165,6 +165,54 @@ export async function rejectEvent(id: string) {
   return res.json();
 }
 
+// Create a new event (status defaults to PENDING on the backend)
+export async function createEvent(eventData: {
+  title: string;
+  description: string;
+  category: string;
+  type: 'MOVIE' | 'EVENT' | string;
+  startDate: string; // ISO date or YYYY-MM-DD
+  endDate?: string;  // ISO date or YYYY-MM-DD
+  venueId?: string | number;
+  image?: string;
+}) {
+  const body = {
+    title: eventData.title,
+    description: eventData.description,
+    category: eventData.category,
+    type: eventData.type,
+    startDate: eventData.startDate,
+    endDate: eventData.endDate ?? undefined,
+    venueId: eventData.venueId !== undefined && eventData.venueId !== null ? String(eventData.venueId) : undefined,
+    image: eventData.image ?? undefined
+  };
+
+  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/events`, {
+    method: 'POST',
+    body: JSON.stringify(body)
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to create event: ${res.status} ${text}`);
+  }
+
+  return res.json();
+}
+
+// Delete event by id
+export async function deleteEvent(id: string) {
+  // Backend route expects /events/delete-event/:id
+  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/events/delete-event/${id}`, {
+    method: 'DELETE'
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to delete event: ${res.status} ${text}`);
+  }
+  return res.json();
+}
+
 export async function fetchmyVenues() {
   const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/venues/myvenues`);
   if (!res.ok) throw new Error("Failed to fetch my venues");
