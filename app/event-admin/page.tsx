@@ -525,6 +525,7 @@ export default function EventAdminDashboard() {
                         rows={3}
                         placeholder="Add a notice about this event..."
                       />
+                      <div className="mt-4 flex justify-end">
                       <Button
                         type="submit"
                         size="sm"
@@ -532,6 +533,7 @@ export default function EventAdminDashboard() {
                       >
                         Add Notice
                       </Button>
+                      </div>
                     </form>
                     {/* List of notices (demo, static) */}
                     <div className="mt-4 space-y-2">
