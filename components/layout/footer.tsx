@@ -1,9 +1,10 @@
+import React from 'react';
 import Link from 'next/link';
 import { Facebook, Twitter, Instagram, Mail, Phone } from 'lucide-react';
 
 export function Footer() {
   return (
-    <footer className="bg-background border-t">
+    <footer className="bg-background border-t" style={{ backgroundColor: '#191C24', borderColor: '#191C24' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Company Info */}

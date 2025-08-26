@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { collection, getDocs, doc, updateDoc, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { motion } from 'framer-motion';
 import { 
   Calendar, 
   MapPin, 
@@ -24,6 +25,29 @@ import {
   UserCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+
+// Animation variants for smooth transitions
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      delayChildren: 0.1,
+      staggerChildren: 0.05
+    }
+  }
+};
+
+const itemVariants = {
+  hidden: { y: 20, opacity: 0 },
+  visible: {
+    y: 0,
+    opacity: 1,
+    transition: {
+      duration: 0.5
+    }
+  }
+};
 
 interface EventRequest {
   id: string;
@@ -270,249 +294,266 @@ export default function AdminEvents() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-orange-50">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-purple-600 via-purple-700 to-orange-600 text-white p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold mb-2">Event Management</h1>
-              <p className="text-purple-100">Review and manage event requests</p>
-            </div>
-            <div className="text-right">
-              <div className="text-2xl font-bold">{filteredRequests.length}</div>
-              <div className="text-sm text-purple-100">Total Requests</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto p-6">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-purple-100 hover:shadow-xl transition-shadow duration-300">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Pending Requests</p>
-                <p className="text-3xl font-bold text-purple-600">
-                  {eventRequests.filter(r => r.status === 'pending').length}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                <Clock className="w-6 h-6 text-purple-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-green-100 hover:shadow-xl transition-shadow duration-300">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Approved Events</p>
-                <p className="text-3xl font-bold text-green-600">
-                  {eventRequests.filter(r => r.status === 'approved').length}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                <Check className="w-6 h-6 text-green-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-red-100 hover:shadow-xl transition-shadow duration-300">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Rejected</p>
-                <p className="text-3xl font-bold text-red-600">
-                  {eventRequests.filter(r => r.status === 'rejected').length}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
-                <X className="w-6 h-6 text-red-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-orange-100 hover:shadow-xl transition-shadow duration-300">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Staff Available</p>
-                <p className="text-3xl font-bold text-orange-600">
-                  {staff.filter(s => s.isAvailable).length}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
-                <Users className="w-6 h-6 text-orange-600" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Filters and Search */}
-        <div className="bg-white rounded-2xl p-6 shadow-lg mb-8">
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input
-                  type="text"
-                  placeholder="Search events or organizers..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
-              </div>
-              
-              <div className="relative">
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                >
-                  <option value="all">All Status</option>
-                  <option value="pending">Pending</option>
-                  <option value="approved">Approved</option>
-                  <option value="rejected">Rejected</option>
-                </select>
-                <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
-              <Filter className="w-4 h-4" />
-              <span>Showing {filteredRequests.length} requests</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Event Requests Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {filteredRequests.map((request) => (
-            <div key={request.id} className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100">
-              {/* Card Header */}
-              <div className="bg-gradient-to-r from-purple-500 to-orange-500 p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h3 className="text-xl font-bold text-white mb-2 line-clamp-2">{request.title}</h3>
-                    <p className="text-purple-100 text-sm">by {request.organizer}</p>
-                  </div>
-                  <div className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(request.status)}`}>
-                    {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
-                  </div>
-                </div>
-              </div>
-
-              {/* Card Content */}
-              <div className="p-6">
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div className="flex items-center text-sm text-gray-600">
-                    <CalendarIcon className="w-4 h-4 mr-2 text-purple-500" />
-                    {new Date(request.date).toLocaleDateString()}
-                  </div>
-                  <div className="flex items-center text-sm text-gray-600">
-                    <Clock className="w-4 h-4 mr-2 text-purple-500" />
-                    {request.time}
-                  </div>
-                  <div className="flex items-center text-sm text-gray-600">
-                    <MapPin className="w-4 h-4 mr-2 text-orange-500" />
-                    {request.venue}
-                  </div>
-                  <div className="flex items-center text-sm text-gray-600">
-                    <Users className="w-4 h-4 mr-2 text-orange-500" />
-                    {request.expectedAttendees} attendees
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center text-sm text-gray-600">
-                    <DollarSign className="w-4 h-4 mr-1 text-green-500" />
-                    <span className="font-semibold">${request.ticketPrice}</span>
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    Submitted {new Date(request.submittedAt).toLocaleDateString()}
-                  </div>
-                </div>
-
-                <p className="text-gray-600 text-sm mb-4 line-clamp-2">{request.description}</p>
-
-                {/* Staff Assignments (for approved events) */}
-                {request.status === 'approved' && (
-                  <div className="bg-green-50 rounded-lg p-3 mb-4">
-                    <h4 className="text-sm font-semibold text-green-800 mb-2">Staff Assigned:</h4>
-                    <div className="space-y-1 text-xs">
-                      <div className="flex items-center">
-                        <Shield className="w-3 h-3 mr-1 text-green-600" />
-                        <span className="font-medium">Event Admin:</span>
-                        <span className="ml-1">{request.eventAdmin}</span>
-                      </div>
-                      <div className="flex items-center">
-                        <UserPlus className="w-3 h-3 mr-1 text-green-600" />
-                        <span className="font-medium">Check-in Officers:</span>
-                        <span className="ml-1">{request.checkinOfficers?.join(', ')}</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Action Buttons */}
-                <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSelectedRequest(request)}
-                    className="flex items-center space-x-2"
+    <div className="min-h-screen" style={{ background: '#191C24' }}>
+      {/* Simple Background Elements */}
+      <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-20" style={{ backgroundColor: '#ABA8A9' }}></div>
+      <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-15" style={{ backgroundColor: '#D8DFEE' }}></div>
+      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl opacity-10" style={{ backgroundColor: '#ABA8A9' }}></div>
+      
+      {/* Content Container */}
+      <div className="relative z-10 pt-8 px-8">
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={containerVariants}
+          className="max-w-7xl mx-auto"
+        >
+          {/* Clean Header */}
+          <motion.div variants={itemVariants} className="mb-12">
+            <div className="border rounded-2xl p-6 shadow-lg" style={{ backgroundColor: '#0D6EFD', borderColor: '#000' }}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <motion.h1 
+                    initial={{ opacity: 0, x: -30 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.6, ease: "easeOut" }}
+                    className="text-3xl font-bold mb-2"
+                    style={{ color: '#fff' }}
                   >
-                    <Eye className="w-4 h-4" />
-                    <span>View Details</span>
-                  </Button>
-
-                  {request.status === 'pending' && (
-                    <div className="flex space-x-2">
-                      <Button
-                        size="sm"
-                        onClick={() => handleReject(request.id)}
-                        className="bg-red-500 hover:bg-red-600 text-white"
-                      >
-                        <X className="w-4 h-4 mr-1" />
-                        Reject
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => handleApprove(request.id)}
-                        className="bg-green-500 hover:bg-green-600 text-white"
-                      >
-                        <Check className="w-4 h-4 mr-1" />
-                        Approve
-                      </Button>
-                    </div>
-                  )}
+                    Event Management
+                  </motion.h1>
+                  <motion.p
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2, duration: 0.5 }}
+                    className="text-lg font-normal"
+                    style={{ color: '#fff' }}
+                  >
+                    Review and manage event requests across your platform
+                  </motion.p>
                 </div>
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.3, duration: 0.4 }}
+                >
+                </motion.div>
               </div>
             </div>
-          ))}
-        </div>
+          </motion.div>
 
-        {filteredRequests.length === 0 && (
-          <div className="text-center py-12">
-            <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-600 mb-2">No requests found</h3>
-            <p className="text-gray-500">Try adjusting your search or filter criteria.</p>
+          <div className="space-y-6">
+            {/* Stats Grid */}
+            <motion.div variants={itemVariants} className="mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="backdrop-blur-xl border rounded-3xl p-5 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}>
+                  <div className="text-2xl font-bold" style={{ color: '#CBF83E' }}>
+                    {eventRequests.filter(r => r.status === 'pending').length}
+                  </div>
+                  <div className="text-5xs text-white font-medium">Pending</div>
+                </div>
+                <div className="backdrop-blur-xl border rounded-3xl p-5 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}>
+                  <div className="text-2xl font-bold" style={{ color: '#CBF83E' }}>
+                    {eventRequests.filter(r => r.status === 'approved').length}
+                  </div>
+                  <div className="text-5xs text-white font-medium">Approved</div>
+                </div>
+                <div className="backdrop-blur-xl border rounded-3xl p-5 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}>
+                  <div className="text-2xl font-bold" style={{ color: '#CBF83E' }}>
+                    {eventRequests.filter(r => r.status === 'rejected').length}
+                  </div>
+                  <div className="text-5xs text-white font-medium">Rejected</div>
+                </div>
+                <div className="backdrop-blur-xl border rounded-3xl p-5 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}>
+                  <div className="text-2xl font-bold" style={{ color: '#CBF83E' }}>
+                    {staff.filter(s => s.isAvailable).length}
+                  </div>
+                  <div className="text-5xs text-white font-medium">Staff Available</div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Search and Filters */}
+            <motion.div variants={itemVariants}>
+              <div className="backdrop-blur-xl border rounded-3xl p-5 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}>
+                <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white w-4 h-4" />
+                      <input
+                        type="text"
+                        placeholder="Search events or organizers..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent text-white placeholder-white bg-transparent"
+                        style={{ 
+                          backgroundColor: 'transparent',
+                          color: '#fff',
+                          borderColor: '#39FD48' + '50'
+                        }}
+                      />
+                    </div>
+                    
+                    <div className="relative">
+                      <select
+                        value={filterStatus}
+                        onChange={(e) => setFilterStatus(e.target.value)}
+                        className="appearance-none border rounded-lg px-4 py-2 pr-8 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        style={{
+                          backgroundColor: '#191C24',
+                          color: '#fff',
+                          borderColor: '#39FD48' + '50'
+                        }}
+                      >
+                        <option value="all">All Status</option>
+                        <option value="pending">Pending</option>
+                        <option value="approved">Approved</option>
+                        <option value="rejected">Rejected</option>
+                      </select>
+                      <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2 text-sm text-white">
+                    <Filter className="w-4 h-4" />
+                    <span>Showing {filteredRequests.length} requests</span>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Event Requests Grid */}
+            <motion.div variants={itemVariants}>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {filteredRequests.map((request) => (
+                  <div key={request.id} className="backdrop-blur-xl border rounded-3xl p-6 shadow-xl transition-all duration-300 hover:transform hover:scale-102 hover:shadow-2xl cursor-pointer" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '50', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}>
+                    {/* Card Header */}
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex-1">
+                        <h3 className="text-xl font-bold text-white mb-2 line-clamp-2">{request.title}</h3>
+                        <p className="text-gray-300 text-sm">by {request.organizer}</p>
+                      </div>
+                      <div className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}>
+                        {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                      </div>
+                    </div>
+
+                    {/* Card Content */}
+                    <div className="space-y-3 mb-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="flex items-center text-sm" style={{ color: '#0D6EFD' }}>
+                          <CalendarIcon className="w-4 h-4 mr-2" style={{ color: '#CBF83E' }} />
+                          {new Date(request.date).toLocaleDateString()}
+                        </div>
+                        <div className="flex items-center text-sm" style={{ color: '#0D6EFD' }}>
+                          <Clock className="w-4 h-4 mr-2" style={{ color: '#CBF83E' }}/>
+                          {request.time}
+                        </div>
+                        <div className="flex items-center text-sm" style={{ color: '#0D6EFD' }}>
+                          <MapPin className="w-4 h-4 mr-2" style={{ color: '#CBF83E' }} />
+                          {request.venue}
+                        </div>
+                        <div className="flex items-center text-sm" style={{ color: '#0D6EFD' }}>
+                          <Users className="w-4 h-4 mr-2" style={{ color: '#CBF83E' }} />
+                          {request.expectedAttendees} attendees
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        {/* <div className="flex items-center text-sm" style={{ color: '#CBF83E' }}>
+                          <DollarSign className="w-4 h-4 mr-1" />
+                          <span className="font-semibold">${request.ticketPrice}</span>
+                        </div> */}
+                        <div className="text-xs text-gray-400">
+                          Submitted {new Date(request.submittedAt).toLocaleDateString()}
+                        </div>
+                      </div>
+
+                      <p className="text-gray-300 text-sm line-clamp-2">{request.description}</p>
+
+                      {/* Staff Assignments (for approved events) */}
+                      {request.status === 'approved' && (
+                        <div className="rounded-lg p-3" style={{ backgroundColor: '#0D6EFD' + '20' }}>
+                          <h4 className="text-sm font-semibold text-white mb-2">Staff Assigned:</h4>
+                          <div className="space-y-1 text-xs">
+                            <div className="flex items-center">
+                              <Shield className="w-3 h-3 mr-1" style={{ color: '#CBF83E' }} />
+                              <span className="font-medium text-white">Event Admin:</span>
+                              <span className="ml-1 text-gray-300">{request.eventAdmin}</span>
+                            </div>
+                            <div className="flex items-center">
+                              <UserPlus className="w-3 h-3 mr-1" style={{ color: '#CBF83E' }} />
+                              <span className="font-medium text-white">Check-in Officers:</span>
+                              <span className="ml-1 text-gray-300">{request.checkinOfficers?.join(', ')}</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center justify-between pt-4 border-t" style={{ borderColor: '#39FD48' + '30' }}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedRequest(request)}
+                        className="flex items-center space-x-2 text-white border hover:bg-gray-600"
+                        style={{ backgroundColor: '#0D6EFD', borderColor: '#0D6EFD' }}
+                      >
+                        <Eye className="w-4 h-4" />
+                        <span>View Details</span>
+                      </Button>
+
+                      {request.status === 'pending' && (
+                        <div className="flex space-x-2">
+                          <Button
+                            size="sm"
+                            onClick={() => handleReject(request.id)}
+                            className="bg-red-500 hover:bg-red-600 text-white"
+                          >
+                            <X className="w-4 h-4 mr-1" />
+                            Reject
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => handleApprove(request.id)}
+                            className="bg-green-500 hover:bg-green-600 text-white"
+                          >
+                            <Check className="w-4 h-4 mr-1" />
+                            Approve
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {filteredRequests.length === 0 && (
+                <div className="text-center py-12">
+                  <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-white mb-2">No requests found</h3>
+                  <p className="text-gray-300">Try adjusting your search or filter criteria.</p>
+                </div>
+              )}
+            </motion.div>
           </div>
-        )}
+        </motion.div>
       </div>
 
       {/* Event Details Modal */}
       {selectedRequest && !showAssignmentModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="bg-gradient-to-r from-purple-500 to-orange-500 p-6 text-white">
+          <div className="rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" style={{ backgroundColor: '#191C24', border: '1px solid #ABA8A9' + '30' }}>
+            <div className="p-6" style={{ backgroundColor: '#0D6EFD', borderTopLeftRadius: '1rem', borderTopRightRadius: '1rem' }}>
               <div className="flex items-start justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold mb-2">{selectedRequest.title}</h2>
-                  <p className="text-purple-100">Event Request Details</p>
+                  <h2 className="text-2xl font-bold mb-2 text-white">{selectedRequest?.title || 'Event Details'}</h2>
+                  <p className="text-white opacity-80">Event Request Details</p>
                 </div>
                 <button
                   onClick={() => setSelectedRequest(null)}
-                  className="text-white hover:text-gray-200"
+                  className="text-white hover:text-gray-200 transition-colors"
                 >
                   <X className="w-6 h-6" />
                 </button>
@@ -522,74 +563,80 @@ export default function AdminEvents() {
             <div className="p-6">
               <div className="grid grid-cols-2 gap-6 mb-6">
                 <div>
-                  <h3 className="font-semibold text-gray-800 mb-3">Event Information</h3>
+                  <h3 className="font-semibold mb-3" style={{ color: '#0D6EFD' }}>Event Information</h3>
                   <div className="space-y-3">
                     <div className="flex items-center">
-                      <CalendarIcon className="w-4 h-4 mr-2 text-purple-500" />
-                      <span className="text-sm">{new Date(selectedRequest.date).toLocaleDateString()} at {selectedRequest.time}</span>
+                      <CalendarIcon className="w-4 h-4 mr-2" style={{ color: '#CBF83E' }} />
+                      <span className="text-sm text-white">{selectedRequest?.date ? new Date(selectedRequest.date).toLocaleDateString() : 'N/A'} at {selectedRequest?.time || 'N/A'}</span>
                     </div>
                     <div className="flex items-center">
-                      <MapPin className="w-4 h-4 mr-2 text-purple-500" />
-                      <span className="text-sm">{selectedRequest.venue}</span>
+                      <MapPin className="w-4 h-4 mr-2" style={{ color: '#CBF83E' }} />
+                      <span className="text-sm text-white">{selectedRequest?.venue || 'N/A'}</span>
                     </div>
                     <div className="flex items-center">
-                      <Users className="w-4 h-4 mr-2 text-orange-500" />
-                      <span className="text-sm">{selectedRequest.expectedAttendees} expected attendees</span>
+                      <Users className="w-4 h-4 mr-2" style={{ color: '#CBF83E' }} />
+                      <span className="text-sm text-white">{selectedRequest?.expectedAttendees || 0} expected attendees</span>
                     </div>
                     <div className="flex items-center">
-                      <DollarSign className="w-4 h-4 mr-2 text-green-500" />
-                      <span className="text-sm">${selectedRequest.ticketPrice} per ticket</span>
+                      <DollarSign className="w-4 h-4 mr-2" style={{ color: '#CBF83E' }} />
+                      <span className="text-sm text-white">${selectedRequest?.ticketPrice || 0} per ticket</span>
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <h3 className="font-semibold text-gray-800 mb-3">Organizer Information</h3>
+                  <h3 className="font-semibold mb-3" style={{ color: '#0D6EFD' }}>Organizer Information</h3>
                   <div className="space-y-2">
-                    <p className="text-sm"><span className="font-medium">Name:</span> {selectedRequest.organizer}</p>
-                    <p className="text-sm"><span className="font-medium">Email:</span> {selectedRequest.organizerEmail}</p>
-                    <p className="text-sm"><span className="font-medium">Category:</span> {selectedRequest.category}</p>
-                    <p className="text-sm"><span className="font-medium">Submitted:</span> {new Date(selectedRequest.submittedAt).toLocaleDateString()}</p>
+                    <p className="text-sm text-white"><span className="font-medium">Name:</span> {selectedRequest?.organizer || 'N/A'}</p>
+                    <p className="text-sm text-white"><span className="font-medium">Email:</span> {selectedRequest?.organizerEmail || 'N/A'}</p>
+                    <p className="text-sm text-white"><span className="font-medium">Category:</span> {selectedRequest?.category || 'N/A'}</p>
+                    <p className="text-sm text-white"><span className="font-medium">Submitted:</span> {selectedRequest?.submittedAt ? new Date(selectedRequest.submittedAt).toLocaleDateString() : 'N/A'}</p>
                   </div>
                 </div>
               </div>
 
               <div className="mb-6">
-                <h3 className="font-semibold text-gray-800 mb-3">Description</h3>
-                <p className="text-gray-600 text-sm leading-relaxed">{selectedRequest.description}</p>
+                <h3 className="font-semibold mb-3" style={{ color: '#0D6EFD' }}>Description</h3>
+                <p className="text-sm leading-relaxed text-white opacity-80">{selectedRequest?.description || 'No description provided'}</p>
               </div>
 
-              {selectedRequest.status === 'approved' && selectedRequest.eventAdmin && (
-                <div className="bg-green-50 rounded-lg p-4 mb-6">
-                  <h3 className="font-semibold text-green-800 mb-3">Assigned Staff</h3>
+              {selectedRequest?.status === 'approved' && selectedRequest?.eventAdmin && (
+                <div className="rounded-lg p-4 mb-6" style={{ backgroundColor: '#CBF83E' + '20', border: '1px solid #CBF83E' + '30' }}>
+                  <h3 className="font-semibold mb-3" style={{ color: '#CBF83E' }}>Assigned Staff</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-sm font-medium text-green-700">Event Admin:</p>
-                      <p className="text-sm text-green-600">{selectedRequest.eventAdmin}</p>
+                      <p className="text-sm font-medium" style={{ color: '#CBF83E' }}>Event Admin:</p>
+                      <p className="text-sm text-white">{selectedRequest.eventAdmin}</p>
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-green-700">Check-in Officers:</p>
-                      <p className="text-sm text-green-600">{selectedRequest.checkinOfficers?.join(', ')}</p>
+                      <p className="text-sm font-medium" style={{ color: '#CBF83E' }}>Check-in Officers:</p>
+                      <p className="text-sm text-white">{selectedRequest.checkinOfficers?.join(', ') || 'Not assigned'}</p>
                     </div>
                   </div>
                 </div>
               )}
 
               <div className="flex justify-end space-x-3">
-                <Button variant="outline" onClick={() => setSelectedRequest(null)}>
+                <Button 
+                  // variant="outline" 
+                  onClick={() => setSelectedRequest(null)}
+                  className=" text-white bg-gray-700"
+                  
+                >
                   Close
                 </Button>
-                {selectedRequest.status === 'pending' && (
+                {selectedRequest?.status === 'pending' && (
                   <>
                     <Button 
-                      onClick={() => handleReject(selectedRequest.id)}
+                      onClick={() => selectedRequest && handleReject(selectedRequest.id)}
                       className="bg-red-500 hover:bg-red-600 text-white"
                     >
                       Reject Request
                     </Button>
                     <Button 
-                      onClick={() => handleApprove(selectedRequest.id)}
-                      className="bg-green-500 hover:bg-green-600 text-white"
+                      onClick={() => selectedRequest && handleApprove(selectedRequest.id)}
+                      className="text-black hover:opacity-80"
+                      style={{ backgroundColor: '#CBF83E' }}
                     >
                       Approve & Assign Staff
                     </Button>
@@ -604,34 +651,35 @@ export default function AdminEvents() {
       {/* Staff Assignment Modal */}
       {showAssignmentModal && selectedRequest && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-2xl w-full">
-            <div className="bg-gradient-to-r from-purple-500 to-orange-500 p-6 text-white">
-              <h2 className="text-2xl font-bold">Assign Staff</h2>
-              <p className="text-purple-100">Assign event admin and check-in officers for "{selectedRequest.title}"</p>
+          <div className="rounded-2xl max-w-2xl w-full shadow-2xl" style={{ backgroundColor: '#191C24', border: '1px solid #ABA8A9' + '30' }}>
+            <div className="p-6" style={{ backgroundColor: '#AF1763', borderTopLeftRadius: '1rem', borderTopRightRadius: '1rem' }}>
+              <h2 className="text-2xl font-bold text-white">Assign Staff</h2>
+              <p className="text-white opacity-80">Assign event admin and check-in officers for "{selectedRequest?.title || 'this event'}"</p>
             </div>
 
             <div className="p-6">
               {/* Event Admin Selection */}
               <div className="mb-6">
-                <h3 className="font-semibold text-gray-800 mb-3">Select Event Admin (1 required)</h3>
+                <h3 className="font-semibold mb-3" style={{ color: '#CBF83E' }}>Select Event Admin (1 required)</h3>
                 <div className="space-y-2">
-                  {staff.filter(s => s.role === 'event_admin' && s.isAvailable).map((staff) => (
-                    <label key={staff.id} className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-purple-50 cursor-pointer">
+                  {staff.filter(s => s.role === 'event_admin' && s.isAvailable).map((staffMember) => (
+                    <label key={staffMember.id} className="flex items-center p-3 border rounded-lg cursor-pointer transition-colors hover:bg-gray-700" style={{ borderColor: '#ABA8A9' + '30', backgroundColor: selectedEventAdmin === staffMember.id ? '#CBF83E' + '20' : 'transparent' }}>
                       <input
                         type="radio"
                         name="eventAdmin"
-                        value={staff.id}
-                        checked={selectedEventAdmin === staff.id}
+                        value={staffMember.id}
+                        checked={selectedEventAdmin === staffMember.id}
                         onChange={(e) => setSelectedEventAdmin(e.target.value)}
                         className="mr-3"
+                        style={{ accentColor: '#CBF83E' }}
                       />
                       <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                          <Shield className="w-4 h-4 text-purple-600" />
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: '#CBF83E' + '30' }}>
+                          <Shield className="w-4 h-4" style={{ color: '#CBF83E' }} />
                         </div>
                         <div>
-                          <p className="font-medium text-gray-800">{staff.name}</p>
-                          <p className="text-sm text-gray-600">{staff.email}</p>
+                          <p className="font-medium text-white">{staffMember.displayName || staffMember.name}</p>
+                          <p className="text-sm text-white opacity-70">{staffMember.email}</p>
                         </div>
                       </div>
                     </label>
@@ -641,32 +689,36 @@ export default function AdminEvents() {
 
               {/* Check-in Officers Selection */}
               <div className="mb-6">
-                <h3 className="font-semibold text-gray-800 mb-3">
+                <h3 className="font-semibold mb-3" style={{ color: '#CBF83E' }}>
                   Select Check-in Officers (2 required) - {selectedCheckinOfficers.length}/2 selected
                 </h3>
                 <div className="space-y-2">
-                  {staff.filter(s => s.role === 'checkin_officer' && s.isAvailable).map((staff) => (
-                    <label key={staff.id} className={`flex items-center p-3 border border-gray-200 rounded-lg cursor-pointer ${
-                      selectedCheckinOfficers.includes(staff.id) 
-                        ? 'bg-orange-50 border-orange-200' 
+                  {staff.filter(s => s.role === 'checkin_officer' && s.isAvailable).map((staffMember) => (
+                    <label key={staffMember.id} className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${
+                      selectedCheckinOfficers.includes(staffMember.id) 
+                        ? 'border-opacity-60' 
                         : selectedCheckinOfficers.length >= 2
                         ? 'opacity-50 cursor-not-allowed'
-                        : 'hover:bg-orange-50'
-                    }`}>
+                        : 'hover:bg-gray-700'
+                    }`} style={{ 
+                      borderColor: selectedCheckinOfficers.includes(staffMember.id) ? '#CBF83E' : '#ABA8A9' + '30',
+                      backgroundColor: selectedCheckinOfficers.includes(staffMember.id) ? '#CBF83E' + '20' : 'transparent'
+                    }}>
                       <input
                         type="checkbox"
-                        checked={selectedCheckinOfficers.includes(staff.id)}
-                        onChange={() => handleCheckinOfficerToggle(staff.id)}
-                        disabled={selectedCheckinOfficers.length >= 2 && !selectedCheckinOfficers.includes(staff.id)}
+                        checked={selectedCheckinOfficers.includes(staffMember.id)}
+                        onChange={() => handleCheckinOfficerToggle(staffMember.id)}
+                        disabled={selectedCheckinOfficers.length >= 2 && !selectedCheckinOfficers.includes(staffMember.id)}
                         className="mr-3"
+                        style={{ accentColor: '#CBF83E' }}
                       />
                       <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-                          <UserPlus className="w-4 h-4 text-orange-600" />
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: '#ABA8A9' + '30' }}>
+                          <UserPlus className="w-4 h-4" style={{ color: '#ABA8A9' }} />
                         </div>
                         <div>
-                          <p className="font-medium text-gray-800">{staff.name}</p>
-                          <p className="text-sm text-gray-600">{staff.email}</p>
+                          <p className="font-medium text-white">{staffMember.displayName || staffMember.name}</p>
+                          <p className="text-sm text-white opacity-70">{staffMember.email}</p>
                         </div>
                       </div>
                     </label>
@@ -683,13 +735,15 @@ export default function AdminEvents() {
                     setSelectedEventAdmin('');
                     setSelectedCheckinOfficers([]);
                   }}
+                  className="border-gray-500 text-white hover:bg-gray-700"
                 >
                   Cancel
                 </Button>
                 <Button 
                   onClick={handleAssignStaff}
                   disabled={!selectedEventAdmin || selectedCheckinOfficers.length !== 2}
-                  className="bg-gradient-to-r from-purple-500 to-orange-500 hover:from-purple-600 hover:to-orange-600 text-white disabled:opacity-50"
+                  className="text-black hover:opacity-80 disabled:opacity-50"
+                  style={{ backgroundColor: '#CBF83E' }}
                 >
                   Approve Event & Assign Staff
                 </Button>

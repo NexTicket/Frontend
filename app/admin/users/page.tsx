@@ -6,6 +6,7 @@ import { db } from '@/lib/firebase';
 import { useAuth } from '@/components/auth/auth-provider';
 import { createTenant, setUserClaims, bootstrapAdmin } from '@/lib/api';
 import { debugApprovalWorkflow } from '@/utils/debug-approval';
+import { color, motion } from 'framer-motion';
 import { 
   Users, 
   Shield, 
@@ -29,6 +30,30 @@ import {
   UserCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { BorderColor } from '@mui/icons-material';
+
+// Animation variants for smooth transitions
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      delayChildren: 0.1,
+      staggerChildren: 0.05
+    }
+  }
+};
+
+const itemVariants = {
+  hidden: { y: 20, opacity: 0 },
+  visible: {
+    y: 0,
+    opacity: 1,
+    transition: {
+      duration: 0.5
+    }
+  }
+};
 
 // Types for our role request data
 interface RoleRequest {
@@ -516,54 +541,55 @@ export default function AdminUsers() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-700">
-                <div className="max-w-7xl mx-auto p-6">
-                    <div className="text-white">
-                        <h1 className="text-4xl font-bold mb-2">User Management</h1>
-                        <p className="text-purple-100 text-lg">Manage users, roles, and permissions across your platform</p>
-                    </div>
-                    
-                    {/* Quick Stats in Header */}
-                    <div className="mt-6 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
-                        <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
-                            <div className="text-2xl font-bold text-white">{userStats.total}</div>
-                            <div className="text-sm text-purple-100">Total Users</div>
+        <div className="min-h-screen" style={{ background: '#191C24' }}>
+            {/* Simple Background Elements */}
+            <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-20" style={{ backgroundColor: '#ABA8A9' }}></div>
+            <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-15" style={{ backgroundColor: '#D8DFEE' }}></div>
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl opacity-10" style={{ backgroundColor: '#ABA8A9' }}></div>
+            
+            {/* Content Container */}
+            <div className="relative z-10 pt-8 px-8">
+                <motion.div
+                    initial="hidden"
+                    animate="visible"
+                    variants={containerVariants}
+                    className="max-w-7xl mx-auto"
+                >
+                    {/* Clean Header */}
+                    <motion.div variants={itemVariants} className="mb-12">
+                        <div className="border rounded-2xl p-6 shadow-lg" style={{ backgroundColor: '#0D6EFD', borderColor: '#000' }}>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <motion.h1 
+                                        initial={{ opacity: 0, x: -30 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{ duration: 0.6, ease: "easeOut" }}
+                                        className="text-3xl font-bold mb-2"
+                                        style={{ color: '#fff' }}
+                                    >
+                                        User Management
+                                    </motion.h1>
+                                    <motion.p
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: 0.2, duration: 0.5 }}
+                                        className="text-lg font-normal"
+                                        style={{ color: '#fff' }}
+                                    >
+                                        Manage users, roles, and permissions across your platform
+                                    </motion.p>
+                                </div>
+                                <motion.div 
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ delay: 0.3, duration: 0.4 }}
+                                >
+                                </motion.div>
+                            </div>
                         </div>
-                        <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
-                            <div className="text-2xl font-bold text-white">{roleRequests.length}</div>
-                            <div className="text-sm text-purple-100">Pending Requests</div>
-                        </div>
-                        <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
-                            <div className="text-2xl font-bold text-white">{userStats.admins}</div>
-                            <div className="text-sm text-purple-100">Admins</div>
-                        </div>
-                        <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
-                            <div className="text-2xl font-bold text-white">{userStats.organizers}</div>
-                            <div className="text-sm text-purple-100">Organizers</div>
-                        </div>
-                        <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
-                            <div className="text-2xl font-bold text-white">{userStats.venue_owners}</div>
-                            <div className="text-sm text-purple-100">Venue Owners</div>
-                        </div>
-                        <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
-                            <div className="text-2xl font-bold text-white">{userStats.event_admins}</div>
-                            <div className="text-sm text-purple-100">Event Admins</div>
-                        </div>
-                        <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
-                            <div className="text-2xl font-bold text-white">{userStats.checkin_officers}</div>
-                            <div className="text-sm text-purple-100">Check-in Officers</div>
-                        </div>
-                        <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
-                            <div className="text-2xl font-bold text-white">{userStats.newThisWeek}</div>
-                            <div className="text-sm text-purple-100">New This Week</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                    </motion.div>
 
-            <div className="max-w-7xl mx-auto p-6">
+                    <div className="space-y-6">
                 {/* Error and Success Messages */}
                 {error && (
                     <div className="mb-6 bg-red-50 border border-red-200 rounded-2xl p-4">
@@ -577,6 +603,42 @@ export default function AdminUsers() {
                     </div>
                 )}
 
+                {/* Quick Stats in Header - Simplified Boxes */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+                                <div className="backdrop-blur-xl border rounded-3xl p-5 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}>
+                                    <div className="text-xl font-bold " style={{ color: '#CBF83E' }}>{userStats.total}</div>
+                                    <div className="text-xs text-white font-medium">Total Users</div>
+                                </div>
+                                <div className="backdrop-blur-xl border rounded-3xl p-5 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}>
+                                    <div className="text-xl font-bold" style={{ color: '#CBF83E' }}>{roleRequests.length}</div>
+                                    <div className="text-xs text-white font-medium">Pending</div>
+                                </div>
+                                <div className="backdrop-blur-xl border rounded-3xl p-5 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}>
+                                    <div className="text-xl font-bold" style={{ color: '#CBF83E' }}>{userStats.admins}</div>
+                                    <div className="text-xs text-white font-medium">Admins</div>
+                                </div>
+                                <div className="backdrop-blur-xl border rounded-3xl p-5 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}>
+                                    <div className="text-xl font-bold" style={{ color: '#CBF83E' }}>{userStats.organizers}</div>
+                                    <div className="text-xs text-white font-medium">Organizers</div>
+                                </div>
+                                <div className="backdrop-blur-xl border rounded-3xl p-5 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}>
+                                    <div className="text-xl font-bold" style={{ color: '#CBF83E' }}>{userStats.venue_owners}</div>
+                                    <div className="text-xs text-white font-medium">Venues</div>
+                                </div>
+                                <div className="backdrop-blur-xl border rounded-3xl p-5 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}>
+                                    <div className="text-xl font-bold" style={{ color: '#CBF83E' }}>{userStats.event_admins}</div>
+                                    <div className="text-xs text-white font-medium">Event Staff</div>
+                                </div>
+                                <div className="backdrop-blur-xl border rounded-3xl p-5 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}>
+                                    <div className="text-xl font-bold" style={{ color: '#CBF83E' }}>{userStats.checkin_officers}</div>
+                                    <div className="text-xs text-white font-medium">Check-in</div>
+                                </div>
+                                <div className="backdrop-blur-xl border rounded-3xl p-5 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}>
+                                    <div className="text-xl font-bold" style={{ color: '#CBF83E' }}>{userStats.newThisWeek}</div>
+                                    <div className="text-xs text-white font-medium">New Week</div>
+                                </div>
+                            </div>
+
                 {successMessage && (
                     <div className="mb-6 bg-green-50 border border-green-200 rounded-2xl p-4">
                         <div className="flex items-start">
@@ -589,7 +651,7 @@ export default function AdminUsers() {
                     </div>
                 )}
 
-                {/* Bootstrap Admin Card */}
+                {/* Bootstrap Admin Card
                 {firebaseUser && (
                     <div className="mb-6 bg-white rounded-2xl p-6 shadow-lg border border-orange-100">
                         <div className="flex items-center justify-between">
@@ -620,102 +682,69 @@ export default function AdminUsers() {
                             </Button>
                         </div>
                     </div>
-                )}
-
-                {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                    <div className="bg-white rounded-2xl p-6 shadow-lg border border-purple-100 hover:shadow-xl transition-shadow duration-300">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-gray-600 mb-1">Role Requests</p>
-                                <p className="text-3xl font-bold text-purple-600">{roleRequests.length}</p>
-                            </div>
-                            <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                                <Clock className="w-6 h-6 text-purple-600" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-2xl p-6 shadow-lg border border-green-100 hover:shadow-xl transition-shadow duration-300">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-gray-600 mb-1">Active Users</p>
-                                <p className="text-3xl font-bold text-green-600">{userStats.total}</p>
-                            </div>
-                            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                                <Users className="w-6 h-6 text-green-600" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-2xl p-6 shadow-lg border border-blue-100 hover:shadow-xl transition-shadow duration-300">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-gray-600 mb-1">Staff Members</p>
-                                <p className="text-3xl font-bold text-blue-600">{userStats.admins + userStats.organizers}</p>
-                            </div>
-                            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                                <UserCheck className="w-6 h-6 text-blue-600" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-2xl p-6 shadow-lg border border-orange-100 hover:shadow-xl transition-shadow duration-300">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-gray-600 mb-1">New This Week</p>
-                                <p className="text-3xl font-bold text-orange-600">{userStats.newThisWeek}</p>
-                            </div>
-                            <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
-                                <UserPlus className="w-6 h-6 text-orange-600" />
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                )} */}
 
                 {/* Tab Navigation */}
-                <div className="bg-white rounded-2xl p-2 shadow-lg mb-8 inline-flex">
-                    <button
-                        onClick={() => setActiveTab('requests')}
-                        className={`px-6 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
-                            activeTab === 'requests'
-                                ? 'bg-purple-600 text-white shadow-md'
-                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                        }`}
+                <div className="flex items-center justify-between mb-8">
+                    <div className="border rounded-2xl p-2 shadow-lg inline-flex" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30' }}>
+                        <button
+                            onClick={() => setActiveTab('requests')}
+                            className={`px-6 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
+                                activeTab === 'requests'
+                                    ? 'bg-blue-600 text-white shadow-md'
+                                    : 'text-white hover:text-gray-900 hover:bg-gray-50'
+                            }`}
+                        >
+                            <div className="flex items-center space-x-2">
+                                <Clock className="w-4 h-4" />
+                                <span>Role Requests ({roleRequests.length})</span>
+                            </div>
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('users')}
+                            className={`px-6 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
+                                activeTab === 'users'
+                                    ? 'bg-blue-600 text-white shadow-md'
+                                    : 'text-white hover:text-gray-900 hover:bg-gray-50'
+                            }`}
+                        >
+                            <div className="flex items-center space-x-2">
+                                <Users className="w-4 h-4" />
+                                <span>All Users ({allUsers.length})</span>
+                            </div>
+                        </button>
+                    </div>
+                    
+                    <Button
+                        onClick={() => window.location.href = '/admin/staff'}
+                        className="hover:bg-green-700 text-white px-6 py-3 font-medium shadow-lg hover:shadow-xl transition-all duration-300"
+                        style={{ backgroundColor: '#0D6EFD' }}
                     >
                         <div className="flex items-center space-x-2">
-                            <Clock className="w-4 h-4" />
-                            <span>Role Requests ({roleRequests.length})</span>
+                            <UserCheck className="w-5 h-5" />
+                            <span>Staff Management</span>
                         </div>
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('users')}
-                        className={`px-6 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
-                            activeTab === 'users'
-                                ? 'bg-purple-600 text-white shadow-md'
-                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                        }`}
-                    >
-                        <div className="flex items-center space-x-2">
-                            <Users className="w-4 h-4" />
-                            <span>All Users ({allUsers.length})</span>
-                        </div>
-                    </button>
+                    </Button>
                 </div>
 
                 {/* Search and Filters */}
                 {activeTab === 'users' && (
-                    <div className="bg-white rounded-2xl p-6 shadow-lg mb-8">
+                    <div className="backdrop-blur-xl border rounded-3xl p-5 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}>
                         <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
                             <div className="flex items-center space-x-4">
                                 <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white w-4 h-4" />
                                     <input
                                         type="text"
                                         placeholder="Search users..."
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
-                                        className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                        className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent text-white placeholder-white bg-transparent"
+                                        style={{ 
+                                            backgroundColor: 'transparent',
+                                            color: '#fff',
+                                            borderColor: '#39FD48' + '50'
+                                        }}
                                     />
                                 </div>
                                 
@@ -723,7 +752,12 @@ export default function AdminUsers() {
                                     <select
                                         value={roleFilter}
                                         onChange={(e) => setRoleFilter(e.target.value as typeof roleFilter)}
-                                        className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                        className="appearance-none border rounded-lg px-4 py-2 pr-8 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                        style={{
+                                            backgroundColor: '#191C24',
+                                            color: '#fff',
+                                            borderColor: '#39FD48' + '50'
+                                        }}
                                     >
                                         <option value="all">All Roles</option>
                                         <option value="admin">Admin</option>
@@ -738,7 +772,7 @@ export default function AdminUsers() {
                             </div>
                             
                             <div className="flex items-center space-x-4">
-                                <div className="flex items-center space-x-2 text-sm text-gray-600">
+                                <div className="flex items-center space-x-2 text-sm text-white">
                                     <Filter className="w-4 h-4" />
                                     <span>Showing {filteredUsers.length} users</span>
                                 </div>
@@ -750,11 +784,12 @@ export default function AdminUsers() {
                                     }}
                                     disabled={loading}
                                     variant="outline"
-                                    className="border-purple-200 text-purple-600 hover:bg-purple-50"
+                                    className="border-purple-200 text-white hover:bg-purple-50"
+                                    style={{ borderColor: '#39FD48' + '50' , backgroundColor: '#0D6EFD'}}
                                 >
                                     {loading ? (
                                         <div className="flex items-center">
-                                            <div className="w-4 h-4 border-2 border-purple-600 border-t-transparent rounded-full animate-spin mr-2"></div>
+                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
                                             Loading...
                                         </div>
                                     ) : (
@@ -768,30 +803,33 @@ export default function AdminUsers() {
 
                 {/* Content */}
                 {loading ? (
-                    <div className="bg-white rounded-2xl p-12 shadow-lg text-center">
+                    <div className="rounded-2xl border p-12 shadow-lg text-center" style={{
+                        backgroundColor: '#191C24',
+                        borderColor: '#39FD48' + '50'
+                    }}>
                         <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">Loading...</h3>
-                        <p className="text-gray-600">Fetching user data and role requests</p>
+                        <h3 className="text-lg font-medium text-white mb-2">Loading...</h3>
+                        <p className="text-white">Fetching user data and role requests</p>
                     </div>
                 ) : activeTab === 'requests' ? (
-                    <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-                        <div className="p-6 border-b border-gray-200">
-                            <h2 className="text-xl font-semibold text-gray-900">Role Upgrade Requests</h2>
-                            <p className="text-sm text-gray-600 mt-1">Review and approve role change requests from users</p>
+                    <div className=" rounded-2xl shadow-lg overflow-hidden">
+                        <div className=" rounded-2xl p-6 border " style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '50' }}>
+                            <h2 className="text-xl font-semibold text-white">Role Upgrade Requests</h2>
+                            <p className="text-sm text-white mt-1">Review and approve role change requests from users</p>
                         </div>
                         
                         {roleRequests.length === 0 ? (
-                            <div className="p-12 text-center">
+                            <div className="rounded-2xl p-12 border text-center" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '50' }}>
                                 <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
                                     <Clock className="w-8 h-8 text-purple-600" />
                                 </div>
-                                <h3 className="text-lg font-medium text-gray-900 mb-2">No Pending Requests</h3>
-                                <p className="text-gray-600">All role requests have been processed</p>
+                                <h3 className="text-lg font-medium text-white mb-2">No Pending Requests</h3>
+                                <p className="text-white">All role requests have been processed</p>
                             </div>
                         ) : (
                             <div className="divide-y divide-gray-200">
                                 {roleRequests.map((request) => (
-                                    <div key={request.id} className="p-6 hover:bg-gray-50 transition-colors">
+                                    <div key={request.id} className="p-6 hover:bg-gray-50 transition-colors border rounded-2xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '50' }}>
                                         <div className="flex items-start justify-between">
                                             <div className="flex items-start space-x-4 flex-1">
                                                 <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
@@ -799,7 +837,7 @@ export default function AdminUsers() {
                                                 </div>
                                                 <div className="flex-1">
                                                     <div className="flex items-center space-x-3 mb-2">
-                                                        <h3 className="text-lg font-semibold text-gray-900">
+                                                        <h3 className="text-lg font-semibold text-white">
                                                             {request.userName}
                                                         </h3>
                                                         <div className="flex items-center space-x-2">
@@ -814,21 +852,21 @@ export default function AdminUsers() {
                                                             </span>
                                                         </div>
                                                     </div>
-                                                    <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
+                                                    <div className="flex items-center space-x-4 text-sm  mb-3" style={{ color: '#0D6EFD' }}>
                                                         <div className="flex items-center">
                                                             <Mail className="w-4 h-4 mr-1" />
                                                             {request.userEmail}
                                                         </div>
-                                                        <div className="flex items-center">
+                                                        <div className="flex items-center" style={{ color: '#198754' }}>
                                                             <Calendar className="w-4 h-4 mr-1" />
                                                             {formatDate(request.createdAt)}
                                                         </div>
                                                     </div>
-                                                    {request.message && (
+                                                    {/* {request.message && (
                                                         <div className="bg-gray-50 rounded-lg p-3 mb-3">
                                                             <p className="text-sm text-gray-700">{request.message}</p>
                                                         </div>
-                                                    )}
+                                                    )} */}
                                                 </div>
                                             </div>
                                             <div className="flex items-center space-x-3 ml-4">
@@ -866,10 +904,10 @@ export default function AdminUsers() {
                         )}
                     </div>
                 ) : (
-                    <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-                        <div className="p-6 border-b border-gray-200">
-                            <h2 className="text-xl font-semibold text-gray-900">All Users</h2>
-                            <p className="text-sm text-gray-600 mt-1">Manage all registered users in the system</p>
+                    <div className=" rounded-2xl border shadow-lg overflow-hidden" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '50' }}>
+                        <div className="p-6 border " style={{borderColor:'39FD48'}}>
+                            <h2 className="text-xl font-semibold text-white">All Users</h2>
+                            <p className="text-sm text-white mt-1">Manage all registered users in the system</p>
                         </div>
                         
                         {filteredUsers.length === 0 ? (
@@ -883,19 +921,19 @@ export default function AdminUsers() {
                                 </p>
                             </div>
                         ) : (
-                            <div className="divide-y divide-gray-200">
+                            <div className=" rounded-2xl  shadow-lg overflow-hidden" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '50' }}>
                                 {filteredUsers.map((user) => (
-                                    <div key={user.id} className="p-6 hover:bg-gray-50 transition-colors">
+                                    <div key={user.id} className="p-6 transition-all duration-300 hover:transform hover:scale-101 hover:shadow-2xl hover:bg-gradient-to-r hover:from-blue-600/10 hover:to-purple-600/10 cursor-pointer" >
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center space-x-4">
-                                                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center text-white font-semibold">
+                                                <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center text-white font-semibold">
                                                     {user.displayName ? user.displayName.charAt(0).toUpperCase() : 
                                                      user.firstName ? user.firstName.charAt(0).toUpperCase() : 
                                                      user.email.charAt(0).toUpperCase()}
                                                 </div>
                                                 <div className="flex-1">
                                                     <div className="flex items-center space-x-3 mb-1">
-                                                        <h3 className="text-lg font-semibold text-gray-900">
+                                                        <h3 className="text-lg font-semibold text-white hover:text-black">
                                                             {user.displayName || `${user.firstName} ${user.lastName}`.trim() || 'No Name'}
                                                         </h3>
                                                         <span className={`inline-flex items-center px-3 py-1 text-xs font-medium rounded-full ${
@@ -910,12 +948,12 @@ export default function AdminUsers() {
                                                             <span className="ml-1">{getRoleDisplayName(user.role)}</span>
                                                         </span>
                                                     </div>
-                                                    <div className="flex items-center space-x-4 text-sm text-gray-600">
+                                                    <div className="flex items-center space-x-4 text-sm" style={{ color: '#0D6EFD' }}>
                                                         <div className="flex items-center">
                                                             <Mail className="w-4 h-4 mr-1" />
                                                             {user.email}
                                                         </div>
-                                                        <div className="flex items-center">
+                                                        <div className="flex items-center" style={{ color: '#198754' }}>
                                                             <Calendar className="w-4 h-4 mr-1" />
                                                             {user.createdAt ? formatDate(
                                                                 user.createdAt.toDate ? user.createdAt.toDate().toISOString() : user.createdAt.toString()
@@ -961,7 +999,7 @@ export default function AdminUsers() {
                     </div>
                 )}
 
-                {/* Debug Info - only show in development */}
+                {/* Debug Info - only show in development
                 {process.env.NODE_ENV === 'development' && (
                     <div className="mt-8 bg-gray-50 rounded-2xl p-6">
                         <div className="flex justify-between items-center">
@@ -986,7 +1024,9 @@ export default function AdminUsers() {
                             </Button>
                         </div>
                     </div>
-                )}
+                )} */}
+                    </div>
+                </motion.div>
             </div>
         </div>
     );
