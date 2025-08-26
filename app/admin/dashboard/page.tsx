@@ -27,7 +27,8 @@ import {
   Eye,
   Edit,
   Trash2,
-  MoreVertical
+  MoreVertical,
+  PersonStanding
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -134,30 +135,28 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, trend, color, s
   return (
     <motion.div
       variants={itemVariants}
-      whileHover={{ scale: 1.05, y: -5 }}
-      className="relative backdrop-blur-xl bg-white/80 border border-purple-200/50 rounded-2xl p-6 shadow-xl shadow-purple-100/50 hover:shadow-2xl hover:shadow-purple-200/50 transition-all duration-300"
+      whileHover={{ scale: 1.02, y: -2 }}
+      className=" backdrop-blur-xl border rounded-2xl  p-4 shadow-xl hover:shadow-md transition-all duration-200 "
+      style={{ backgroundColor: '#191C24' , borderColor: '#39FD48' + '50',boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}
     >
-      <div className="absolute inset-0 bg-gradient-to-br from-orange-50/30 via-purple-50/30 to-orange-50/30 rounded-2xl"></div>
-      <div className="relative z-10">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex-1">
-            <p className="text-purple-600/80 text-sm font-medium mb-2">{title}</p>
-            <div className="text-3xl font-black text-purple-900 mb-1">{value}</div>
-            {subtitle && (
-              <p className="text-purple-500/70 text-xs">{subtitle}</p>
-            )}
-            {trend && (
-              <div className="flex items-center mt-2">
-                <TrendIcon size={14} className={trendColor} />
-                <span className={`text-xs ml-1 font-medium ${trendColor}`}>
-                  {Math.abs(trend)}% from last month
-                </span>
-              </div>
-            )}
-          </div>
-          <div className="bg-gradient-to-br from-purple-100 to-orange-100 rounded-xl p-3 shadow-lg">
-            {icon}
-          </div>
+      <div className="flex items-center justify-between">
+        <div className="flex-1">
+          <p className="text-sm font-medium mb-1" style={{ color: '#fff' }}>{title}</p>
+          <div className="text-2xl font-bold mb-1" style={{ color: '#ABA8A9' }}>{value}</div>
+          {subtitle && (
+            <p className="text-xs" style={{ color: '#ABA8A9' }}>{subtitle}</p>
+          )}
+          {trend && (
+            <div className="flex items-center mt-2">
+              <TrendIcon size={12} className={trendColor} />
+              <span className={`text-xs ml-1 font-medium ${trendColor}`}>
+                {Math.abs(trend)}% from last month
+              </span>
+            </div>
+          )}
+        </div>
+        <div className="rounded-lg p-3 ml-4" style={{ backgroundColor: '#D8DFEE' + '40' }}>
+          {icon}
         </div>
       </div>
     </motion.div>
@@ -198,10 +197,10 @@ export default function AdminDashboard() {
   // Show loading if auth is still loading
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-white via-orange-50 to-purple-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #ffffff, #E3F2FD, #FFFDE7)' }}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-4 border-purple-200 border-t-purple-600 mx-auto"></div>
-          <p className="mt-4 text-purple-800 text-lg font-semibold">Loading admin dashboard...</p>
+          <div className="animate-spin rounded-full h-32 w-32 border-4 mx-auto" style={{ borderColor: '#0D6EFD' + '30', borderTopColor: '#0D6EFD' }}></div>
+          <p className="mt-4 text-lg font-semibold" style={{ color: '#1565C0' }}>Loading admin dashboard...</p>
         </div>
       </div>
     );
@@ -210,18 +209,19 @@ export default function AdminDashboard() {
   // Show access denied if not authenticated or not admin
   if (!firebaseUser || !userProfile || userProfile.role !== 'admin') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-white via-orange-50 to-purple-50 flex items-center justify-center">
-        <div className="backdrop-blur-xl bg-white/80 border border-purple-200 rounded-3xl p-8 shadow-2xl shadow-purple-100 text-center max-w-md">
-          <div className="w-16 h-16 bg-gradient-to-br from-red-100 to-red-200 rounded-full flex items-center justify-center mx-auto mb-6">
-            <AlertTriangle className="h-8 w-8 text-red-600" />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #ffffff, #E3F2FD, #FFFDE7)' }}>
+        <div className="backdrop-blur-xl bg-white/90 border rounded-3xl p-8 shadow-2xl text-center max-w-md" style={{ borderColor: '#0D6EFD' + '30', boxShadow: '0 25px 50px -12px rgba(74, 144, 226, 0.1)' }}>
+          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6" style={{ background: 'linear-gradient(135deg, #D32F2F' + '20, #FF5722' + '20)' }}>
+            <AlertTriangle className="h-8 w-8" style={{ color: '#D32F2F' }} />
           </div>
-          <h1 className="text-2xl font-bold text-purple-900 mb-4">Access Denied</h1>
-          <p className="text-purple-700 mb-6">
+          <h1 className="text-2xl font-bold mb-4" style={{ color: '#1565C0' }}>Access Denied</h1>
+          <p className="mb-6" style={{ color: '#0D6EFD' }}>
             You need admin privileges to access this page.
           </p>
           <Button 
             onClick={() => router.push('/auth/signin')}
-            className="bg-gradient-to-r from-purple-500 to-orange-500 hover:from-purple-600 hover:to-orange-600"
+            className="text-white hover:opacity-90 transition-opacity"
+            style={{ background: 'linear-gradient(135deg, #0D6EFD, #FFD60A)' }}
           >
             Sign In
           </Button>
@@ -234,59 +234,59 @@ export default function AdminDashboard() {
     {
       title: 'Total Users',
       value: '2,847',
-      icon: <Users size={24} className="text-purple-600" />,
+      icon: <Users size={24} style={{ color: '#CBF83E' }} />,
       trend: 12.5,
-      color: '#8b5cf6',
+      color: '#000',
       subtitle: '145 new this week'
     },
     {
       title: 'Active Events',
       value: '186',
-      icon: <Calendar size={24} className="text-orange-600" />,
+      icon: <Calendar size={24} style={{ color: '#CBF83E' }} />,
       trend: 8.2,
-      color: '#ea580c',
+      color: '#000',
       subtitle: '23 ending soon'
     },
     {
       title: 'Monthly Revenue',
       value: 'LKR 847K',
-      icon: <DollarSign size={24} className="text-green-600" />,
+      icon: <DollarSign size={24} style={{ color: '#CBF83E' }} />,
       trend: 15.8,
-      color: '#16a34a',
+      color: '#CBF83E',
       subtitle: 'Target: LKR 1M'
     },
     {
       title: 'Tickets Sold',
       value: '12,493',
-      icon: <Activity size={24} className="text-blue-600" />,
+      icon: <Activity size={24} style={{ color: '#CBF83E' }} />,
       trend: 23.1,
-      color: '#2563eb',
+      color: '#CBF83E',
       subtitle: '1,847 today'
     },
     {
       title: 'Active Venues',
       value: '67',
-      icon: <MapPin size={24} className="text-red-600" />,
+      icon: <MapPin size={24} style={{ color: '#CBF83E' }} />,
       trend: 5.4,
-      color: '#dc2626',
+      color: '#CBF83E',
       subtitle: '12 pending approval'
     },
     {
       title: 'Avg. Rating',
       value: '4.8',
-      icon: <Star size={24} className="text-yellow-600" />,
+      icon: <Star size={24} style={{ color: '#CBF83E' }} />,
       trend: 2.1,
-      color: '#ca8a04',
+      color: '#CBF83E',
       subtitle: 'From 2,847 reviews'
     }
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white via-orange-50 to-purple-50">
-      {/* Background Elements */}
-      <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-5"></div>
-      <div className="absolute top-0 right-0 w-96 h-96 bg-purple-200/30 rounded-full blur-3xl"></div>
-      <div className="absolute bottom-0 left-0 w-96 h-96 bg-orange-200/30 rounded-full blur-3xl"></div>
+    <div className="min-h-screen" style={{ background: '#191C24' }}>
+      {/* Simple Background Elements */}
+      <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-20" style={{ backgroundColor: '#ABA8A9' }}></div>
+      <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-15" style={{ backgroundColor: '#D8DFEE' }}></div>
+      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl opacity-10" style={{ backgroundColor: '#ABA8A9' }}></div>
       
       {/* Content Container */}
       <div className="relative z-10 pt-8 px-8">
@@ -296,94 +296,108 @@ export default function AdminDashboard() {
           variants={containerVariants}
           className="max-w-7xl mx-auto"
         >
-          {/* Elegant Header */}
-          <motion.div variants={itemVariants} className="mb-16">
-            <div className="relative backdrop-blur-xl bg-white/80 border border-purple-200 rounded-3xl p-12 shadow-2xl shadow-purple-100">
-              <div className="absolute inset-0 bg-gradient-to-r from-orange-50/50 via-purple-50/50 to-orange-50/50 rounded-3xl"></div>
-              <div className="relative z-10">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-6">
-                    <motion.h1 
-                      initial={{ opacity: 0, x: -50 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.8, ease: "easeOut" }}
-                      className="text-7xl font-black text-purple-900 leading-tight"
-                    >
-                      Admin Dashboard
-                    </motion.h1>
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.3, duration: 0.6 }}
-                      className="flex items-center space-x-6"
-                    >
-                      <div className="h-2 w-24 bg-gradient-to-r from-purple-500 to-orange-500 rounded-full shadow-lg"></div>
-                      <p className="text-purple-800 text-xl font-semibold">
-                        System Control • Welcome back, {userProfile.firstName || 'Admin'}!
-                      </p>
-                    </motion.div>
-                    <motion.p
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.5, duration: 0.6 }}
-                      className="text-purple-700/90 text-lg max-w-2xl leading-relaxed"
-                    >
-                      Monitor and manage your NexTicket platform with comprehensive analytics and control tools designed for administrators.
-                    </motion.p>
-                  </div>
-                  <motion.div 
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.5, duration: 0.5 }}
-                    className="flex items-center space-x-6"
+          {/* Clean Header */}
+          <motion.div variants={itemVariants} className="mb-12">
+            <div className="border rounded-2xl p-6 shadow-lg" style={{ backgroundColor: '#0D6EFD', borderColor: '#000' }}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <motion.h1 
+                    initial={{ opacity: 0, x: -30 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.6, ease: "easeOut" }}
+                    className="text-3xl font-bold mb-2"
+                    style={{ color: '#fff' }}
                   >
-                    <Button 
-                      variant="ghost" 
-                      onClick={handleRefresh}
-                      disabled={refreshing}
-                      className="relative overflow-hidden group bg-purple-100 hover:bg-purple-200 border border-purple-300 hover:border-purple-400 text-purple-800 hover:text-purple-900 backdrop-blur-sm transition-all duration-300 px-6 py-4"
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-r from-purple-200/20 to-orange-200/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                      <RefreshCw className={`h-5 w-5 mr-3 relative z-10 ${refreshing ? 'animate-spin' : ''}`} />
-                      <span className="relative z-10 font-semibold">Refresh Data</span>
-                    </Button>
-                    <Button 
-                      onClick={() => router.push('/admin/users')}
-                      className="relative overflow-hidden group bg-gradient-to-r from-orange-500 to-purple-500 hover:from-orange-600 hover:to-purple-600 border-0 text-white font-bold px-8 py-4 rounded-2xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl shadow-orange-400/20"
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                      <Users className="h-6 w-6 mr-3 relative z-10" />
-                      <span className="relative z-10 text-lg">Manage Users</span>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={handleLogout}
-                      className="border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400"
-                    >
-                      <LogOut className="h-4 w-4 mr-2" />
-                      Logout
-                    </Button>
-                  </motion.div>
+                    Admin Dashboard
+                  </motion.h1>
+                  <motion.p
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2, duration: 0.5 }}
+                    className="text-lg font-normal"
+                    style={{ color: '#fff' }}
+                  >
+                    Welcome back, {userProfile?.firstName || 'Admin'}! 
+                  </motion.p>
                 </div>
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.3, duration: 0.4 }}
+                >
+                  {/* <Button 
+                    onClick={handleRefresh}
+                    disabled={refreshing}
+                    className="px-6 py-3 text-white font-medium rounded-xl hover:opacity-90 transition-opacity shadow-md"
+                    style={{ background: 'linear-gradient(135deg, #0D6EFD, #1565C0)' }}
+                  >
+                    <RefreshCw className={`h-5 w-5 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                    Refresh
+                  </Button> */}
+                </motion.div>
               </div>
             </div>
           </motion.div>
 
-          {/* System Alert */}
-          <motion.div variants={itemVariants} className="mb-12">
-            <div className="backdrop-blur-xl bg-amber-50/80 border border-amber-200 rounded-2xl p-6 shadow-lg">
+          {/* System Alert
+          <motion.div variants={itemVariants} className="mb-8">
+            <div className="bg-white border rounded-xl p-4 shadow-sm" style={{ borderColor: '#FFC107' + '50' }}>
               <div className="flex items-center">
-                <div className="bg-amber-100 rounded-full p-3 mr-4">
-                  <AlertTriangle className="h-6 w-6 text-amber-600" />
+                <div className="rounded-full p-2 mr-3" style={{ backgroundColor: '#FFD60A' + '20' }}>
+                  <AlertTriangle className="h-5 w-5" style={{ color: '#FF5722' }} />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-amber-800 font-semibold">System Maintenance Notice</h3>
-                  <p className="text-amber-700">Scheduled maintenance on July 25, 2025 from 2:00 AM - 4:00 AM LKT</p>
+                  <h4 className="font-semibold text-sm" style={{ color: '#FF5722' }}>System Maintenance Notice</h4>
+                  <p className="text-sm" style={{ color: '#666' }}>Scheduled maintenance on July 25, 2025 from 2:00 AM - 4:00 AM LKT</p>
                 </div>
-                <Button variant="outline" size="sm" className="border-amber-300 text-amber-700 hover:bg-amber-100">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="text-sm"
+                  style={{ 
+                    borderColor: '#FFC107',
+                    color: '#FF5722',
+                  }}
+                >
                   Review
                 </Button>
               </div>
+            </div>
+          </motion.div> */}
+
+          {/* Quick Action Buttons */}
+          <motion.div variants={itemVariants} className="mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <Button 
+                onClick={() => router.push('/admin/users')}
+                className=" h-10 backdrop-blur-xl border text-lg rounded-2xl p-8 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}
+                
+              >
+                <Users className="h-8 w-8 mr-3" style={{ color: '#CBF83E' }} />
+                Manage Users
+              </Button>
+              <Button 
+                onClick={() => router.push('/admin/events')}
+                className=" h-10 backdrop-blur-xl border text-lg rounded-2xl p-8 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}
+              >
+                <Calendar className="h-8 w-8 mr-3" style={{ color: '#CBF83E' }}/>
+                Manage Events
+              </Button>
+              <Button 
+                onClick={() => router.push('/admin/staff')}
+                className=" h-10 backdrop-blur-xl text-lg border rounded-2xl p-8 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}
+              >
+                <PersonStanding className="h-8 w-8 mr-3" style={{ color: '#CBF83E' }} />
+                Manage Staff
+              </Button>
+              <Button 
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className=" h-10 backdrop-blur-xl text-lg border rounded-2xl p-8 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}
+              >
+                <RefreshCw className={`h-8 w-8 mr-3 ${refreshing ? 'animate-spin' : ''}`} style={{ color: '#CBF83E' }} />
+                System Refresh
+              </Button>
             </div>
           </motion.div>
 
@@ -399,12 +413,12 @@ export default function AdminDashboard() {
           <motion.div variants={itemVariants} className="mb-16">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {/* Analytics Chart */}
-              <div className="lg:col-span-2 backdrop-blur-xl bg-white/80 border border-purple-200 rounded-2xl p-8 shadow-xl shadow-purple-100/50">
+              <div className="lg:col-span-2 backdrop-blur-xl  border rounded-2xl p-8 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#0D6EFD' + '30', boxShadow: '0 25px 50px -12px rgba(74, 144, 226, 0.1)' }}>
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-bold text-purple-900">Revenue Analytics</h3>
+                  <h3 className="text-2xl font-bold" style={{ color: '#fff' }}>Revenue Analytics</h3>
                   <div className="flex items-center space-x-2">
-                    <BarChart3 className="h-5 w-5 text-purple-600" />
-                    <span className="text-purple-600 text-sm font-medium">Monthly View</span>
+                    <BarChart3 className="h-5 w-5" style={{ color: '#0D6EFD' }} />
+                    <span className="text-sm font-medium" style={{ color: '#fff' }}>Monthly View</span>
                   </div>
                 </div>
                 <div className="h-80">
@@ -412,54 +426,65 @@ export default function AdminDashboard() {
                     <AreaChart data={revenueData}>
                       <defs>
                         <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                          <stop offset="5%" stopColor="#0D6EFD" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#0D6EFD" stopOpacity={0}/>
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                      <XAxis dataKey="name" stroke="#6b7280" />
-                      <YAxis stroke="#6b7280" />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E3F2FD" />
+                      <XAxis dataKey="name" style={{ fill: '#fff' }} />
+                      <YAxis style={{ fill: '#fff' }} />
                       <Tooltip 
                         contentStyle={{ 
                           backgroundColor: 'rgba(255, 255, 255, 0.95)', 
-                          border: '1px solid #e5e7eb',
+                          border: '1px solid #0D6EFD',
                           borderRadius: '12px',
-                          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
+                          boxShadow: '0 10px 15px -3px rgba(74, 144, 226, 0.1)'
                         }}
                       />
-                      <Area type="monotone" dataKey="revenue" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorRevenue)" strokeWidth={3}/>
+                      <Area type="monotone" dataKey="revenue" stroke="#0D6EFD" fillOpacity={1} fill="url(#colorRevenue)" strokeWidth={3}/>
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
               </div>
 
               {/* Recent Activities */}
-              <div className="backdrop-blur-xl bg-white/80 border border-orange-200 rounded-2xl p-8 shadow-xl shadow-orange-100/50">
+              <div className="backdrop-blur-xl border rounded-2xl p-8 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}>
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-bold text-orange-900">Live Activities</h3>
+                  <h3 className="text-2xl font-bold" style={{ color: '#fff' }}>Live Activities</h3>
                   <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
                 </div>
                 <div className="space-y-4">
                   {recentActivities.slice(0, 6).map((activity, index) => (
-                    <div key={activity.id} className="flex items-start space-x-4 p-3 rounded-xl hover:bg-purple-50/50 transition-colors duration-200">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-100 to-orange-100 flex items-center justify-center flex-shrink-0">
-                        <Activity className="h-4 w-4 text-purple-600" />
+                    <div key={activity.id} className="flex items-start space-x-4 p-3 rounded-xl transition-colors duration-200 hover:bg-blue-50/20">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg, #0D6EFD' + '20, #FFD60A' + '20)' }}>
+                        <Activity className="h-4 w-4" style={{ color: '#0D6EFD' }} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-purple-900 truncate">{activity.user}</p>
-                        <p className="text-xs text-purple-600 truncate">{activity.action}</p>
+                        <p className="text-sm font-semibold truncate" style={{ color: '#1565C0' }}>{activity.user}</p>
+                        <p className="text-xs truncate" style={{ color: '#fff' }}>{activity.action}</p>
                         {activity.event && (
-                          <p className="text-xs text-orange-600 font-medium truncate">{activity.event}</p>
+                          <p className="text-xs font-medium truncate" style={{ color: '#FF5722' }}>{activity.event}</p>
                         )}
-                        <p className="text-xs text-purple-500 mt-1">{activity.time}</p>
+                        <p className="text-xs mt-1 " style={{ color: '#198754' + 'ff' }}>{activity.time}</p>
                       </div>
                     </div>
                   ))}
                 </div>
                 <Button 
                   variant="outline" 
-                  className="w-full mt-4 border-purple-300 text-purple-700 hover:bg-purple-50"
+                  className="w-full mt-4 transition-all duration-200 hover:shadow-md"
                   onClick={() => setActivityDialogOpen(true)}
+                  style={{ 
+                    borderColor: '#0D6EFD' + '50',
+                    color: '#0D6EFD',
+                    backgroundColor: 'transparent'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#0D6EFD' + '10';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
                 >
                   View All Activities
                 </Button>
@@ -469,42 +494,64 @@ export default function AdminDashboard() {
 
           {/* Top Events Performance */}
           <motion.div variants={itemVariants} className="mb-16">
-            <div className="backdrop-blur-xl bg-white/80 border border-purple-200 rounded-2xl p-8 shadow-xl shadow-purple-100/50">
+            <div className="backdrop-blur-xl border rounded-2xl p-8 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#0D6EFD' + '50', boxShadow: '0 25px 50px -12px rgba(74, 144, 226, 0.1)' }}>
               <div className="flex items-center justify-between mb-8">
-                <h3 className="text-3xl font-bold text-purple-900">Top Performing Events</h3>
+                <h3 className="text-3xl font-bold" style={{ color: '#fff' }}>Top Performing Events</h3>
                 <div className="flex items-center space-x-4">
-                  <Button variant="outline" size="sm" className="border-purple-300 text-purple-700">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="transition-all duration-200 hover:shadow-md"
+                    style={{ 
+                      borderColor: '#0D6EFD' + '50',
+                      color: '#0D6EFD',
+                      backgroundColor: 'transparent'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#0D6EFD' + '10';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                  >
                     <Download className="h-4 w-4 mr-2" />
                     Export
                   </Button>
-                  <Button size="sm" className="bg-gradient-to-r from-purple-500 to-orange-500">
+                  {/* <Button 
+                    size="sm" 
+                    className="text-white hover:opacity-90 transition-opacity shadow-lg"
+                    style={{ background: '#0D6EFD' }}
+                  >
                     <Plus className="h-4 w-4 mr-2" />
                     Add Event
-                  </Button>
+                  </Button> */}
                 </div>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-purple-200">
-                      <th className="text-left py-4 px-6 text-purple-800 font-semibold">Event Name</th>
-                      <th className="text-left py-4 px-6 text-purple-800 font-semibold">Tickets Sold</th>
-                      <th className="text-left py-4 px-6 text-purple-800 font-semibold">Revenue</th>
-                      <th className="text-left py-4 px-6 text-purple-800 font-semibold">Growth</th>
-                      <th className="text-left py-4 px-6 text-purple-800 font-semibold">Actions</th>
+                    <tr style={{ borderBottom: '1px solid #0D6EFD' + '30' }}>
+                      <th className="text-left py-4 px-6 font-semibold" style={{ color: '#0D6EFD' }}>Event Name</th>
+                      <th className="text-left py-4 px-6 font-semibold" style={{ color: '#0D6EFD' }}>Tickets Sold</th>
+                      <th className="text-left py-4 px-6 font-semibold" style={{ color: '#0D6EFD' }}>Revenue</th>
+                      <th className="text-left py-4 px-6 text-purple-800 font-semibold" style={{ color: '#0D6EFD' }}>Growth</th>
+                      <th className="text-left py-4 px-6 text-purple-800 font-semibold" style={{ color: '#0D6EFD' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {topEvents.map((event, index) => (
-                      <tr key={event.id} className="border-b border-purple-100 hover:bg-purple-50/30 transition-colors duration-200">
+                      <tr key={event.id} className="border-b transition-colors duration-200" style={{ borderColor: '#0D6EFD' + '20', backgroundColor: 'transparent' }} 
+                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#0D6EFD' + '05'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                      >
                         <td className="py-4 px-6">
-                          <div className="font-semibold text-purple-900">{event.name}</div>
+                          <div className="font-semibold" style={{ color: '#fff' }}>{event.name}</div>
                         </td>
                         <td className="py-4 px-6">
-                          <div className="font-medium text-purple-800">{event.tickets.toLocaleString()}</div>
+                          <div className="font-medium" style={{ color: '#FFC107' }}>{event.tickets.toLocaleString()}</div>
                         </td>
                         <td className="py-4 px-6">
-                          <div className="font-bold text-green-600">LKR {event.revenue.toLocaleString()}</div>
+                          <div className="font-bold" style={{ color: '#fff' }}>LKR {event.revenue.toLocaleString()}</div>
                         </td>
                         <td className="py-4 px-6">
                           <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
@@ -523,13 +570,13 @@ export default function AdminDashboard() {
                         <td className="py-4 px-6">
                           <div className="flex items-center space-x-2">
                             <Button variant="ghost" size="sm">
-                              <Eye className="h-4 w-4" />
+                              <Eye className="h-4 w-4" style={{ color: '#fff' }}/>
                             </Button>
                             <Button variant="ghost" size="sm">
-                              <Edit className="h-4 w-4" />
+                              <Edit className="h-4 w-4" style={{ color: '#fff' }} />
                             </Button>
-                            <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
-                              <MoreVertical className="h-4 w-4" />
+                            <Button variant="ghost" size="sm" className="hover:opacity-80" style={{ color: '#fff' }}>
+                              <MoreVertical className="h-4 w-4"style={{ color: '#fff' }} />
                             </Button>
                           </div>
                         </td>
@@ -541,40 +588,7 @@ export default function AdminDashboard() {
             </div>
           </motion.div>
 
-          {/* Quick Action Buttons */}
-          <motion.div variants={itemVariants} className="mb-8">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <Button 
-                onClick={() => router.push('/admin/users')}
-                className="h-20 bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold text-lg shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
-              >
-                <Users className="h-8 w-8 mr-3" />
-                Manage Users
-              </Button>
-              <Button 
-                onClick={() => router.push('/admin/events')}
-                className="h-20 bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold text-lg shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
-              >
-                <Calendar className="h-8 w-8 mr-3" />
-                Manage Events
-              </Button>
-              <Button 
-                onClick={() => router.push('/admin/venues')}
-                className="h-20 bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-bold text-lg shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
-              >
-                <MapPin className="h-8 w-8 mr-3" />
-                Manage Venues
-              </Button>
-              <Button 
-                onClick={handleRefresh}
-                disabled={refreshing}
-                className="h-20 bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold text-lg shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 disabled:opacity-50"
-              >
-                <RefreshCw className={`h-8 w-8 mr-3 ${refreshing ? 'animate-spin' : ''}`} />
-                System Refresh
-              </Button>
-            </div>
-          </motion.div>
+          
 
         </motion.div>
       </div>
