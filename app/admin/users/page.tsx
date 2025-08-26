@@ -1,11 +1,34 @@
-'use client'
+'use client';
 
-import React,{ useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { collection, getDocs, doc, updateDoc, deleteDoc, getDoc, query, orderBy, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/components/auth/auth-provider';
 import { createTenant, setUserClaims, bootstrapAdmin } from '@/lib/api';
 import { debugApprovalWorkflow } from '@/utils/debug-approval';
+import { 
+  Users, 
+  Shield, 
+  Crown, 
+  Building, 
+  UserPlus, 
+  Search, 
+  Filter, 
+  Check, 
+  X, 
+  Eye,
+  MoreVertical,
+  Clock,
+  ChevronDown,
+  Star,
+  AlertCircle,
+  Trash2,
+  Edit3,
+  Calendar,
+  Mail,
+  UserCheck
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 // Types for our role request data
 interface RoleRequest {
@@ -29,12 +52,19 @@ interface User {
   firstName?: string;
   lastName?: string;
   displayName?: string;
-  role: 'admin' | 'organizer' | 'customer' | 'venue_owner';
+  role: 'admin' | 'organizer' | 'customer' | 'venue_owner' | 'event_admin' | 'checkin_officer';
   createdAt: any;
   updatedAt: any;
+  tenantId?: string;
+  staffProfile?: {
+    isAvailable: boolean;
+    assignedEvents: string[];
+    specializations: string[];
+    createdAt: string;
+  };
 }
 
-export default function AdminUsers(){
+export default function AdminUsers() {
     // State management for the component
     const [roleRequests, setRoleRequests] = useState<RoleRequest[]>([]);
     const [allUsers, setAllUsers] = useState<User[]>([]);
@@ -44,16 +74,20 @@ export default function AdminUsers(){
         organizers: 0,
         venue_owners: 0,
         customers: 0,
+        event_admins: 0,
+        checkin_officers: 0,
         newThisWeek: 0
     });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [processingId, setProcessingId] = useState<string | null>(null);
     const [expandedRequests, setExpandedRequests] = useState<Set<string>>(new Set());
-        const [activeTab, setActiveTab] = useState<'requests' | 'users'>('requests');
+    const [activeTab, setActiveTab] = useState<'requests' | 'users'>('requests');
     const [searchTerm, setSearchTerm] = useState('');
-    const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'organizer' | 'customer'>('all');
+    const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'organizer' | 'customer' | 'venue_owner' | 'event_admin' | 'checkin_officer'>('all');
     const [successMessage, setSuccessMessage] = useState('');
+    const [selectedUser, setSelectedUser] = useState<User | null>(null);
+    
     // Ref to prevent duplicate API calls in React Strict Mode
     const hasFetched = useRef(false);
     
@@ -92,6 +126,8 @@ export default function AdminUsers(){
                 organizers: 0,
                 customers: 0,
                 venue_owners: 0,
+                event_admins: 0,
+                checkin_officers: 0,
                 newThisWeek: 0
             };
             
@@ -118,6 +154,8 @@ export default function AdminUsers(){
                 if (user.role === 'admin') stats.admins++;
                 else if (user.role === 'organizer') stats.organizers++;
                 else if (user.role === 'venue_owner') stats.venue_owners++;
+                else if (user.role === 'event_admin') stats.event_admins++;
+                else if (user.role === 'checkin_officer') stats.checkin_officers++;
                 else stats.customers++;
                 
                 // Check if user was created this week
@@ -239,8 +277,9 @@ export default function AdminUsers(){
                 console.warn('⚠️ Continuing with tenant creation despite claims failure');
             }
 
-            // 4. Create tenant in PostgreSQL database for venue_owner or organizer roles
+            // 4. Handle role-specific setup
             if (request.requestedRole === 'venue_owner' || request.requestedRole === 'organizer') {
+                // Create tenant in PostgreSQL database for venue_owner or organizer roles
                 console.log(`📝 Step 4: Creating tenant in PostgreSQL for ${request.requestedRole}: ${request.userEmail}`);
                 
                 try {
@@ -273,6 +312,26 @@ export default function AdminUsers(){
                     // Don't fail the whole approval process if tenant creation fails
                     // The user role was already updated in Firebase
                     console.warn('⚠️ User role approved in Firebase, but tenant creation failed. Manual tenant creation may be required.');
+                }
+            } else if (request.requestedRole === 'event_admin' || request.requestedRole === 'checkin_officer') {
+                // Setup for event staff roles
+                console.log(`📝 Step 4: Setting up ${request.requestedRole} profile for ${request.userEmail}`);
+                
+                try {
+                    // Add staff-specific fields to user profile
+                    await updateDoc(doc(db, 'users', request.userId), {
+                        role: request.requestedRole,
+                        staffProfile: {
+                            isAvailable: true,
+                            assignedEvents: [],
+                            createdAt: new Date().toISOString(),
+                            specializations: request.requestedRole === 'event_admin' ? ['general'] : ['check_in']
+                        }
+                    });
+                    console.log(`✅ Step 4 complete: ${request.requestedRole} profile created`);
+                } catch (staffError: any) {
+                    console.error('❌ Step 4 failed: Staff profile creation error:', staffError);
+                    console.warn('⚠️ User role approved, but staff profile creation failed.');
                 }
             }
             
@@ -400,7 +459,7 @@ export default function AdminUsers(){
                 user.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 user.lastName?.toLowerCase().includes(searchTerm.toLowerCase());
             
-            const matchesRole = !roleFilter || user.role === roleFilter;
+            const matchesRole = roleFilter === 'all' || user.role === roleFilter;
             
             return matchesSearch && matchesRole;
         });
@@ -413,592 +472,522 @@ export default function AdminUsers(){
         return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
     };
 
-    // Helper function to get role badge color
-    const getRoleBadgeColor = (role: string) => {
+    // Helper function to get role icon
+    const getRoleIcon = (role: string) => {
         switch (role) {
-            case 'admin': return 'bg-red-100 text-red-800';
-            case 'organizer': return 'bg-blue-100 text-blue-800';
-            case 'customer': return 'bg-gray-100 text-gray-800';
-            case 'venue_owner': return 'bg-indigo-100 text-indigo-800';
-            default: return 'bg-gray-100 text-gray-800';
+            case 'admin': return <Shield className="w-4 h-4" />;
+            case 'organizer': return <Crown className="w-4 h-4" />;
+            case 'venue_owner': return <Building className="w-4 h-4" />;
+            case 'event_admin': return <Star className="w-4 h-4" />;
+            case 'checkin_officer': return <UserCheck className="w-4 h-4" />;
+            case 'customer': return <Users className="w-4 h-4" />;
+            default: return <Users className="w-4 h-4" />;
         }
     };
 
-    // Toggle request expansion
-    const toggleRequestExpansion = (requestId: string) => {
-        const newExpanded = new Set(expandedRequests);
-        if (newExpanded.has(requestId)) {
-            newExpanded.delete(requestId);
-        } else {
-            newExpanded.add(requestId);
+    // Get role display name
+    const getRoleDisplayName = (role: string) => {
+        switch (role) {
+            case 'venue_owner': return 'Venue Owner';
+            case 'event_admin': return 'Event Admin';
+            case 'checkin_officer': return 'Check-in Officer';
+            case 'organizer': return 'Organizer';
+            case 'admin': return 'Admin';
+            case 'customer': return 'Customer';
+            default: return role.charAt(0).toUpperCase() + role.slice(1);
         }
-        setExpandedRequests(newExpanded);
     };
-    
 
-    return(
-        <div className="p-6 space-y-6">
-            <div className="border-b pb-4">
-                <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
-                <p className="text-gray-600 mt-2">Manage role upgrade requests and user permissions</p>
+    // Handle user actions
+    const handleUserAction = (user: User, action: string) => {
+        switch (action) {
+            case 'view':
+                setSelectedUser(user);
+                break;
+            case 'edit':
+                // TODO: Implement edit functionality
+                console.log('Edit user:', user);
+                break;
+            case 'delete':
+                // TODO: Implement delete functionality
+                console.log('Delete user:', user);
+                break;
+        }
+    };
+
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-700">
+                <div className="max-w-7xl mx-auto p-6">
+                    <div className="text-white">
+                        <h1 className="text-4xl font-bold mb-2">User Management</h1>
+                        <p className="text-purple-100 text-lg">Manage users, roles, and permissions across your platform</p>
+                    </div>
+                    
+                    {/* Quick Stats in Header */}
+                    <div className="mt-6 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+                        <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
+                            <div className="text-2xl font-bold text-white">{userStats.total}</div>
+                            <div className="text-sm text-purple-100">Total Users</div>
+                        </div>
+                        <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
+                            <div className="text-2xl font-bold text-white">{roleRequests.length}</div>
+                            <div className="text-sm text-purple-100">Pending Requests</div>
+                        </div>
+                        <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
+                            <div className="text-2xl font-bold text-white">{userStats.admins}</div>
+                            <div className="text-sm text-purple-100">Admins</div>
+                        </div>
+                        <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
+                            <div className="text-2xl font-bold text-white">{userStats.organizers}</div>
+                            <div className="text-sm text-purple-100">Organizers</div>
+                        </div>
+                        <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
+                            <div className="text-2xl font-bold text-white">{userStats.venue_owners}</div>
+                            <div className="text-sm text-purple-100">Venue Owners</div>
+                        </div>
+                        <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
+                            <div className="text-2xl font-bold text-white">{userStats.event_admins}</div>
+                            <div className="text-sm text-purple-100">Event Admins</div>
+                        </div>
+                        <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
+                            <div className="text-2xl font-bold text-white">{userStats.checkin_officers}</div>
+                            <div className="text-sm text-purple-100">Check-in Officers</div>
+                        </div>
+                        <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
+                            <div className="text-2xl font-bold text-white">{userStats.newThisWeek}</div>
+                            <div className="text-sm text-purple-100">New This Week</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="max-w-7xl mx-auto p-6">
+                {/* Error and Success Messages */}
+                {error && (
+                    <div className="mb-6 bg-red-50 border border-red-200 rounded-2xl p-4">
+                        <div className="flex items-start">
+                            <AlertCircle className="w-5 h-5 text-red-500 mt-0.5" />
+                            <div className="ml-3">
+                                <h3 className="text-sm font-medium text-red-800">Error</h3>
+                                <p className="text-sm text-red-700 mt-1">{error}</p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {successMessage && (
+                    <div className="mb-6 bg-green-50 border border-green-200 rounded-2xl p-4">
+                        <div className="flex items-start">
+                            <Check className="w-5 h-5 text-green-500 mt-0.5" />
+                            <div className="ml-3">
+                                <h3 className="text-sm font-medium text-green-800">Success</h3>
+                                <p className="text-sm text-green-700 mt-1">{successMessage}</p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Bootstrap Admin Card */}
+                {firebaseUser && (
+                    <div className="mb-6 bg-white rounded-2xl p-6 shadow-lg border border-orange-100">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                                <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+                                    <Shield className="w-6 h-6 text-orange-600" />
+                                </div>
+                                <div className="ml-4">
+                                    <h3 className="text-lg font-semibold text-gray-900">Admin Setup</h3>
+                                    <p className="text-sm text-gray-600">
+                                        Set admin role for {firebaseUser.email} if getting permission errors
+                                    </p>
+                                </div>
+                            </div>
+                            <Button
+                                onClick={handleBootstrapAdmin}
+                                disabled={processingId === 'bootstrap-admin'}
+                                className="bg-orange-600 hover:bg-orange-700 text-white"
+                            >
+                                {processingId === 'bootstrap-admin' ? (
+                                    <div className="flex items-center">
+                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                                        Setting...
+                                    </div>
+                                ) : (
+                                    'Set Admin Role'
+                                )}
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Stats Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                    <div className="bg-white rounded-2xl p-6 shadow-lg border border-purple-100 hover:shadow-xl transition-shadow duration-300">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-gray-600 mb-1">Role Requests</p>
+                                <p className="text-3xl font-bold text-purple-600">{roleRequests.length}</p>
+                            </div>
+                            <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                                <Clock className="w-6 h-6 text-purple-600" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-2xl p-6 shadow-lg border border-green-100 hover:shadow-xl transition-shadow duration-300">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-gray-600 mb-1">Active Users</p>
+                                <p className="text-3xl font-bold text-green-600">{userStats.total}</p>
+                            </div>
+                            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                                <Users className="w-6 h-6 text-green-600" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-2xl p-6 shadow-lg border border-blue-100 hover:shadow-xl transition-shadow duration-300">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-gray-600 mb-1">Staff Members</p>
+                                <p className="text-3xl font-bold text-blue-600">{userStats.admins + userStats.organizers}</p>
+                            </div>
+                            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                                <UserCheck className="w-6 h-6 text-blue-600" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-2xl p-6 shadow-lg border border-orange-100 hover:shadow-xl transition-shadow duration-300">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-gray-600 mb-1">New This Week</p>
+                                <p className="text-3xl font-bold text-orange-600">{userStats.newThisWeek}</p>
+                            </div>
+                            <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+                                <UserPlus className="w-6 h-6 text-orange-600" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Tab Navigation */}
+                <div className="bg-white rounded-2xl p-2 shadow-lg mb-8 inline-flex">
+                    <button
+                        onClick={() => setActiveTab('requests')}
+                        className={`px-6 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
+                            activeTab === 'requests'
+                                ? 'bg-purple-600 text-white shadow-md'
+                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                        }`}
+                    >
+                        <div className="flex items-center space-x-2">
+                            <Clock className="w-4 h-4" />
+                            <span>Role Requests ({roleRequests.length})</span>
+                        </div>
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('users')}
+                        className={`px-6 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
+                            activeTab === 'users'
+                                ? 'bg-purple-600 text-white shadow-md'
+                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                        }`}
+                    >
+                        <div className="flex items-center space-x-2">
+                            <Users className="w-4 h-4" />
+                            <span>All Users ({allUsers.length})</span>
+                        </div>
+                    </button>
+                </div>
+
+                {/* Search and Filters */}
+                {activeTab === 'users' && (
+                    <div className="bg-white rounded-2xl p-6 shadow-lg mb-8">
+                        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+                            <div className="flex items-center space-x-4">
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search users..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                    />
+                                </div>
+                                
+                                <div className="relative">
+                                    <select
+                                        value={roleFilter}
+                                        onChange={(e) => setRoleFilter(e.target.value as typeof roleFilter)}
+                                        className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                    >
+                                        <option value="all">All Roles</option>
+                                        <option value="admin">Admin</option>
+                                        <option value="organizer">Organizer</option>
+                                        <option value="venue_owner">Venue Owner</option>
+                                        <option value="event_admin">Event Admin</option>
+                                        <option value="checkin_officer">Check-in Officer</option>
+                                        <option value="customer">Customer</option>
+                                    </select>
+                                    <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                                </div>
+                            </div>
+                            
+                            <div className="flex items-center space-x-4">
+                                <div className="flex items-center space-x-2 text-sm text-gray-600">
+                                    <Filter className="w-4 h-4" />
+                                    <span>Showing {filteredUsers.length} users</span>
+                                </div>
+                                
+                                <Button
+                                    onClick={() => {
+                                        hasFetched.current = false;
+                                        fetchAllData();
+                                    }}
+                                    disabled={loading}
+                                    variant="outline"
+                                    className="border-purple-200 text-purple-600 hover:bg-purple-50"
+                                >
+                                    {loading ? (
+                                        <div className="flex items-center">
+                                            <div className="w-4 h-4 border-2 border-purple-600 border-t-transparent rounded-full animate-spin mr-2"></div>
+                                            Loading...
+                                        </div>
+                                    ) : (
+                                        'Refresh'
+                                    )}
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Content */}
+                {loading ? (
+                    <div className="bg-white rounded-2xl p-12 shadow-lg text-center">
+                        <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">Loading...</h3>
+                        <p className="text-gray-600">Fetching user data and role requests</p>
+                    </div>
+                ) : activeTab === 'requests' ? (
+                    <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                        <div className="p-6 border-b border-gray-200">
+                            <h2 className="text-xl font-semibold text-gray-900">Role Upgrade Requests</h2>
+                            <p className="text-sm text-gray-600 mt-1">Review and approve role change requests from users</p>
+                        </div>
+                        
+                        {roleRequests.length === 0 ? (
+                            <div className="p-12 text-center">
+                                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <Clock className="w-8 h-8 text-purple-600" />
+                                </div>
+                                <h3 className="text-lg font-medium text-gray-900 mb-2">No Pending Requests</h3>
+                                <p className="text-gray-600">All role requests have been processed</p>
+                            </div>
+                        ) : (
+                            <div className="divide-y divide-gray-200">
+                                {roleRequests.map((request) => (
+                                    <div key={request.id} className="p-6 hover:bg-gray-50 transition-colors">
+                                        <div className="flex items-start justify-between">
+                                            <div className="flex items-start space-x-4 flex-1">
+                                                <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                                                    <UserPlus className="w-6 h-6 text-purple-600" />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <div className="flex items-center space-x-3 mb-2">
+                                                        <h3 className="text-lg font-semibold text-gray-900">
+                                                            {request.userName}
+                                                        </h3>
+                                                        <div className="flex items-center space-x-2">
+                                                            <span className="inline-flex items-center px-3 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">
+                                                                {getRoleIcon(request.currentRole)}
+                                                                <span className="ml-1">{getRoleDisplayName(request.currentRole)}</span>
+                                                            </span>
+                                                            <span className="text-gray-400">→</span>
+                                                            <span className="inline-flex items-center px-3 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">
+                                                                {getRoleIcon(request.requestedRole)}
+                                                                <span className="ml-1">{getRoleDisplayName(request.requestedRole)}</span>
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
+                                                        <div className="flex items-center">
+                                                            <Mail className="w-4 h-4 mr-1" />
+                                                            {request.userEmail}
+                                                        </div>
+                                                        <div className="flex items-center">
+                                                            <Calendar className="w-4 h-4 mr-1" />
+                                                            {formatDate(request.createdAt)}
+                                                        </div>
+                                                    </div>
+                                                    {request.message && (
+                                                        <div className="bg-gray-50 rounded-lg p-3 mb-3">
+                                                            <p className="text-sm text-gray-700">{request.message}</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center space-x-3 ml-4">
+                                                <Button
+                                                    onClick={() => handleApproveRequest(request)}
+                                                    disabled={processingId === request.id}
+                                                    className="bg-green-600 hover:bg-green-700 text-white"
+                                                >
+                                                    {processingId === request.id ? (
+                                                        <div className="flex items-center">
+                                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                                                            Processing...
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex items-center">
+                                                            <Check className="w-4 h-4 mr-1" />
+                                                            Approve
+                                                        </div>
+                                                    )}
+                                                </Button>
+                                                <Button
+                                                    onClick={() => handleRejectRequest(request)}
+                                                    disabled={processingId === request.id}
+                                                    variant="outline"
+                                                    className="border-red-200 text-red-600 hover:bg-red-50"
+                                                >
+                                                    <X className="w-4 h-4 mr-1" />
+                                                    Reject
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                        <div className="p-6 border-b border-gray-200">
+                            <h2 className="text-xl font-semibold text-gray-900">All Users</h2>
+                            <p className="text-sm text-gray-600 mt-1">Manage all registered users in the system</p>
+                        </div>
+                        
+                        {filteredUsers.length === 0 ? (
+                            <div className="p-12 text-center">
+                                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <Users className="w-8 h-8 text-gray-400" />
+                                </div>
+                                <h3 className="text-lg font-medium text-gray-900 mb-2">No Users Found</h3>
+                                <p className="text-gray-600">
+                                    {searchTerm || roleFilter !== 'all' ? 'No users match your current filters.' : 'No users have registered yet.'}
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="divide-y divide-gray-200">
+                                {filteredUsers.map((user) => (
+                                    <div key={user.id} className="p-6 hover:bg-gray-50 transition-colors">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center space-x-4">
+                                                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center text-white font-semibold">
+                                                    {user.displayName ? user.displayName.charAt(0).toUpperCase() : 
+                                                     user.firstName ? user.firstName.charAt(0).toUpperCase() : 
+                                                     user.email.charAt(0).toUpperCase()}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <div className="flex items-center space-x-3 mb-1">
+                                                        <h3 className="text-lg font-semibold text-gray-900">
+                                                            {user.displayName || `${user.firstName} ${user.lastName}`.trim() || 'No Name'}
+                                                        </h3>
+                                                        <span className={`inline-flex items-center px-3 py-1 text-xs font-medium rounded-full ${
+                                                            user.role === 'admin' ? 'bg-red-100 text-red-800' :
+                                                            user.role === 'organizer' ? 'bg-purple-100 text-purple-800' :
+                                                            user.role === 'venue_owner' ? 'bg-blue-100 text-blue-800' :
+                                                            user.role === 'event_admin' ? 'bg-orange-100 text-orange-800' :
+                                                            user.role === 'checkin_officer' ? 'bg-green-100 text-green-800' :
+                                                            'bg-gray-100 text-gray-800'
+                                                        }`}>
+                                                            {getRoleIcon(user.role)}
+                                                            <span className="ml-1">{getRoleDisplayName(user.role)}</span>
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center space-x-4 text-sm text-gray-600">
+                                                        <div className="flex items-center">
+                                                            <Mail className="w-4 h-4 mr-1" />
+                                                            {user.email}
+                                                        </div>
+                                                        <div className="flex items-center">
+                                                            <Calendar className="w-4 h-4 mr-1" />
+                                                            {user.createdAt ? formatDate(
+                                                                user.createdAt.toDate ? user.createdAt.toDate().toISOString() : user.createdAt.toString()
+                                                            ) : 'Unknown'}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center space-x-2">
+                                                <Button
+                                                    onClick={() => handleUserAction(user, 'view')}
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="border-gray-300 text-gray-600 hover:bg-gray-50"
+                                                >
+                                                    <Eye className="w-4 h-4 mr-1" />
+                                                    View
+                                                </Button>
+                                                <Button
+                                                    onClick={() => handleUserAction(user, 'edit')}
+                                                    variant="outline" 
+                                                    size="sm"
+                                                    className="border-blue-200 text-blue-600 hover:bg-blue-50"
+                                                >
+                                                    <Edit3 className="w-4 h-4 mr-1" />
+                                                    Edit
+                                                </Button>
+                                                <div className="relative">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="border-gray-300 text-gray-600 hover:bg-gray-50 p-2"
+                                                    >
+                                                        <MoreVertical className="w-4 h-4" />
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {/* Debug Info - only show in development */}
                 {process.env.NODE_ENV === 'development' && (
-                    <div className="mt-2 text-xs text-gray-500 bg-gray-50 p-2 rounded">
+                    <div className="mt-8 bg-gray-50 rounded-2xl p-6">
                         <div className="flex justify-between items-center">
-                            <div>
-                                <strong>Debug:</strong> User: {firebaseUser?.email || 'Not authenticated'} | 
+                            <div className="text-sm text-gray-600">
+                                <strong>Debug Info:</strong> User: {firebaseUser?.email || 'Not authenticated'} | 
                                 Loading: {loading ? 'Yes' : 'No'} | 
                                 Requests: {roleRequests.length} | 
                                 Users: {allUsers.length}
                             </div>
-                            <button 
+                            <Button
                                 onClick={async () => {
                                     console.log('🧪 Running debug workflow test...');
                                     const results = await debugApprovalWorkflow.runCompleteTest();
                                     console.log('🎯 Debug test complete:', results);
                                     alert('Debug test complete - check console for results');
                                 }}
-                                className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs hover:bg-blue-200"
+                                variant="outline"
+                                size="sm"
+                                className="border-blue-200 text-blue-600 hover:bg-blue-50"
                             >
                                 🧪 Test Workflow
-                            </button>
+                            </Button>
                         </div>
                     </div>
                 )}
             </div>
-
-            {/* Bootstrap Admin Button - only show if user doesn't have admin role */}
-            {firebaseUser && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h3 className="text-sm font-medium text-yellow-800">Admin Setup Required</h3>
-                            <p className="text-sm text-yellow-700 mt-1">
-                                If you're getting 403 errors, click here to set admin role for {firebaseUser.email}
-                            </p>
-                        </div>
-                        <button
-                            onClick={handleBootstrapAdmin}
-                            disabled={processingId === 'bootstrap-admin'}
-                            className={`px-4 py-2 rounded-md text-sm font-medium ${
-                                processingId === 'bootstrap-admin'
-                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                    : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
-                            }`}
-                        >
-                            {processingId === 'bootstrap-admin' ? 'Setting Admin...' : '🔧 Set Admin Role'}
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {/* Success Message */}
-            {successMessage && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                    <div className="flex items-start">
-                        <div className="flex-shrink-0">
-                            <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                            </svg>
-                        </div>
-                        <div className="ml-3 flex-1">
-                            <p className="text-sm text-green-700">{successMessage}</p>
-                        </div>
-                        <button 
-                            onClick={() => setSuccessMessage('')}
-                            className="ml-auto pl-3"
-                        >
-                            <svg className="h-5 w-5 text-green-400 hover:text-green-600" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {/* Error Message */}
-            {error && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                    <div className="flex items-start">
-                        <div className="flex-shrink-0">
-                            <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                            </svg>
-                        </div>
-                        <div className="ml-3 flex-1">
-                            <h3 className="text-sm font-medium text-red-800">Error Loading Data</h3>
-                            <p className="mt-1 text-sm text-red-700">{error}</p>
-                            <div className="mt-3 flex space-x-2">
-                                <button 
-                                    onClick={() => {
-                                        setError('');
-                                        console.log('Retrying data fetch...');
-                                        fetchAllData();
-                                    }}
-                                    className="bg-red-100 px-3 py-1 rounded-md text-sm text-red-800 hover:bg-red-200 transition-colors"
-                                >
-                                    Retry
-                                </button>
-                                <button 
-                                    onClick={() => setError('')}
-                                    className="text-red-600 hover:text-red-800 text-sm underline"
-                                >
-                                    Dismiss
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">User Management</h1>
-                
-                {/* Statistics Dashboard */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                        <div className="flex items-center">
-                            <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                                <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
-                                </svg>
-                            </div>
-                            <div className="ml-4">
-                                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Users</p>
-                                <p className="text-2xl font-bold text-gray-900 dark:text-white">{userStats.total}</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                        <div className="flex items-center">
-                            <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
-                                <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                            </div>
-                            <div className="ml-4">
-                                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Admins</p>
-                                <p className="text-2xl font-bold text-gray-900 dark:text-white">{userStats.admins}</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                        <div className="flex items-center">
-                            <div className="p-2 bg-indigo-100 dark:bg-indigo-900 rounded-lg">
-                                <svg className="w-6 h-6 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                                </svg>
-                            </div>
-                            <div className="ml-4">
-                                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Venue Owners</p>
-                                <p className="text-2xl font-bold text-gray-900 dark:text-white">{userStats.venue_owners}</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                        <div className="flex items-center">
-                            <div className="p-2 bg-orange-100 dark:bg-orange-900 rounded-lg">
-                                <svg className="w-6 h-6 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                            </div>
-                            <div className="ml-4">
-                                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">New This Week</p>
-                                <p className="text-2xl font-bold text-gray-900 dark:text-white">{userStats.newThisWeek}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                {/* Tab Navigation */}
-                <div className="flex space-x-1 mb-6">
-                    <button
-                        onClick={() => setActiveTab('requests')}
-                        className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                            activeTab === 'requests'
-                                ? 'bg-blue-600 text-white'
-                                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
-                        }`}
-                    >
-                        Role Requests ({roleRequests.length})
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('users')}
-                        className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                            activeTab === 'users'
-                                ? 'bg-blue-600 text-white'
-                                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
-                        }`}
-                    >
-                        All Users ({allUsers.length})
-                    </button>
-                </div>
-                
-                {/* Action Bar */}
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                    <div className="flex flex-col sm:flex-row gap-4 flex-1">
-                        {activeTab === 'users' && (
-                            <>
-                                <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                        </svg>
-                                    </div>
-                                    <input
-                                        type="text"
-                                        placeholder="Search users..."
-                                        value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                        className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    />
-                                </div>
-                                <select
-                                    value={roleFilter}
-                                    onChange={(e) => setRoleFilter(e.target.value as 'all' | 'admin' | 'organizer' | 'customer')}
-                                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                >
-                                    <option value="">All Roles</option>
-                                    <option value="admin">Admin</option>
-                                    <option value="organizer">Organizer</option>
-                                    <option value="customer">Customer</option>
-                                </select>
-                            </>
-                        )}
-                    </div>
-                    <button 
-                        onClick={() => {
-                            hasFetched.current = false; // Reset to allow manual refresh
-                            fetchAllData();
-                        }}
-                        disabled={loading}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center gap-2"
-                    >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                        {loading ? 'Loading...' : 'Refresh'}
-                    </button>
-                </div>
-            </div>
-
-            {/* Content based on active tab */}
-            {activeTab === 'requests' && (
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
-                    <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Role Upgrade Requests</h2>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                            Manage pending role change requests from users
-                        </p>
-                    </div>
-                    
-                    <div className="p-4">
-                        {loading ? (
-                            <div className="flex items-center justify-center py-8">
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                                <span className="ml-2 text-gray-600 dark:text-gray-400">Loading requests...</span>
-                            </div>
-                        ) : roleRequests.length === 0 ? (
-                            <div className="text-center py-8">
-                                <div className="text-gray-400 text-6xl mb-4">📝</div>
-                                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No Pending Requests</h3>
-                                <p className="text-gray-600 dark:text-gray-400">All role upgrade requests have been processed.</p>
-                            </div>
-                        ) : (
-                        <div className="space-y-3">
-                            {roleRequests.map((request) => (
-                                <div 
-                                    key={request.id} 
-                                    className="bg-white border rounded-lg shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden"
-                                >
-                                    {/* Main Horizontal Panel */}
-                                    <div className="p-4">
-                                        <div className="flex items-center justify-between">
-                                            {/* User Info Section */}
-                                            <div className="flex items-center space-x-4 flex-1 min-w-0">
-                                                {/* Avatar */}
-                                                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-lg">
-                                                    {request.userName.charAt(0).toUpperCase()}
-                                                </div>
-                                                
-                                                {/* User Details */}
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center space-x-3">
-                                                        <h3 className="text-lg font-semibold text-gray-900 truncate">
-                                                            {request.userName}
-                                                        </h3>
-                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                                            Pending
-                                                        </span>
-                                                    </div>
-                                                    <p className="text-sm text-gray-600 truncate">{request.userEmail}</p>
-                                                    <div className="flex items-center space-x-2 mt-1">
-                                                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getRoleBadgeColor(request.currentRole)}`}>
-                                                            {request.currentRole === 'venue_owner' ? 'Venue Owner' : request.currentRole}
-                                                        </span>
-                                                        <span className="text-gray-400">→</span>
-                                                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getRoleBadgeColor(request.requestedRole)}`}>
-                                                            {request.requestedRole === 'venue_owner' ? 'Venue Owner' : request.requestedRole}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Quick Actions Section */}
-                                            <div className="flex items-center space-x-3">
-                                                {/* Approve Button */}
-                                                <button
-                                                    onClick={() => handleApproveRequest(request)}
-                                                    disabled={processingId === request.id}
-                                                    className="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105"
-                                                >
-                                                    {processingId === request.id ? (
-                                                        <>
-                                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                                            Processing...
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                                            </svg>
-                                                            Approve
-                                                        </>
-                                                    )}
-                                                </button>
-
-                                                {/* Reject Button */}
-                                                <button
-                                                    onClick={() => handleRejectRequest(request)}
-                                                    disabled={processingId === request.id}
-                                                    className="inline-flex items-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105"
-                                                >
-                                                    {processingId === request.id ? (
-                                                        <>
-                                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                                            Processing...
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                                            </svg>
-                                                            Reject
-                                                        </>
-                                                    )}
-                                                </button>
-
-                                                {/* Expand/Collapse Button */}
-                                                <button
-                                                    onClick={() => toggleRequestExpansion(request.id)}
-                                                    className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all duration-200"
-                                                >
-                                                    <svg 
-                                                        className={`w-5 h-5 transform transition-transform duration-300 ${
-                                                            expandedRequests.has(request.id) ? 'rotate-180' : ''
-                                                        }`} 
-                                                        fill="none" 
-                                                        stroke="currentColor" 
-                                                        viewBox="0 0 24 24"
-                                                    >
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                                    </svg>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Expandable Details Section */}
-                                    <div 
-                                        className={`transition-all duration-300 ease-in-out overflow-hidden ${
-                                            expandedRequests.has(request.id) 
-                                                ? 'max-h-96 opacity-100' 
-                                                : 'max-h-0 opacity-0'
-                                        }`}
-                                    >
-                                        <div className="px-4 pb-4 border-t bg-gray-50/50">
-                                            <div className="pt-4 space-y-4">
-                                                {/* Request Message */}
-                                                {request.message && (
-                                                    <div className="bg-white rounded-lg p-4 border">
-                                                        <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
-                                                            <svg className="w-4 h-4 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                                            </svg>
-                                                            Request Message
-                                                        </h4>
-                                                        <p className="text-sm text-gray-600 leading-relaxed">
-                                                            {request.message}
-                                                        </p>
-                                                    </div>
-                                                )}
-
-                                                {/* Additional Details Grid */}
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    {/* Request Timeline */}
-                                                    <div className="bg-white rounded-lg p-4 border">
-                                                        <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
-                                                            <svg className="w-4 h-4 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                            </svg>
-                                                            Request Timeline
-                                                        </h4>
-                                                        <div className="space-y-2 text-sm">
-                                                            <div className="flex justify-between">
-                                                                <span className="text-gray-600">Submitted:</span>
-                                                                <span className="font-medium">{formatDate(request.createdAt)}</span>
-                                                            </div>
-                                                            <div className="flex justify-between">
-                                                                <span className="text-gray-600">Status:</span>
-                                                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                                                    {request.status}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Role Change Summary */}
-                                                    <div className="bg-white rounded-lg p-4 border">
-                                                        <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
-                                                            <svg className="w-4 h-4 mr-2 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                                            </svg>
-                                                            Role Change Summary
-                                                        </h4>
-                                                        <div className="space-y-2 text-sm">
-                                                            <div className="flex items-center justify-between">
-                                                                <span className="text-gray-600">From:</span>
-                                                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getRoleBadgeColor(request.currentRole)}`}>
-                                                                    {request.currentRole === 'venue_owner' ? 'Venue Owner' : request.currentRole}
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex items-center justify-center">
-                                                                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                                                                </svg>
-                                                            </div>
-                                                            <div className="flex items-center justify-between">
-                                                                <span className="text-gray-600">To:</span>
-                                                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getRoleBadgeColor(request.requestedRole)}`}>
-                                                                    {request.requestedRole === 'venue_owner' ? 'Venue Owner' : request.requestedRole}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                        )}
-                    </div>
-                </div>
-            )}
-
-            {/* Users Tab */}
-            {activeTab === 'users' && (
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
-                    <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">All Users</h2>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                            Manage all registered users in the system
-                        </p>
-                    </div>
-                    
-                    <div className="p-4">
-                        {loading ? (
-                            <div className="flex items-center justify-center py-8">
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                                <span className="ml-2 text-gray-600 dark:text-gray-400">Loading users...</span>
-                            </div>
-                        ) : filteredUsers.length === 0 ? (
-                            <div className="text-center py-8">
-                                <div className="text-gray-400 text-6xl mb-4">👥</div>
-                                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No Users Found</h3>
-                                <p className="text-gray-600 dark:text-gray-400">
-                                    {searchTerm || roleFilter ? 'No users match your current filters.' : 'No users have registered yet.'}
-                                </p>
-                            </div>
-                        ) : (
-                            <div className="overflow-x-auto">
-                                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                                    <thead className="bg-gray-50 dark:bg-gray-700">
-                                        <tr>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                                User
-                                            </th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                                Role
-                                            </th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                                Joined
-                                            </th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                                Actions
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                        {filteredUsers.map((user: User) => (
-                                            <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="flex items-center">
-                                                        <div className="h-10 w-10 flex-shrink-0">
-                                                            <div className="h-10 w-10 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
-                                                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                                    {user.displayName ? user.displayName.charAt(0).toUpperCase() : 
-                                                                     user.firstName ? user.firstName.charAt(0).toUpperCase() : 
-                                                                     user.email.charAt(0).toUpperCase()}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                        <div className="ml-4">
-                                                            <div className="text-sm font-medium text-gray-900 dark:text-white">
-                                                                {user.displayName || `${user.firstName} ${user.lastName}`.trim() || 'No Name'}
-                                                            </div>
-                                                            <div className="text-sm text-gray-500 dark:text-gray-400">
-                                                                {user.email}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                                        user.role === 'admin' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
-                                                        user.role === 'organizer' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' :
-                                                        user.role === 'venue_owner' ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200' :
-                                                        'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
-                                                    }`}>
-                                                        {user.role === 'venue_owner' ? 'Venue Owner' : user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                                    {user.createdAt ? formatDate(
-                                                        user.createdAt.toDate ? user.createdAt.toDate().toISOString() : user.createdAt.toString()
-                                                    ) : 'Unknown'}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                    <button className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 mr-4">
-                                                        View Details
-                                                    </button>
-                                                    <button className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
-                                                        Manage
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
         </div>
-    )
+    );
 }
