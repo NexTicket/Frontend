@@ -9,7 +9,6 @@ import {
   CheckCircle2,
   Search,
   Eye,
-  UserCheck,
   Calendar,
   MapPin,
   Activity,
@@ -294,6 +293,29 @@ export default function CheckinOfficerDashboard() {
     );
   }
 
+  // Add CSV export helper
+  function exportAttendeesCSV(attendees: Attendee[]) {
+    const headers = ['Name', 'Email', 'Ticket ID', 'Ticket Type', 'Status', 'Checked In At'];
+    const rows = attendees.map(a => [
+      `"${a.name}"`,
+      `"${a.email}"`,
+      `"${a.ticketId}"`,
+      `"${a.ticketType}"`,
+      `"${a.status}"`,
+      `"${a.checkedInAt || ''}"`
+    ]);
+    const csvContent = [headers, ...rows].map(r => r.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'attendees.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-orange-50 to-purple-50">
       {/* Header */}
@@ -303,15 +325,6 @@ export default function CheckinOfficerDashboard() {
             <div>
               <h1 className="text-3xl font-bold text-purple-900 mb-2">Check-in Dashboard</h1>
               <p className="text-purple-700">Scan tickets and manage event check-ins</p>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <div className="text-purple-900 font-medium">{userProfile?.displayName || 'Check-in Officer'}</div>
-                <div className="text-sm text-purple-700">Check-in Officer</div>
-              </div>
-              <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                <UserCheck className="w-5 h-5 text-purple-600" />
-              </div>
             </div>
           </div>
         </div>
@@ -702,7 +715,11 @@ export default function CheckinOfficerDashboard() {
                   </p>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Button variant="outline" size="sm">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => exportAttendeesCSV(filteredAttendees)}
+                  >
                     <Download className="w-4 h-4 mr-2" />
                     Export
                   </Button>
