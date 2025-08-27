@@ -49,7 +49,7 @@ export function ProfileDropdown({ size = 'md' }: ProfileDropdownProps) {
           onClick={() => setIsOpen(!isOpen)}
           className="flex items-center space-x-2 hover:bg-secondary/50 rounded-lg p-1 transition-colors"
         >
-          <div className={`${sizeClasses[size]} rounded-full overflow-hidden border-2 border-primary/20 hover:border-primary/40 transition-colors`}>
+          <div className={`${sizeClasses[size]} rounded-full overflow-hidden border border-primary/20 hover:border-primary/40 transition-colors`}>
             <Image
               src="/Images/profile-avatar-account-icon.png"
               alt={`${userProfile.firstName || 'User'} ${userProfile.lastName || ''}`}
@@ -122,7 +122,7 @@ export function ProfileDropdown({ size = 'md' }: ProfileDropdownProps) {
   // Empty profile circle for unauthenticated users
   return (
     <Link href="/auth/signin" className="block">
-      <div className={`${sizeClasses[size]} rounded-full bg-muted hover:bg-muted/80 border-2 border-border hover:border-primary/40 transition-colors cursor-pointer flex items-center justify-center`}>
+      <div className={`${sizeClasses[size]} rounded-full bg-muted hover:bg-muted/80 border border-border hover:border-primary/40 transition-colors cursor-pointer flex items-center justify-center`}>
         <User className="w-5 h-5 text-muted-foreground" />
       </div>
     </Link>

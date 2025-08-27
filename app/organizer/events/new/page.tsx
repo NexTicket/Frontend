@@ -1,187 +1,187 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Calendar, MapPin, Clock, ArrowLeft, ArrowRight, Check, Upload, Image as ImageIcon, X } from 'lucide-react';
-import { fetchVenues, createEvent } from '@/lib/api';
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { createEvent, fetchVenues } from "@/lib/api";
+import { useAuth } from "@/components/auth/auth-provider";
 
 export default function NewEventPage() {
   const router = useRouter();
+  const { userProfile } = useAuth();
+
+  // mounted guard to avoid SSR/CSR markup mismatch
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
+
+  const totalSteps = 3;
   const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 5;
-  const [venues, setVenues] = useState<{ id: number; name: string; city?: string; state?: string }[]>([]);
-  const [venuesLoading, setVenuesLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    category: '',
-    type: 'EVENT',
-    startDate: '',
-    endDate: '',
-    venueId: '',
-    image: ''
+  const [form, setForm] = useState({
+    title: "",
+    description: "",
+    date: "",
+    price: "",
+    capacity: "",
+    venueId: ""
   });
-  const categories = [
-    'Music', 'Technology', 'Theater', 'Food', 'Art', 'Sports', 
-    'Business', 'Education', 'Health', 'Fashion', 'Other'
-  ];
+  const [venues, setVenues] = useState<any[]>([]);
+  const [loadingVenues, setLoadingVenues] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
-    const loadVenues = async () => {
+    async function loadVenues() {
+      setLoadingVenues(true);
       try {
-        setVenuesLoading(true);
-        setError('');
-        const response = await fetchVenues();
-        const data = Array.isArray(response?.data) ? response.data : Array.isArray(response) ? response : [];
+        const res = await fetchVenues();
+        const data = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
         setVenues(data);
+        if (data.length > 0) setForm(prev => ({ ...prev, venueId: prev.venueId || data[0].id || "" }));
       } catch (err) {
-        setError('Could not load venues');
+        console.error("Failed loading venues", err);
       } finally {
-        setVenuesLoading(false);
+        setLoadingVenues(false);
       }
-    };
+    }
     loadVenues();
   }, []);
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-      setImagePreview(URL.createObjectURL(file));
-    }
-  };
-  const handleRemoveImage = () => {
-    setImageFile(null);
-    setImagePreview(null);
-    setFormData(prev => ({ ...prev, image: '' }));
-  };
+
+  const onChange = (k: string, v: string) => setForm(prev => ({ ...prev, [k]: v }));
+
   const nextStep = () => {
-    if (currentStep < totalSteps) setCurrentStep(currentStep + 1);
+    if (currentStep === 1) {
+      if (!form.title.trim() || !form.date.trim()) {
+        setError("Title and date are required.");
+        return;
+      }
+    }
+    setError(null);
+    setCurrentStep(s => Math.min(totalSteps, s + 1));
   };
+
   const prevStep = () => {
-    if (currentStep > 1) setCurrentStep(currentStep - 1);
+    setError(null);
+    setCurrentStep(s => Math.max(1, s - 1));
   };
+
   const handleSubmit = async () => {
-    if (!formData.title || !formData.startDate || !formData.venueId) {
-      setError('Please fill in all required fields');
+    if (!form.title.trim() || !form.date.trim()) {
+      setError("Title and date are required.");
       return;
     }
+    setSubmitting(true);
+    setError(null);
     try {
-      setError('');
-      setSubmitting(true);
-      let imageUrl = formData.image;
-      if (imageFile) {
-        // Simulate image upload (replace with real upload logic)
-        // Example: const uploadRes = await uploadImageToBackend(imageFile);
-        // imageUrl = uploadRes.url;
-        imageUrl = imagePreview || '';
-      }
       await createEvent({
-        title: formData.title,
-        description: formData.description || formData.title,
-        category: formData.category || 'Other',
-        type: formData.type as 'MOVIE' | 'EVENT' | string,
-        startDate: formData.startDate,
-        endDate: formData.endDate || undefined,
-        venueId: formData.venueId,
-        image: imageUrl
-      });
-      alert(`Event "${formData.title}" created successfully! It will be reviewed by administrators.`);
-      setFormData({ title: '', description: '', category: '', type: 'EVENT', startDate: '', endDate: '', venueId: '', image: '' });
-      setImageFile(null);
-      setImagePreview(null);
-      setCurrentStep(1);
-      router.push('/organizer/dashboard');
-    } catch (error) {
-      setError('Failed to create event. Please try again.');
+        title: form.title,
+        description: form.description,
+        date: form.date,
+        price: Number(form.price || 0),
+        capacity: Number(form.capacity || 0),
+        venueId: form.venueId || undefined,
+        organizerId: userProfile?.id
+      } as any);
+      router.push("/organizer/dashboard");
+    } catch (err) {
+      console.error(err);
+      setError("Failed to create event.");
     } finally {
       setSubmitting(false);
     }
   };
-  const renderStepIndicator = () => (
-    <div className="flex items-center justify-center mb-8">
-      {Array.from({ length: totalSteps }, (_, index) => (
-        <div key={index} className="flex items-center">
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
-            index + 1 === currentStep
-              ? 'border-primary bg-primary text-white'
-              : index + 1 < currentStep
-              ? 'border-green-500 bg-green-500 text-white'
-              : 'border-gray-300 bg-gray-100 text-gray-400'
-          }`}>
-            {index + 1 < currentStep ? (
-              <Check className="w-5 h-5" />
-            ) : (
-              index + 1
-            )}
+
+  const StepIndicator = () => (
+    <div className="flex items-center justify-center gap-3 mb-4">
+      {[...Array(totalSteps)].map((_, idx) => {
+        const step = idx + 1;
+        const active = step === currentStep;
+        const done = step < currentStep;
+        return (
+          <div key={idx} className="flex items-center">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+              done ? "bg-green-500 text-white" : active ? "bg-blue-500 text-white" : "bg-gray-700 text-gray-300"
+            }`}>{done ? "✓" : step}</div>
+            {idx < totalSteps - 1 && <div className={`w-8 h-0.5 mx-2 ${step < currentStep ? "bg-green-500" : "bg-gray-600"}`} />}
           </div>
-          {index < totalSteps - 1 && (
-            <div className={`w-16 h-0.5 mx-2 transition-all duration-300 ${
-              index + 1 < currentStep ? 'bg-green-500' : 'bg-gray-300'
-            }`} />
-          )}
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
-  const renderStepContent = () => {
-    switch (currentStep) {
-      case 1:
-        return (
-          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
-            <div className="text-center mb-8">
-              <h3 className="text-2xl font-bold mb-2">Basic Information</h3>
-              <p className="text-muted-foreground">Let's start with the essential details of your event</p>
+
+  return (
+    <div className="max-w-2xl mx-auto p-6">
+      <h2 className="text-lg font-semibold mb-4 text-white">Create Event</h2>
+
+      <div className="rounded-lg border p-4" style={{ background: "#0F1113", borderColor: 'rgb(57 253 72 / 50%)' }}>
+        <StepIndicator />
+
+        {currentStep === 1 && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm text-white mb-1">Title *</label>
+              <input value={form.title} onChange={e => onChange("title", e.target.value)} className="w-full px-3 py-2 rounded bg-[#101214] text-white" />
             </div>
-            <div className="space-y-4">
+            <div>
+              <label className="block text-sm text-white mb-1">Date & Time *</label>
+              <input type="datetime-local" value={form.date} onChange={e => onChange("date", e.target.value)} className="w-full px-3 py-2 rounded bg-[#101214] text-white" />
+            </div>
+            <div>
+              <label className="block text-sm text-white mb-1">Description</label>
+              <textarea value={form.description} onChange={e => onChange("description", e.target.value)} className="w-full px-3 py-2 rounded bg-[#101214] text-white" rows={4} />
+            </div>
+          </div>
+        )}
+
+        {currentStep === 2 && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-2">Event Title *</label>
-                <input type="text" value={formData.title} onChange={e => handleInputChange('title', e.target.value)} className="w-full px-4 py-3 border rounded-lg bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200" placeholder="Enter your event title" required />
+                <label className="block text-sm text-white mb-1">Price</label>
+                <input type="number" value={form.price} onChange={e => onChange("price", e.target.value)} className="w-full px-3 py-2 rounded bg-[#101214] text-white" />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2">Description</label>
-                <textarea value={formData.description} onChange={e => handleInputChange('description', e.target.value)} rows={4} className="w-full px-4 py-3 border rounded-lg bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200" placeholder="Describe your event..." />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Category</label>
-                  <select value={formData.category} onChange={e => handleInputChange('category', e.target.value)} className="w-full px-4 py-3 border rounded-lg bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200">
-                    <option value="">Select a category</option>
-                    {categories.map(category => (
-                      <option key={category} value={category}>{category}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Event Type</label>
-                  <select value={formData.type} onChange={e => handleInputChange('type', e.target.value)} className="w-full px-4 py-3 border rounded-lg bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200">
-                    <option value="EVENT">EVENT</option>
-                    <option value="MOVIE">MOVIE</option>
-                  </select>
-                </div>
+                <label className="block text-sm text-white mb-1">Capacity</label>
+                <input type="number" value={form.capacity} onChange={e => onChange("capacity", e.target.value)} className="w-full px-3 py-2 rounded bg-[#101214] text-white" />
               </div>
             </div>
-          </motion.div>
-        );
-      case 2:
-        return (
-          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
-            <div className="text-center mb-8">
-              <h3 className="text-2xl font-bold mb-2">Date & Time</h3>
-              <p className="text-muted-foreground">Set when your event will take place</p>
+            <div>
+              <label className="block text-sm text-white mb-1">Venue (optional)</label>
+              <select value={form.venueId} onChange={e => onChange("venueId", e.target.value)} className="w-full px-3 py-2 rounded bg-[#101214] text-white">
+                <option value="">Select a venue (optional)</option>
+                {loadingVenues ? <option>Loading...</option> : venues.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+              </select>
             </div>
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2"><Calendar className="h-4 w-4 inline mr-2" />Start Date *</label>
-                  <input type="date" value={formData.startDate} onChange={e => handleInputChange('startDate', e.target.value)} className="w-full px-4 py-3 border rounded-lg bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200" required />
+          </div>
+        )}
+
+        {currentStep === 3 && (
+          <div className="space-y-4 text-white">
+            <div><strong>Title:</strong> {form.title}</div>
+            <div><strong>Date:</strong> {form.date}</div>
+            <div><strong>Description:</strong> {form.description}</div>
+            <div><strong>Price:</strong> {form.price || "0"}</div>
+            <div><strong>Capacity:</strong> {form.capacity || "0"}</div>
+            <div><strong>Venue:</strong> {venues.find(v => v.id === form.venueId)?.name || "Not selected"}</div>
+            <p className="text-sm">If everything looks good click Create Event.</p>
+          </div>
+        )}
+
+        {error && <div className="text-red-400 mt-4">{error}</div>}
+
+        <div className="flex items-center justify-between mt-6">
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={prevStep} disabled={currentStep === 1}>Back</Button>
+            {currentStep < totalSteps ? <Button onClick={nextStep}>Next</Button> : <Button onClick={handleSubmit} disabled={submitting}>{submitting ? "Creating..." : "Create Event"}</Button>}
+          </div>
+          <div>
+            <Button variant="ghost" onClick={() => router.push("/organizer/dashboard")}>Cancel</Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2"><Clock className="h-4 w-4 inline mr-2" />End Date (Optional)</label>
@@ -220,7 +220,7 @@ export default function NewEventPage() {
               <h3 className="text-2xl font-bold mb-2">Event Image</h3>
               <p className="text-muted-foreground">Upload an image for your event (optional)</p>
             </div>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+            <div className="border border-dashed border-gray-300 rounded-lg p-8 text-center">
               <ImageIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" id="image-upload" />
               <label htmlFor="image-upload">

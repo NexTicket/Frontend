@@ -8,27 +8,19 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/components/auth/auth-provider';
 import { 
   Plus, 
-  Calendar, 
-  Users, 
+  Calendar,  
   DollarSign, 
   TrendingUp,
-  Eye,
-  Edit,
-  Settings,
-  MapPin,
-  Clock,
   Ticket,
-  BarChart3,
-  PieChart,
-  LogOut,
   ArrowLeft,
   Check,
-  ArrowRight
+  ArrowRight,
+  Eye,
+  Edit
 } from 'lucide-react';
-import { mockEvents, mockVenues } from '@/lib/mock-data';
 import { fetchEvents, deleteEvent, Event, fetchVenues, createEvent, createVenue } from '@/lib/api';
-import RouteGuard from '@/components/auth/routeGuard';
 import { AnimatePresence } from 'framer-motion';
+import axios from 'axios';
 
 const containerVariants = {
   hidden: { opacity: 0, scale: 0.98 },
@@ -49,8 +41,15 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } }
 };
 
+// Theme colors for matching admin dashboard
+const darkBg = "#181A20";
+const blueHeader = "#1877F2";
+const cardBg = "#23262F";
+const greenBorder = "#39FD48" + '50';
+const cardShadow = "0 2px 16px 0 rgba(57,253,72,0.08)";
+
 export default function OrganizerDashboard() {
-  const { userProfile, firebaseUser, logout, isLoading } = useAuth();
+  const { userProfile, firebaseUser, isLoading } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('overview');
   const [events, setEvents] = useState<Event[]>([]);
@@ -73,11 +72,18 @@ export default function OrganizerDashboard() {
     async function loadEvents() {
       try {
         setEventsLoading(true);
-        const eventsData = await fetchEvents();
-        setEvents(Array.isArray(eventsData) ? eventsData : []);
+        // Fetch events for this organizer from event_and_venue_service backend
+        if (userProfile?.id) {
+          const response = await axios.get(
+            `${process.env.NEXT_PUBLIC_EVENT_VENUE_SERVICE_URL}/api/events?organizerId=${userProfile.id}`
+          );
+          setEvents(Array.isArray(response.data) ? response.data : []);
+        } else {
+          setEvents([]);
+        }
       } catch (error) {
         console.error('Failed to load events:', error);
-        setEvents([]); // Ensure events is always an array
+        setEvents([]);
       } finally {
         setEventsLoading(false);
       }
@@ -117,15 +123,6 @@ export default function OrganizerDashboard() {
         console.error('Failed to delete event:', error);
         alert('Failed to delete event');
       }
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      await logout();
-      router.push('/');
-    } catch (error) {
-      console.error('Logout failed:', error);
     }
   };
 
@@ -194,9 +191,9 @@ export default function OrganizerDashboard() {
     // Venue form stepper UI
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
-        <div className="rounded-2xl border-2 p-0 overflow-hidden shadow-2xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48', minWidth: 400, maxWidth: 500 }}>
+        <div className="rounded-2xl border p-0 overflow-hidden shadow-2xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48'+ '50', minWidth: 400, maxWidth: 500 }}>
           <div className="bg-blue-600 p-6 text-center">
-            <h3 className="text-2xl font-bold text-white mb-1">Add New Venue</h3>
+            <h3 className="text-xl font-bold text-white mb-1">Add New Venue</h3>
             <p className="text-blue-100">Step {currentStep} of {totalSteps}</p>
           </div>
           <div className="p-8">
@@ -204,7 +201,7 @@ export default function OrganizerDashboard() {
             <div className="flex items-center justify-center mb-8">
               {[...Array(totalSteps)].map((_, idx) => (
                 <div key={idx} className="flex items-center">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all duration-300 ${
                     idx + 1 === currentStep
                       ? 'border-primary bg-primary text-white'
                       : idx + 1 < currentStep
@@ -364,79 +361,108 @@ export default function OrganizerDashboard() {
     }
   ];
 
+  // Mock data shown when no real events/venues exist
+  const mockEvents = [
+    { id: 'mock-e1', title: 'Rock Fest Colombo', description: 'A night of rock music with top bands.', category: 'Concert', date: '2025-09-12' },
+    { id: 'mock-e2', title: 'Tech Summit 2025', description: 'Talks and workshops on emerging tech.', category: 'Conference', date: '2025-10-03' },
+    { id: 'mock-e3', title: 'Laughter Night', description: 'Stand-up comedy special.', category: 'Comedy', date: '2025-08-21' }
+  ];
+
+  const mockVenues = [
+    { id: 'mock-v1', name: 'Nelum Pokuna', description: 'Iconic performing arts theatre.', city: 'Colombo', state: 'WP', capacity: 1200 },
+    { id: 'mock-v2', name: 'Sugathadasa Indoor Stadium', description: 'Large indoor venue for sports and events.', city: 'Colombo', state: 'WP', capacity: 5000 },
+    { id: 'mock-v3', name: 'BMICH Hall A', description: 'Convention center hall.', city: 'Colombo', state: 'WP', capacity: 2000 }
+  ];
+
   const tabs = [
     { id: 'overview', label: 'Overview' },
     { id: 'events', label: 'My Events' },
     { id: 'venues', label: 'My Venues' },
     { id: 'analytics', label: 'Analytics' },
-    { id: 'settings', label: 'Settings' }
   ];
 
   return (
-    <div className="min-h-screen bg-background py-10">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen" style={{ background: darkBg }}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10">
         {/* Dashboard Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div
+          className="rounded-xl shadow-lg mb-8 flex items-center justify-between"
+          style={{
+            backgroundColor: blueHeader,
+            borderRadius: "14px",
+            padding: "1.2rem",
+            color: "#fff",
+            boxShadow: cardShadow,
+            fontSize: "1rem"
+          }}
+        >
           <div>
-            <h1 className="text-3xl font-extrabold text-white">Organizer Dashboard</h1>
-            <p className="text-muted-foreground mt-1">Welcome back, {organizer.name}!</p>
-          </div>
-          <Button onClick={handleLogout} variant="outline" className="flex items-center">
-            <LogOut className="w-5 h-5 mr-2" /> Logout
-          </Button>
-        </div>
-
-        {/* Tabs */}
-        <div className="mb-6">
-          <div className="flex space-x-2">
-            {tabs.map(tab => (
-              <Button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
-                  activeTab === tab.id
-                    ? 'bg-primary text-white shadow-md'
-                    : 'bg-background text-muted-foreground hover:bg-primary/10'
-                }`}
-              >
-                {tab.label}
-              </Button>
-            ))}
+            <h1 className="font-bold mb-1" style={{ fontSize: "1.4rem" }}>Organizer Dashboard</h1>
+            <p className="text-base">Welcome back, {organizer.name}!</p>
           </div>
         </div>
 
-        {/* Tab Content */}
-        <div className="bg-card rounded-2xl p-6 shadow-md">
-          {activeTab === 'overview' && (
-            <motion.div
-              initial="hidden"
-              animate="visible"
-              variants={containerVariants}
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
+        {/* Tabs as small card buttons */}
+        <div className="mb-8 flex gap-4">
+          {tabs.map(tab => (
+            <div
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex-1 cursor-pointer rounded-lg shadow-md transition-all duration-200 text-center font-medium py-3 ${activeTab === tab.id ? "border" : "border"} ${activeTab === tab.id ? "border-green-400" : "border-gray-700"} hover:scale-105`}
+              style={{
+                backgroundColor: cardBg,
+                color: "#fff",
+                borderColor: activeTab === tab.id ? greenBorder : "#23262F",
+                boxShadow: cardShadow,
+                fontSize: "1rem",
+                borderWidth: "1px"
+              }}
             >
-              {stats.map(stat => (
-                <motion.div
-                  key={stat.title}
-                  variants={itemVariants}
-                  className={`p-4 rounded-lg flex items-center space-x-4 transition-all duration-200 cursor-pointer hover:scale-105 ${stat.color}`}
-                >
-                  <div className="text-white text-3xl">
-                    <stat.icon />
-                  </div>
-                  <div className="text-white">
-                    <div className="text-sm font-medium">{stat.title}</div>
-                    <div className="text-lg font-bold">{stat.value}</div>
-                  </div>
-                </motion.div>
-              ))}
-            </motion.div>
-          )}
+              {tab.label}
+            </div>
+          ))}
+        </div>
 
+        {/* Stats cards */}
+        {activeTab === "overview" && (
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            variants={containerVariants}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
+          >
+            {stats.map(stat => (
+              <motion.div
+                key={stat.title}
+                variants={itemVariants}
+                className="rounded-lg border p-4 flex flex-col items-start justify-between"
+                style={{
+                  backgroundColor: cardBg,
+                  borderColor: greenBorder,
+                  color: "#fff",
+                  boxShadow: cardShadow,
+                  minHeight: 90,
+                  fontSize: "0.95rem",
+                  borderWidth: "1px"
+                }}
+              >
+                <div className="flex items-center mb-1">
+                  <stat.icon className="w-5 h-5 mr-2" />
+                  <span className="font-medium">{stat.title}</span>
+                </div>
+                <div className="text-xl font-bold mb-1" style={{ fontSize: "1.2rem" }}>{stat.value}</div>
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+
+        {/* Tab Content Cards */}
+        <div className="rounded-lg border p-4 shadow-md" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow, borderWidth: "1px", fontSize: "0.95rem" }}>
           {activeTab === 'events' && (
             <div>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-white">My Events</h2>
-                <Button onClick={() => router.push('/organizer/events/create')} className="flex items-center">
+                <Button onClick={() => router.push('/organizer/events/new')} className="flex items-center" style={{ backgroundColor: darkBg, borderColor: greenBorder }}>
                   <Plus className="w-4 h-4 mr-2" /> Add New Event
                 </Button>
               </div>
@@ -446,44 +472,43 @@ export default function OrganizerDashboard() {
                   <p className="mt-4 text-muted-foreground">Loading your events...</p>
                 </div>
               ) : (
-                <div className="bg-card rounded-2xl p-4">
-                  {organizerEvents.length === 0 ? (
-                    <div className="text-center py-10">
-                      <p className="text-muted-foreground">You have not created any events yet.</p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 gap-4">
-                      {organizerEvents.map(event => (
-                        <div key={event.id} className="p-4 rounded-lg bg-background shadow-md flex flex-col sm:flex-row items-start sm:items-center">
-                          <div className="flex-1 min-w-0">
-                            <Link href={`/organizer/events/${event.id}`} className="block text-lg font-semibold text-white truncate">
-                              {event.title}
-                            </Link>
-                            <p className="text-sm text-muted-foreground truncate">{event.description}</p>
-                            <div className="flex flex-wrap gap-2 mt-2">
-                              <span className="text-xs rounded-full bg-primary/10 text-primary px-3 py-1">{event.category}</span>
-                              <span className="text-xs rounded-full bg-secondary/10 text-secondary px-3 py-1">{event.date}</span>
-                            </div>
-                          </div>
-                          <div className="mt-4 sm:mt-0 sm:ml-4">
-                            <Button onClick={() => handleDeleteEvent(event.id)} variant="outline" className="flex items-center text-red-500">
-                              <Trash className="w-4 h-4 mr-2" /> Delete
-                            </Button>
+                <div className="space-y-3">
+                  {(organizerEvents.length === 0 ? mockEvents : organizerEvents).map(event => (
+                    <div key={event.id} className="rounded-xl p-4 bg-background shadow-sm flex items-center justify-between" style={{ backgroundColor: darkBg }}>
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold" style={{ color: '#fff', backgroundColor: blueHeader }}>
+                          {(event.title || 'E').charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <Link href={`/organizer/events/${event.id}`} className="block font-semibold text-white truncate">
+                            {event.title}
+                          </Link>
+                          <div className="flex flex-wrap items-center gap-2 mt-1 text-xs">
+                            <span className="px-2 py-0.5 rounded-full" style={{ color: greenBorder, backgroundColor: greenBorder + '20' }}>{event.category}</span>
+                            <span className="px-2 py-0.5 rounded-full" style={{ color: '#fff', backgroundColor: '#2a2d34' }}>{event.date}</span>
                           </div>
                         </div>
-                      ))}
+                      </div>
+                      <div className="flex items-center gap-2 ml-4 shrink-0">
+                        <Button variant="outline" size="sm" className="h-8" style={{ backgroundColor: 'white', borderColor: '#2a2d34', color: 'black' }}>
+                          <Eye className="h-4 w-4 mr-1" /> View
+                        </Button>
+                        <Button variant="outline" size="sm" className="h-8" style={{ backgroundColor: 'white', borderColor: '#2a2d34', color: 'black' }}>
+                          <Edit className="h-4 w-4 mr-1" /> Edit
+                        </Button>
+                      </div>
                     </div>
-                  )}
+                  ))}
                 </div>
               )}
-              </div>
+            </div>
           )}
 
           {activeTab === 'venues' && (
             <div>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-white">My Venues</h2>
-                <Button onClick={() => setShowVenueModal(true)} className="flex items-center">
+                <Button onClick={() => setShowVenueModal(true)} className="flex items-center" style={{ backgroundColor: darkBg, borderColor: greenBorder }}>
                   <Plus className="w-4 h-4 mr-2" /> Add New Venue
                 </Button>
               </div>
@@ -493,34 +518,33 @@ export default function OrganizerDashboard() {
                   <p className="mt-4 text-muted-foreground">Loading your venues...</p>
                 </div>
               ) : (
-                <div className="bg-card rounded-2xl p-4">
-                  {venues.length === 0 ? (
-                    <div className="text-center py-10">
-                      <p className="text-muted-foreground">You have not added any venues yet.</p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 gap-4">
-                      {venues.map(venue => (
-                        <div key={venue.id} className="p-4 rounded-lg bg-background shadow-md flex flex-col sm:flex-row items-start sm:items-center">
-                          <div className="flex-1 min-w-0">
-                            <Link href={`/organizer/venues/${venue.id}`} className="block text-lg font-semibold text-white truncate">
-                              {venue.name}
-                            </Link>
-                            <p className="text-sm text-muted-foreground truncate">{venue.description}</p>
-                            <div className="flex flex-wrap gap-2 mt-2">
-                              <span className="text-xs rounded-full bg-primary/10 text-primary px-3 py-1">{venue.city}, {venue.state}</span>
-                              <span className="text-xs rounded-full bg-secondary/10 text-secondary px-3 py-1">Capacity: {venue.capacity}</span>
-                            </div>
-                          </div>
-                          <div className="mt-4 sm:mt-0 sm:ml-4">
-                            <Button onClick={() => handleDeleteEvent(venue.id)} variant="outline" className="flex items-center text-red-500">
-                              <Trash className="w-4 h-4 mr-2" /> Delete
-                            </Button>
+                <div className="space-y-3">
+                  {(venues.length === 0 ? mockVenues : venues).map(venue => (
+                    <div key={venue.id} className="rounded-xl p-4 bg-background shadow-sm flex items-center justify-between" style={{ backgroundColor: darkBg }}>
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold" style={{ color: '#fff', backgroundColor: blueHeader }}>
+                          {(venue.name || 'V').charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <Link href={`/organizer/venues/${venue.id}`} className="block font-semibold text-white truncate">
+                            {venue.name}
+                          </Link>
+                          <div className="flex flex-wrap items-center gap-2 mt-1 text-xs">
+                            <span className="px-2 py-0.5 rounded-full" style={{ color: '#fff', backgroundColor: '#2a2d34' }}>{venue.city}, {venue.state}</span>
+                            <span className="px-2 py-0.5 rounded-full" style={{ color: greenBorder, backgroundColor: greenBorder + '20' }}>Capacity: {venue.capacity}</span>
                           </div>
                         </div>
-                      ))}
+                      </div>
+                      <div className="flex items-center gap-2 ml-4 shrink-0">
+                        <Button variant="outline" size="sm" className="h-8" style={{ backgroundColor: darkBg, borderColor: '#2a2d34', color: '#fff' }}>
+                          <Eye className="h-4 w-4 mr-1" /> View
+                        </Button>
+                        <Button variant="outline" size="sm" className="h-8" style={{ backgroundColor: darkBg, borderColor: '#2a2d34', color: '#fff' }}>
+                          <Edit className="h-4 w-4 mr-1" /> Edit
+                        </Button>
+                      </div>
                     </div>
-                  )}
+                  ))}
                 </div>
               )}
             </div>
@@ -531,7 +555,7 @@ export default function OrganizerDashboard() {
               <h2 className="text-xl font-bold text-white mb-4">Analytics</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {stats.map(stat => (
-                  <div key={stat.title} className="p-4 rounded-lg bg-background shadow-md flex flex-col">
+                  <div key={stat.title} className="rounded-2xl border p-4 bg-background shadow-md flex flex-col" style={{ backgroundColor: darkBg, borderColor: greenBorder }}>
                     <div className="flex-1">
                       <div className="text-sm font-medium text-muted-foreground mb-1">{stat.title}</div>
                       <div className="text-lg font-bold text-white">{stat.value}</div>
@@ -546,62 +570,25 @@ export default function OrganizerDashboard() {
               </div>
             </div>
           )}
-
-          {activeTab === 'settings' && (
-            <div>
-              <h2 className="text-xl font-bold text-white mb-4">Settings</h2>
-              <div className="bg-card rounded-2xl p-6 shadow-md">
-                <div className="grid grid-cols-1 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-white">Email Notifications</label>
-                    <Switch
-                      checked={userProfile?.emailNotifications}
-                      onCheckedChange={async (checked) => {
-                        try {
-                          await updateUserProfile({ emailNotifications: checked });
-                          router.reload();
-                        } catch (error) {
-                          console.error('Failed to update settings:', error);
-                        }
-                      }}
-                      className="w-10 h-6 rounded-full bg-primary relative cursor-pointer transition-all duration-200"
-                    >
-                      <span className="sr-only">Email notifications</span>
-                      <span
-                        className={`block w-4 h-4 rounded-full bg-white shadow-md transform transition-all duration-200 ${
-                          userProfile?.emailNotifications ? 'translate-x-4' : 'translate-x-0'
-                        }`}
-                      />
-                    </Switch>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-white">Password</label>
-                    <Button onClick={() => router.push('/auth/reset-password')} className="w-full">
-                      Reset Password
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
       {/* Venue Creation Modal */}
       <AnimatePresence>
         {showVenueModal && (
-          <Dialog open={showVenueModal} onClose={() => setShowVenueModal(false)} className="fixed inset-0 z-50 overflow-y-auto">
-            <div className="flex items-center justify-center min-h-screen">
-              <Dialog.Overlay className="fixed inset-0 bg-black opacity-30" />
-              <div className="bg-background rounded-2xl p-6 max-w-lg w-full z-50">
-                <Dialog.Title className="text-2xl font-bold text-white mb-4">Add New Venue</Dialog.Title>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+            <div className="rounded-xl border-2 shadow-2xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, minWidth: 400, maxWidth: 500, boxShadow: cardShadow }}>
+              <div className="bg-blue-600 p-6 text-center rounded-t-xl">
+                <h3 className="text-2xl font-bold text-white mb-1">Add New Venue</h3>
+              </div>
+              <div className="p-8">
                 <VenueCreationWizard onClose={() => setShowVenueModal(false)} onCreated={() => {
                   setShowVenueModal(false);
                   router.reload();
                 }} />
               </div>
             </div>
-          </Dialog>
+          </div>
         )}
       </AnimatePresence>
     </div>
