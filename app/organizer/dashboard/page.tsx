@@ -453,6 +453,31 @@ export default function OrganizerDashboard() {
                 <div className="text-xl font-bold mb-1" style={{ fontSize: "1.2rem" }}>{stat.value}</div>
               </motion.div>
             ))}
+            <div className="sm:col-span-2 lg:col-span-4 rounded-lg p-4" style={{ backgroundColor: cardBg, border: `1px solid ${greenBorder}`, boxShadow: cardShadow }}>
+              <div className="flex flex-wrap gap-4">
+                <div className="flex-1 min-w-[220px]">
+                  <div className="text-xs text-muted-foreground">This Week Revenue</div>
+                  <div className="text-2xl font-bold text-white mt-1">LKR 125,400</div>
+                  <div className="h-2 w-full rounded mt-2" style={{ background: "#2a2d34" }}>
+                    <div className="h-2 rounded" style={{ width: "65%", background: blueHeader }}></div>
+                  </div>
+                </div>
+                <div className="flex-1 min-w-[220px]">
+                  <div className="text-xs text-muted-foreground">New Tickets Sold</div>
+                  <div className="text-2xl font-bold text-white mt-1">842</div>
+                  <div className="h-2 w-full rounded mt-2" style={{ background: "#2a2d34" }}>
+                    <div className="h-2 rounded" style={{ width: "48%", background: greenBorder }}></div>
+                  </div>
+                </div>
+                <div className="flex-1 min-w-[220px]">
+                  <div className="text-xs text-muted-foreground">Active Venues</div>
+                  <div className="text-2xl font-bold text-white mt-1">7</div>
+                  <div className="h-2 w-full rounded mt-2" style={{ background: "#2a2d34" }}>
+                    <div className="h-2 rounded" style={{ width: "70%", background: blueHeader }}></div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </motion.div>
         )}
 
@@ -567,6 +592,41 @@ export default function OrganizerDashboard() {
                     </div>
                   </div>
                 ))}
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                <div className="rounded-xl p-6" style={{ backgroundColor: cardBg, border: `1px solid ${greenBorder}`, boxShadow: cardShadow }}>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="text-white font-semibold">Top Categories</div>
+                  </div>
+                  <div className="space-y-3">
+                    {[{name:'Concert',pct:54},{name:'Conference',pct:28},{name:'Comedy',pct:18}].map(c => (
+                      <div key={c.name}>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-muted-foreground">{c.name}</span>
+                          <span className="text-white font-medium">{c.pct}%</span>
+                        </div>
+                        <div className="h-2 w-full rounded" style={{ background: '#2a2d34' }}>
+                          <div className="h-2 rounded" style={{ width: `${c.pct}%`, background: blueHeader }}></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="rounded-xl p-6" style={{ backgroundColor: cardBg, border: `1px solid ${greenBorder}`, boxShadow: cardShadow }}>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="text-white font-semibold">Weekly Ticket Sales</div>
+                  </div>
+                  <div className="grid grid-cols-7 gap-2 text-center text-xs text-muted-foreground">
+                    {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((d,i)=> (
+                      <div key={d}>
+                        <div className="h-20 w-full rounded mb-1" style={{ background: '#2a2d34' }}>
+                          <div className="w-full rounded-b" style={{ height: `${[45,52,48,61,58,67,74][i]}%`, background: blueHeader }}></div>
+                        </div>
+                        {d}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           )}
