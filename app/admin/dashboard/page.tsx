@@ -50,6 +50,7 @@ import {
 } from 'recharts';
 import { format, subDays, startOfWeek, endOfWeek } from 'date-fns';
 import RouteGuard from '@/components/auth/routeGuard';
+import { fetchEvents, approveEvent, rejectEvent } from '@/lib/api';
 
 // Theme to match organizer dashboard
 const darkBg = "#181A20";
@@ -176,7 +177,56 @@ export default function AdminDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [activityDialogOpen, setActivityDialogOpen] = useState(false);
   const [notifications, setNotifications] = useState(3);
+  const [pendingEvents, setPendingEvents] = useState<any[]>([]);
+  const [loadingEvents, setLoadingEvents] = useState(false);
   console.log('User profile after admin redirectory:', userProfile);
+
+  // Fetch pending events
+  useEffect(() => {
+    const loadPendingEvents = async () => {
+      setLoadingEvents(true);
+      try {
+        const response = await fetchEvents();
+        const events = response?.data || response || [];
+        const pending = events.filter((event: any) => event.status === 'PENDING');
+        setPendingEvents(pending);
+      } catch (error) {
+        console.error('Failed to load pending events:', error);
+      } finally {
+        setLoadingEvents(false);
+      }
+    };
+
+    if (userProfile?.role === 'admin') {
+      loadPendingEvents();
+    }
+  }, [userProfile]);
+
+  const handleApproveEvent = async (eventId: string) => {
+    try {
+      await approveEvent(eventId);
+      // Refresh pending events
+      const response = await fetchEvents();
+      const events = response?.data || response || [];
+      const pending = events.filter((event: any) => event.status === 'PENDING');
+      setPendingEvents(pending);
+    } catch (error) {
+      console.error('Failed to approve event:', error);
+    }
+  };
+
+  const handleRejectEvent = async (eventId: string) => {
+    try {
+      await rejectEvent(eventId);
+      // Refresh pending events
+      const response = await fetchEvents();
+      const events = response?.data || response || [];
+      const pending = events.filter((event: any) => event.status === 'PENDING');
+      setPendingEvents(pending);
+    } catch (error) {
+      console.error('Failed to reject event:', error);
+    }
+  };
 
   // No need for additional auth checks - admin layout handles this
   // useEffect(() => {
@@ -414,6 +464,102 @@ export default function AdminDashboard() {
               {stats.map((stat, index) => (
                 <StatCard key={index} {...stat} />
               ))}
+            </div>
+          </motion.div>
+
+          {/* Pending Events Section */}
+          <motion.div variants={itemVariants} className="mb-16">
+            <div className="backdrop-blur-xl border rounded-2xl p-8 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-3xl font-bold" style={{ color: '#fff' }}>Pending Event Approvals</h3>
+                <div className="flex items-center space-x-4">
+                  <div className="text-sm font-medium" style={{ color: '#fff' }}>
+                    {loadingEvents ? 'Loading...' : `${pendingEvents.length} events pending`}
+                  </div>
+                  <Button 
+                    onClick={() => window.location.reload()}
+                    variant="outline" 
+                    size="sm" 
+                    className="transition-all duration-200 hover:shadow-md"
+                    style={{ borderColor: greenBorder, color: '#fff', backgroundColor: 'transparent' }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#1f222a';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh
+                  </Button>
+                </div>
+              </div>
+              
+              {loadingEvents ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                  <p className="mt-4 text-sm" style={{ color: '#fff' }}>Loading pending events...</p>
+                </div>
+              ) : pendingEvents.length === 0 ? (
+                <div className="text-center py-8">
+                  <Calendar className="h-12 w-12 mx-auto mb-4" style={{ color: greenBorder }} />
+                  <p className="text-lg font-semibold" style={{ color: '#fff' }}>No Pending Events</p>
+                  <p className="text-sm" style={{ color: '#ABA8A9' }}>All events have been reviewed</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {pendingEvents.map((event) => (
+                    <div key={event.id} className="rounded-2xl border p-6 bg-background shadow-md" style={{ backgroundColor: darkBg, borderColor: greenBorder }}>
+                      <div className="flex flex-col lg:flex-row lg:items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-3 mb-2">
+                            <h4 className="text-xl font-semibold text-white truncate">{event.title}</h4>
+                            <span className="text-xs rounded-full bg-yellow-100 text-yellow-800 px-3 py-1 font-medium">
+                              PENDING
+                            </span>
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-3" style={{ color: '#ABA8A9' }}>{event.description}</p>
+                          <div className="flex flex-wrap gap-3">
+                            <span className="text-xs rounded-full bg-primary/10 text-primary px-3 py-1" style={{ color: greenBorder, backgroundColor: greenBorder + '20' }}>
+                              {event.category}
+                            </span>
+                            <span className="text-xs rounded-full bg-secondary/10 text-secondary px-3 py-1" style={{ color: '#fff', backgroundColor: '#2a2d34' }}>
+                              {event.startDate ? new Date(event.startDate).toLocaleDateString() : 'No date'}
+                            </span>
+                            {event.venue?.name && (
+                              <span className="text-xs rounded-full bg-blue-100 text-blue-800 px-3 py-1">
+                                {event.venue.name}
+                              </span>
+                            )}
+                            {event.Tenant?.name && (
+                              <span className="text-xs rounded-full bg-purple-100 text-purple-800 px-3 py-1">
+                                By: {event.Tenant.name}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="mt-4 lg:mt-0 lg:ml-6 flex space-x-2">
+                          <Button 
+                            onClick={() => handleApproveEvent(String(event.id))}
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                            size="sm"
+                          >
+                            Approve
+                          </Button>
+                          <Button 
+                            onClick={() => handleRejectEvent(String(event.id))}
+                            variant="outline"
+                            className="border-red-500 text-red-500 hover:bg-red-500 hover:text-white"
+                            size="sm"
+                          >
+                            Reject
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </motion.div>
               {/* Quick Actions Dashboard */}

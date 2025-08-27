@@ -141,20 +141,20 @@ export async function uploadVenueImages(id: string, imageFiles: File[]) {
 }
 
 export async function fetchEvents() {
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/events/`);
+  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events/`);
   if (!res.ok) throw new Error("Failed to fetch events");
   return res.json();
 }
 
 export async function fetchEventById(id: string) {
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/events/${id}`);
+  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events/${id}`);
   if (!res.ok) throw new Error("Failed to fetch event");
   return res.json();
 }
 
 //approveEvent and rejectEvent functions
 export async function approveEvent(id: string) {
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/events/${id}/approve`, {
+  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events/${id}/approve`, {
     method: 'POST'
   });
   if (!res.ok) throw new Error("Failed to approve event");
@@ -162,7 +162,7 @@ export async function approveEvent(id: string) {
 }
 
 export async function rejectEvent(id: string) {
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/events/${id}/reject`, {
+  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events/${id}/reject`, {
     method: 'POST'
   });
   if (!res.ok) throw new Error("Failed to reject event");
@@ -173,10 +173,12 @@ export async function rejectEvent(id: string) {
 export async function createEvent(eventData: {
   title: string;
   description: string;
-  category: string;
+  category: string; // Should be Prisma enum Category on backend
   type: 'MOVIE' | 'EVENT' | string;
   startDate: string; // ISO date or YYYY-MM-DD
   endDate?: string;  // ISO date or YYYY-MM-DD
+  startTime?: string; // HH:mm
+  endTime?: string;   // HH:mm
   venueId?: string | number;
   image?: string;
 }) {
@@ -187,11 +189,13 @@ export async function createEvent(eventData: {
     type: eventData.type,
     startDate: eventData.startDate,
     endDate: eventData.endDate ?? undefined,
+    startTime: eventData.startTime ?? undefined,
+    endTime: eventData.endTime ?? undefined,
     venueId: eventData.venueId !== undefined && eventData.venueId !== null ? String(eventData.venueId) : undefined,
     image: eventData.image ?? undefined
   };
 
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/events`, {
+  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events`, {
     method: 'POST',
     body: JSON.stringify(body)
   });
@@ -206,8 +210,8 @@ export async function createEvent(eventData: {
 
 // Delete event by id
 export async function deleteEvent(id: string) {
-  // Backend route expects /events/delete-event/:id
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/events/delete-event/${id}`, {
+  // Backend route expects /api/events/delete-event/:id
+  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events/delete-event/${id}`, {
     method: 'DELETE'
   });
   if (!res.ok) {

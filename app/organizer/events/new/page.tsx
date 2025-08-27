@@ -15,7 +15,7 @@ function NewEventPageInner() {
   // mounted guard to avoid SSR/CSR markup mismatch
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  
+
   const totalSteps = 6;
   const [currentStep, setCurrentStep] = useState(1);
   const [form, setForm] = useState({
@@ -121,14 +121,20 @@ function NewEventPageInner() {
   };
 
   const handlePosterChange = async (files: FileList | null) => {
+    console.log("File input triggered", files);
     if (!files || files.length === 0) return;
     const file = files[0];
-    if (!file.type.startsWith("image/")) return;
+    console.log("Selected file:", file.name, file.type);
+    if (!file.type.startsWith("image/")) {
+      console.log("Not an image file");
+      return;
+    }
     setSelectedFile(file);
     const reader = new FileReader();
     reader.onload = () => {
       const base64 = reader.result as string;
       setForm(prev => ({ ...prev, poster: base64 }));
+      console.log("File converted to base64");
     };
     reader.readAsDataURL(file);
   };
@@ -147,6 +153,17 @@ function NewEventPageInner() {
       const startDateIso = `${form.startDateDate}T${startTime}`;
       const endTime = form.endHour && form.endMinute ? `${form.endHour.padStart(2,'0')}:${form.endMinute.padStart(2,'0')}` : '';
       const endDateIso = form.endDateDate && endTime ? `${form.endDateDate}T${endTime}` : undefined;
+      
+      console.log('🎯 Creating event with data:', {
+        title: form.title,
+        category: form.category,
+        startDate: startDateIso,
+        endDate: endDateIso,
+        startTime,
+        endTime: endTime || undefined,
+        venueId: form.venueId || undefined
+      });
+      
       // Frontend validation: end must be after start when provided
       if (endDateIso && new Date(endDateIso).getTime() <= new Date(startDateIso).getTime()) {
         setError('End date/time must be after start date/time.');
@@ -156,10 +173,27 @@ function NewEventPageInner() {
       const created = await createEvent({
         title: form.title,
         description: form.description,
-        category: form.category,
+        // Normalize to backend enum values
+        category: ((): string => {
+          const c = form.category.trim().toUpperCase();
+          switch (c) {
+            case 'MUSIC':
+            case 'SPORTS':
+            case 'THEATER':
+            case 'COMEDY':
+            case 'CONFERENCE':
+            case 'FESTIVAL':
+            case 'WORKSHOP':
+              return c;
+            default:
+              return 'OTHER';
+          }
+        })(),
         type: 'EVENT',
         startDate: startDateIso,
         endDate: endDateIso,
+        startTime,
+        endTime: endTime || undefined,
         venueId: form.venueId || undefined,
         image: form.poster || undefined
       });
@@ -173,12 +207,12 @@ function NewEventPageInner() {
         console.warn('Poster upload failed, continuing', e);
       }
       router.push("/organizer/dashboard");
-    } catch (err) {
-      console.error(err);
-      setError("Failed to create event.");
-    } finally {
-      setSubmitting(false);
-    }
+          } catch (err) {
+        console.error('❌ Event creation failed:', err);
+        setError(`Failed to create event: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      } finally {
+        setSubmitting(false);
+      }
   };
 
   const StepBar = () => (
@@ -222,7 +256,7 @@ function NewEventPageInner() {
         <StepBar />
 
         <div className="bg-card/50 backdrop-blur-sm rounded-xl border p-8" style={{ borderColor: 'rgb(57 253 72 / 50%)' }}>
-          {currentStep === 1 && (
+        {currentStep === 1 && (
             <div className="space-y-6">
               <h3 className="text-2xl font-semibold text-white">Basic Information</h3>
               <div>
@@ -266,8 +300,8 @@ function NewEventPageInner() {
                 <div>
                   <label className="block text-sm text-foreground mb-2">End Date (optional)</label>
                   <input type="date" value={form.endDateDate} onChange={e => onChange("endDateDate", e.target.value)} className="w-full px-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all" />
-                </div>
-                <div>
+            </div>
+            <div>
                   <label className="block text-sm text-foreground mb-2">End Time (optional)</label>
                   <div className="flex gap-2">
                     <select value={form.endHour} onChange={e => onChange("endHour", e.target.value)} className="px-3 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all w-24">
@@ -277,9 +311,9 @@ function NewEventPageInner() {
                     <select value={form.endMinute} onChange={e => onChange("endMinute", e.target.value)} className="px-3 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all w-24">
                       <option value="">MM</option>
                       {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m => <option key={m} value={m}>{m}</option>)}
-                    </select>
-                  </div>
-                </div>
+              </select>
+            </div>
+          </div>
               </div>
 
               {/* soft warning when start > end */}
@@ -297,8 +331,8 @@ function NewEventPageInner() {
                 <label className="block text-sm text-foreground mb-2">Description</label>
                 <textarea value={form.description} onChange={e => onChange("description", e.target.value)} rows={4} className="w-full px-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all" />
               </div>
-            </div>
-          )}
+          </div>
+        )}
 
           {currentStep === 2 && (
             <div className="space-y-6">
@@ -326,7 +360,7 @@ function NewEventPageInner() {
                     );
                   })
                 )}
-              </div>
+          </div>
 
               {/* Selected venue preview */}
               {form.venueId && (
@@ -339,16 +373,16 @@ function NewEventPageInner() {
                         <div className="md:col-span-1">
                           <div className="w-full h-32 overflow-hidden rounded-lg border border-border bg-background/50 flex items-center justify-center">
                             {img ? <img src={img} alt="Venue" className="w-full h-full object-cover" /> : <div className="text-muted-foreground text-sm">No image</div>}
-                          </div>
-                        </div>
+          </div>
+        </div>
                         <div className="md:col-span-2 flex items-center">
                           <div>
                             <div className="text-white font-semibold text-lg">{(v as any)?.name}</div>
                             <div className="text-muted-foreground text-sm">{(v as any)?.location}</div>
                             <div className="text-muted-foreground text-sm">Capacity: {(v as any)?.capacity ?? '—'}</div>
                             <div className="text-muted-foreground text-sm">Seat map: {((v as any)?.seatMap ? 'Available' : '—')}</div>
-                          </div>
-                        </div>
+      </div>
+    </div>
                       </>
                     );
                   })()}
@@ -377,12 +411,21 @@ function NewEventPageInner() {
                 <label className="block text-sm text-foreground mb-2">Upload Poster</label>
                 <div className="border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300 border-border hover:border-primary/50 bg-background/50">
                   <ImageIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <input type="file" accept="image/*" onChange={e => handlePosterChange(e.target.files)} className="hidden" id="poster-upload" />
-                  <label htmlFor="poster-upload" className="cursor-pointer">
-                    <Button type="button" variant="outline" className="cursor-pointer">
-                      Choose Image
-                    </Button>
-                  </label>
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={e => handlePosterChange(e.target.files)} 
+                    className="hidden" 
+                    id="poster-upload" 
+                  />
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    className="cursor-pointer"
+                    onClick={() => document.getElementById('poster-upload')?.click()}
+                  >
+                    Choose Image
+                  </Button>
                   {form.poster && (
                     <div className="mt-4 relative inline-block">
                       <img src={form.poster} alt="Poster" className="w-40 h-40 object-cover rounded-lg border" />
@@ -400,7 +443,7 @@ function NewEventPageInner() {
               <div>
                 <label className="block text-sm text-foreground mb-2">Event Admin Email</label>
                 <input value={eventAdminEmail} onChange={e => setEventAdminEmail(e.target.value)} placeholder="admin@example.com" className="w-full px-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all" />
-              </div>
+            </div>
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="block text-sm text-foreground">Check-in Officers (up to 10)</label>
@@ -456,7 +499,7 @@ function NewEventPageInner() {
                 <div>
                   <div className="text-sm text-muted-foreground">Description</div>
                   <div className="font-medium">{form.description}</div>
-                </div>
+            </div>
               )}
               {form.poster && (
                 <div>
