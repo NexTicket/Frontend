@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { createEvent, fetchVenues } from "@/lib/api";
+import { createEvent, fetchVenues, uploadEventImage } from "@/lib/api";
 import { useAuth } from "@/components/auth/auth-provider";
 import dynamic from "next/dynamic";
 import { ArrowLeft, ArrowRight, Image as ImageIcon, X } from "lucide-react";
@@ -16,7 +16,7 @@ function NewEventPageInner() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   
-  const totalSteps = 5;
+  const totalSteps = 6;
   const [currentStep, setCurrentStep] = useState(1);
   const [form, setForm] = useState({
     title: "",
@@ -26,8 +26,12 @@ function NewEventPageInner() {
     category: "",
     startDateDate: "",
     startDateTime: "",
+    startHour: "",
+    startMinute: "",
     endDateDate: "",
     endDateTime: "",
+    endHour: "",
+    endMinute: "",
     venueId: "",
     poster: "" // base64 image string
   });
@@ -49,6 +53,7 @@ function NewEventPageInner() {
   const [showSeatMapFor, setShowSeatMapFor] = useState<string | number | null>(null);
   const [eventAdminEmail, setEventAdminEmail] = useState("");
   const [checkInEmails, setCheckInEmails] = useState<string[]>([""]);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   useEffect(() => {
     async function loadVenues() {
@@ -92,9 +97,18 @@ function NewEventPageInner() {
 
   const nextStep = () => {
     if (currentStep === 1) {
-      if (!form.title.trim() || !form.category.trim() || !form.startDateDate.trim() || !form.startDateTime.trim()) {
+      const missing = !form.title.trim() || !form.category.trim() || !form.startDateDate.trim() || !form.startHour.trim() || !form.startMinute.trim();
+      if (missing) {
         setError("Title, category, start date and start time are required.");
         return;
+      }
+      if (form.endDateDate && form.endHour && form.endMinute) {
+        const s = new Date(`${form.startDateDate}T${form.startHour}:${form.startMinute}`).getTime();
+        const e = new Date(`${form.endDateDate}T${form.endHour}:${form.endMinute}`).getTime();
+        if (s > e) {
+          setError("Start date/time must be before end date/time.");
+          return;
+        }
       }
     }
     setError(null);
@@ -110,6 +124,7 @@ function NewEventPageInner() {
     if (!files || files.length === 0) return;
     const file = files[0];
     if (!file.type.startsWith("image/")) return;
+    setSelectedFile(file);
     const reader = new FileReader();
     reader.onload = () => {
       const base64 = reader.result as string;
@@ -121,22 +136,24 @@ function NewEventPageInner() {
   const removePoster = () => setForm(prev => ({ ...prev, poster: "" }));
 
   const handleSubmit = async () => {
-    if (!form.title.trim() || !form.category.trim() || !form.startDateDate.trim() || !form.startDateTime.trim()) {
+    if (!form.title.trim() || !form.category.trim() || !form.startDateDate.trim() || !form.startHour.trim() || !form.startMinute.trim()) {
       setError("Title, category, start date and start time are required.");
       return;
     }
     setSubmitting(true);
     setError(null);
     try {
-      const startDateIso = `${form.startDateDate}T${form.startDateTime}`;
-      const endDateIso = form.endDateDate && form.endDateTime ? `${form.endDateDate}T${form.endDateTime}` : undefined;
+      const startTime = `${form.startHour.padStart(2,'0')}:${form.startMinute.padStart(2,'0')}`;
+      const startDateIso = `${form.startDateDate}T${startTime}`;
+      const endTime = form.endHour && form.endMinute ? `${form.endHour.padStart(2,'0')}:${form.endMinute.padStart(2,'0')}` : '';
+      const endDateIso = form.endDateDate && endTime ? `${form.endDateDate}T${endTime}` : undefined;
       // Frontend validation: end must be after start when provided
       if (endDateIso && new Date(endDateIso).getTime() <= new Date(startDateIso).getTime()) {
         setError('End date/time must be after start date/time.');
         setSubmitting(false);
         return;
       }
-      await createEvent({
+      const created = await createEvent({
         title: form.title,
         description: form.description,
         category: form.category,
@@ -146,6 +163,15 @@ function NewEventPageInner() {
         venueId: form.venueId || undefined,
         image: form.poster || undefined
       });
+      // Upload poster if available using backend route
+      try {
+        const evId = (created?.data?.id ?? created?.id) as string | number | undefined;
+        if (evId && selectedFile) {
+          await uploadEventImage(evId, selectedFile);
+        }
+      } catch (e) {
+        console.warn('Poster upload failed, continuing', e);
+      }
       router.push("/organizer/dashboard");
     } catch (err) {
       console.error(err);
@@ -217,13 +243,24 @@ function NewEventPageInner() {
                   <option value="Meetup">Meetup</option>
                 </select>
               </div>
-              <div>
-                <label className="block text-sm text-foreground mb-2">Start Date *</label>
-                <input type="date" value={form.startDateDate} onChange={e => onChange("startDateDate", e.target.value)} className="w-full px-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all" />
-              </div>
-              <div>
-                <label className="block text-sm text-foreground mb-2">Start Time *</label>
-                <input type="time" value={form.startDateTime} onChange={e => onChange("startDateTime", e.target.value)} className="w-full px-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-foreground mb-2">Start Date *</label>
+                  <input type="date" value={form.startDateDate} onChange={e => onChange("startDateDate", e.target.value)} className="w-full px-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all" />
+                </div>
+                <div>
+                  <label className="block text-sm text-foreground mb-2">Start Time *</label>
+                  <div className="flex gap-2">
+                    <select value={form.startHour} onChange={e => onChange("startHour", e.target.value)} className="px-3 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all w-24">
+                      <option value="">HH</option>
+                      {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map(h => <option key={h} value={h}>{h}</option>)}
+                    </select>
+                    <select value={form.startMinute} onChange={e => onChange("startMinute", e.target.value)} className="px-3 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all w-24">
+                      <option value="">MM</option>
+                      {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                  </div>
+                </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -232,9 +269,30 @@ function NewEventPageInner() {
                 </div>
                 <div>
                   <label className="block text-sm text-foreground mb-2">End Time (optional)</label>
-                  <input type="time" value={form.endDateTime} onChange={e => onChange("endDateTime", e.target.value)} className="w-full px-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all" />
+                  <div className="flex gap-2">
+                    <select value={form.endHour} onChange={e => onChange("endHour", e.target.value)} className="px-3 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all w-24">
+                      <option value="">HH</option>
+                      {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map(h => <option key={h} value={h}>{h}</option>)}
+                    </select>
+                    <select value={form.endMinute} onChange={e => onChange("endMinute", e.target.value)} className="px-3 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all w-24">
+                      <option value="">MM</option>
+                      {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                  </div>
                 </div>
               </div>
+
+              {/* soft warning when start > end */}
+              {form.endDateDate && form.endHour && form.endMinute && form.startDateDate && form.startHour && form.startMinute && (
+                (() => {
+                  const s = new Date(`${form.startDateDate}T${form.startHour}:${form.startMinute}`).getTime();
+                  const e = new Date(`${form.endDateDate}T${form.endHour}:${form.endMinute}`).getTime();
+                  if (s > e) {
+                    return <div className="text-red-400 text-sm">Warning: Start date/time is after End date/time.</div>;
+                  }
+                  return null;
+                })()
+              )}
               <div>
                 <label className="block text-sm text-foreground mb-2">Description</label>
                 <textarea value={form.description} onChange={e => onChange("description", e.target.value)} rows={4} className="w-full px-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all" />
@@ -320,7 +378,7 @@ function NewEventPageInner() {
                 <div className="border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300 border-border hover:border-primary/50 bg-background/50">
                   <ImageIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                   <input type="file" accept="image/*" onChange={e => handlePosterChange(e.target.files)} className="hidden" id="poster-upload" />
-                  <label htmlFor="poster-upload">
+                  <label htmlFor="poster-upload" className="cursor-pointer">
                     <Button type="button" variant="outline" className="cursor-pointer">
                       Choose Image
                     </Button>
@@ -328,7 +386,7 @@ function NewEventPageInner() {
                   {form.poster && (
                     <div className="mt-4 relative inline-block">
                       <img src={form.poster} alt="Poster" className="w-40 h-40 object-cover rounded-lg border" />
-                      <button type="button" onClick={removePoster} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"><X className="h-4 w-4" /></button>
+                      <button type="button" onClick={() => { removePoster(); setSelectedFile(null); }} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"><X className="h-4 w-4" /></button>
                     </div>
                   )}
                 </div>
@@ -336,7 +394,7 @@ function NewEventPageInner() {
             </div>
           )}
 
-          {currentStep === 3 && (
+          {currentStep === 4 && (
             <div className="space-y-6">
               <h3 className="text-2xl font-semibold text-white">Staff</h3>
               <div>
@@ -361,30 +419,6 @@ function NewEventPageInner() {
             </div>
           )}
 
-          {currentStep === 4 && (
-            <div className="space-y-6">
-              <h3 className="text-2xl font-semibold text-white">Event Poster</h3>
-              <div className="space-y-4">
-                <label className="block text-sm text-foreground mb-2">Upload Poster</label>
-                <div className="border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300 border-border hover:border-primary/50 bg-background/50">
-                  <ImageIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <input type="file" accept="image/*" onChange={e => handlePosterChange(e.target.files)} className="hidden" id="poster-upload" />
-                  <label htmlFor="poster-upload">
-                    <Button type="button" variant="outline" className="cursor-pointer">
-                      Choose Image
-                    </Button>
-                  </label>
-                  {form.poster && (
-                    <div className="mt-4 relative inline-block">
-                      <img src={form.poster} alt="Poster" className="w-40 h-40 object-cover rounded-lg border" />
-                      <button type="button" onClick={removePoster} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"><X className="h-4 w-4" /></button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
           {currentStep === 5 && (
             <div className="space-y-6 text-white">
               <h3 className="text-2xl font-semibold">Review & Submit</h3>
@@ -399,11 +433,11 @@ function NewEventPageInner() {
                 </div>
                 <div>
                   <div className="text-sm text-muted-foreground">Start Date & Time</div>
-                  <div className="font-medium">{form.startDateDate && form.startDateTime ? `${form.startDateDate} ${form.startDateTime}` : '-'}</div>
+                  <div className="font-medium">{form.startDateDate && form.startHour && form.startMinute ? `${form.startDateDate} ${form.startHour}:${form.startMinute}` : '-'}</div>
                 </div>
                 <div>
                   <div className="text-sm text-muted-foreground">End Date & Time</div>
-                  <div className="font-medium">{form.endDateDate && form.endDateTime ? `${form.endDateDate} ${form.endDateTime}` : '-'}</div>
+                  <div className="font-medium">{form.endDateDate && form.endHour && form.endMinute ? `${form.endDateDate} ${form.endHour}:${form.endMinute}` : '-'}</div>
                 </div>
                 <div>
                   <div className="text-sm text-muted-foreground">Category</div>

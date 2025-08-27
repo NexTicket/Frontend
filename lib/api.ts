@@ -223,6 +223,23 @@ export async function fetchmyVenues() {
   return res.json();
 }
 
+// Upload event image to Cloudinary via backend
+export async function uploadEventImage(eventId: string | number, file: File) {
+  const formData = new FormData();
+  formData.append('image', file);
+  const base = (process.env.NEXT_PUBLIC_EVENT_VENUE_SERVICE_URL || process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
+  const url = `${base}${base.endsWith('/api') ? '' : '/api'}/events/${eventId}/image`;
+  const res = await secureFetch(url, {
+    method: 'POST',
+    body: formData
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to upload event image: ${res.status} ${text}`);
+  }
+  return res.json();
+}
+
 // Tenant management functions
 export async function createTenant(tenantData: {
   firebaseUid: string;
