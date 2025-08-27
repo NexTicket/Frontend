@@ -342,30 +342,24 @@ export default function Home() {
               ))}
             </motion.div>
             
-            <motion.div variants={itemVariants} className="text-center mt-12">
-              <Button 
-                size="lg" 
-                variant="outline" 
+            <div className="flex justify-center mt-12">
+                <Button
+                size="lg"
+                variant="outline"
                 asChild
-                className="px-8 py-4 text-lg font-medium rounded-xl transition-all duration-200 hover:shadow-lg"
-                style={{ 
+                className="px-8 py-4 text-lg font-medium rounded-xl transition-all duration-200 hover:shadow-lg flex items-center justify-center gap-2 group"
+                style={{
                   borderColor: '#39FD48',
                   color: '#39FD48',
                   backgroundColor: 'transparent'
                 }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#39FD48' + '10';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }}
-              >
-                <Link href="/events">
-                  View All Events
-                  <ArrowRight className="ml-2 h-5 w-5" />
+                >
+                <Link href="/events" className="flex items-center gap-2">
+                  <span className="transition-colors duration-200 group-hover:text-[#CBF83E]">View All Events</span>
+                  <ArrowRight className="h-5 w-5 transition-transform duration-200 group-hover:translate-x-1 group-hover:text-[#CBF83E]" />
                 </Link>
-              </Button>
-            </motion.div>
+                </Button>
+            </div>
           </section>
 
           {/* Features Section */}
