@@ -3,12 +3,9 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { BookingSummary } from '@/components/ui/booking-summary';
 import { 
-  ArrowLeft, 
-  Users, 
-  Check,
-  X,
-  ShoppingCart
+  ArrowLeft
 } from 'lucide-react';
 import { mockEvents, mockSeats } from '@/lib/mock-data';
 import { motion } from 'framer-motion';
@@ -96,6 +93,11 @@ export default function SeatingPage({ params }: SeatingPageProps) {
     }
   };
 
+  const handleClearAllSeats = () => {
+    setSeats(seats.map(s => ({ ...s, isSelected: false })));
+    setSelectedSeats([]);
+  };
+
   const selectedSeatsData = seats.filter(s => s.isSelected);
   const totalPrice = selectedSeatsData.reduce((sum, seat) => sum + seat.price, 0);
 
@@ -141,12 +143,6 @@ export default function SeatingPage({ params }: SeatingPageProps) {
                 <h1 className="text-2xl font-bold" style={{ color: '#fff' }}>{event.title}</h1>
                 <p style={{ color: '#ABA8A9' }}>Select your seats</p>
               </div>
-            </div>
-            <div className="text-right">
-              <p className="text-sm" style={{ color: '#ABA8A9' }}>
-                {selectedSeats.length} seat{selectedSeats.length !== 1 ? 's' : ''} selected
-              </p>
-              <p className="text-lg font-bold" style={{ color: '#CBF83E' }}>${totalPrice}</p>
             </div>
           </motion.div>
 
@@ -217,82 +213,14 @@ export default function SeatingPage({ params }: SeatingPageProps) {
             </motion.div>
 
             {/* Booking Summary */}
-            <motion.div variants={itemVariants} className="lg:col-span-1">
-              <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl sticky top-8" style={{ backgroundColor: '#191C24', borderColor: '#0D6EFD' + '30', boxShadow: '0 25px 50px -12px rgba(74, 144, 226, 0.1)' }}>
-                <h3 className="text-lg font-semibold mb-4" style={{ color: '#fff' }}>Booking Summary</h3>
-                
-                {selectedSeatsData.length > 0 ? (
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      {selectedSeatsData.map(seat => (
-                        <div key={seat.id} className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-sm font-medium" style={{ color: '#ABA8A9' }}>
-                              {seat.section} {seat.row}{seat.number}
-                            </span>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleSeatClick(seat.id)}
-                              className="h-6 w-6 p-0 hover:bg-red-500/20 transition-colors duration-200"
-                            >
-                              <X className="h-3 w-3" style={{ color: '#DC2626' }} />
-                            </Button>
-                          </div>
-                          <span className="text-sm font-medium" style={{ color: '#CBF83E' }}>${seat.price}</span>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="border-t pt-4" style={{ borderColor: '#0D6EFD' + '30' }}>
-                      <div className="flex items-center justify-between text-sm mb-2">
-                        <span style={{ color: '#ABA8A9' }}>Subtotal</span>
-                        <span style={{ color: '#fff' }}>${totalPrice}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm mb-2">
-                        <span style={{ color: '#ABA8A9' }}>Service fee</span>
-                        <span style={{ color: '#ABA8A9' }}>$5.00</span>
-                      </div>
-                      <div className="flex items-center justify-between font-medium">
-                        <span style={{ color: '#fff' }}>Total</span>
-                        <span style={{ color: '#CBF83E' }}>${totalPrice + 5}</span>
-                      </div>
-                    </div>
-
-                    <Link href="/checkout">
-                      <Button 
-                        className="w-full text-white hover:opacity-90 transition-opacity" 
-                        size="lg"
-                        style={{ background: 'linear-gradient(135deg, #0D6EFD, #CBF83E)' }}
-                      >
-                        <ShoppingCart className="mr-2 h-5 w-5" />
-                        Proceed to Checkout
-                      </Button>
-                    </Link>
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: 'linear-gradient(135deg, #39FD48' + '20, #CBF83E' + '20)' }}>
-                      <Users className="h-6 w-6" style={{ color: '#39FD48' }} />
-                    </div>
-                    <p style={{ color: '#ABA8A9' }}>No seats selected</p>
-                    <p className="text-sm mt-2" style={{ color: '#ABA8A9' }}>
-                      Click on available seats to select them
-                    </p>
-                  </div>
-                )}
-
-                {/* Seat Selection Tips */}
-                <div className="mt-6 pt-6 border-t" style={{ borderColor: '#0D6EFD' + '30' }}>
-                  <h4 className="font-medium mb-2" style={{ color: '#fff' }}>Tips</h4>
-                  <ul className="text-sm space-y-1" style={{ color: '#ABA8A9' }}>
-                    <li>• Best seats are usually in the center</li>
-                    <li>• Front rows may have limited view</li>
-                    <li>• Aisle seats offer easy access</li>
-                  </ul>
-                </div>
-              </div>
-            </motion.div>
+            <BookingSummary
+              selectedSeatsData={selectedSeatsData}
+              totalPrice={totalPrice}
+              onRemoveSeat={handleSeatClick}
+              onClearAllSeats={handleClearAllSeats}
+              serviceFee={5.00}
+              checkoutUrl="/checkout"
+            />
           </div>
         </motion.div>
       </div>
