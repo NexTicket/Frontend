@@ -905,7 +905,7 @@ export default function AdminUsers() {
                     </div>
                 ) : (
                     <div className=" rounded-2xl border shadow-lg overflow-hidden" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '50' }}>
-                        <div className="p-6 border " style={{borderColor:'39FD48'}}>
+                        <div className="p-6 border rounded-1xl " style={{borderColor:'#198754'}}>
                             <h2 className="text-xl font-semibold text-white">All Users</h2>
                             <p className="text-sm text-white mt-1">Manage all registered users in the system</p>
                         </div>
