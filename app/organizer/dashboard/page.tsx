@@ -21,11 +21,33 @@ import {
   BarChart3,
   PieChart,
   LogOut,
-  ArrowLeft
+  ArrowLeft,
+  Check,
+  ArrowRight
 } from 'lucide-react';
 import { mockEvents, mockVenues } from '@/lib/mock-data';
-import { fetchEvents, deleteEvent, Event } from '@/lib/api';
+import { fetchEvents, deleteEvent, Event, fetchVenues, createEvent, createVenue } from '@/lib/api';
 import RouteGuard from '@/components/auth/routeGuard';
+import { AnimatePresence } from 'framer-motion';
+
+const containerVariants = {
+  hidden: { opacity: 0, scale: 0.98 },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    transition: {
+      staggerChildren: 0.12,
+      delayChildren: 0.1,
+      duration: 0.5,
+      ease: "easeOut"
+    }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } }
+};
 
 export default function OrganizerDashboard() {
   const { userProfile, firebaseUser, logout, isLoading } = useAuth();
@@ -33,6 +55,9 @@ export default function OrganizerDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [events, setEvents] = useState<Event[]>([]);
   const [eventsLoading, setEventsLoading] = useState(true);
+  const [venues, setVenues] = useState<any[]>([]);
+  const [venuesLoading, setVenuesLoading] = useState(true);
+  const [showVenueModal, setShowVenueModal] = useState(false);
 
   // Check authentication and organizer role
   useEffect(() => {
@@ -63,6 +88,23 @@ export default function OrganizerDashboard() {
     }
   }, [userProfile]);
 
+  // Fetch venues from backend
+  useEffect(() => {
+    async function loadVenues() {
+      setVenuesLoading(true);
+      try {
+        const response = await fetchVenues();
+        const data = Array.isArray(response?.data) ? response.data : Array.isArray(response) ? response : [];
+        setVenues(data);
+      } catch (err) {
+        setVenues([]);
+      } finally {
+        setVenuesLoading(false);
+      }
+    }
+    loadVenues();
+  }, []);
+
   const handleDeleteEvent = async (eventId: string) => {
     if (confirm('Are you sure you want to delete this event?')) {
       try {
@@ -86,6 +128,177 @@ export default function OrganizerDashboard() {
       console.error('Logout failed:', error);
     }
   };
+
+  // Show loading if auth is still loading
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+          <p className="mt-4 text-muted-foreground">Loading organizer dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const organizerEvents = Array.isArray(events) ? events : []; // Use real events
+
+  const VenueCreationWizard = ({ onClose, onCreated }: { onClose: () => void; onCreated?: () => void }) => {
+    const [currentStep, setCurrentStep] = useState(1);
+    const totalSteps = 3;
+    const [submitting, setSubmitting] = useState(false);
+    const [error, setError] = useState('');
+    const [formData, setFormData] = useState({
+      name: '',
+      city: '',
+      state: '',
+      capacity: '',
+      amenities: '',
+      description: ''
+    });
+
+    const nextStep = () => {
+      if (currentStep < totalSteps) setCurrentStep(currentStep + 1);
+    };
+    const prevStep = () => {
+      if (currentStep > 1) setCurrentStep(currentStep - 1);
+    };
+    const handleInputChange = (field: string, value: string) => {
+      setFormData(prev => ({ ...prev, [field]: value }));
+    };
+    const handleSubmit = async () => {
+      if (!formData.name || !formData.city || !formData.state || !formData.capacity) {
+        setError('Please fill in all required fields');
+        return;
+      }
+      setSubmitting(true);
+      setError('');
+      try {
+        await createVenue({
+          name: formData.name,
+          city: formData.city,
+          state: formData.state,
+          capacity: Number(formData.capacity),
+          amenities: formData.amenities.split(',').map(a => a.trim()),
+          description: formData.description
+        });
+        if (onCreated) onCreated();
+        onClose();
+      } catch (err) {
+        setError('Failed to create venue');
+      } finally {
+        setSubmitting(false);
+      }
+    };
+
+    // Venue form stepper UI
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+        <div className="rounded-2xl border-2 p-0 overflow-hidden shadow-2xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48', minWidth: 400, maxWidth: 500 }}>
+          <div className="bg-blue-600 p-6 text-center">
+            <h3 className="text-2xl font-bold text-white mb-1">Add New Venue</h3>
+            <p className="text-blue-100">Step {currentStep} of {totalSteps}</p>
+          </div>
+          <div className="p-8">
+            {/* Stepper */}
+            <div className="flex items-center justify-center mb-8">
+              {[...Array(totalSteps)].map((_, idx) => (
+                <div key={idx} className="flex items-center">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
+                    idx + 1 === currentStep
+                      ? 'border-primary bg-primary text-white'
+                      : idx + 1 < currentStep
+                      ? 'border-green-500 bg-green-500 text-white'
+                      : 'border-gray-300 bg-gray-100 text-gray-400'
+                  }`}>
+                    {idx + 1 < currentStep ? <Check className="w-4 h-4" /> : idx + 1}
+                  </div>
+                  {idx < totalSteps - 1 && (
+                    <div className={`w-10 h-0.5 mx-2 transition-all duration-300 ${
+                      idx + 1 < currentStep ? 'bg-green-500' : 'bg-gray-300'
+                    }`} />
+                  )}
+                </div>
+              ))}
+            </div>
+            {/* Step Content */}
+            {currentStep === 1 && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-white">Venue Name *</label>
+                  <input type="text" value={formData.name} onChange={e => handleInputChange('name', e.target.value)} className="w-full px-4 py-3 border rounded-lg bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200" placeholder="Venue name" required />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-white">City *</label>
+                    <input type="text" value={formData.city} onChange={e => handleInputChange('city', e.target.value)} className="w-full px-4 py-3 border rounded-lg bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200" placeholder="City" required />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-white">State *</label>
+                    <input type="text" value={formData.state} onChange={e => handleInputChange('state', e.target.value)} className="w-full px-4 py-3 border rounded-lg bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200" placeholder="State" required />
+                  </div>
+                </div>
+              </div>
+            )}
+            {currentStep === 2 && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-white">Capacity *</label>
+                  <input type="number" value={formData.capacity} onChange={e => handleInputChange('capacity', e.target.value)} className="w-full px-4 py-3 border rounded-lg bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200" placeholder="Capacity" required />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-white">Amenities (comma separated)</label>
+                  <input type="text" value={formData.amenities} onChange={e => handleInputChange('amenities', e.target.value)} className="w-full px-4 py-3 border rounded-lg bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200" placeholder="WiFi, Parking, etc." />
+                </div>
+              </div>
+            )}
+            {currentStep === 3 && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-white">Description</label>
+                  <textarea value={formData.description} onChange={e => handleInputChange('description', e.target.value)} rows={4} className="w-full px-4 py-3 border rounded-lg bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200" placeholder="Describe your venue..." />
+                </div>
+                <div className="bg-gray-900 rounded-lg p-4 mt-4 border border-green-500 text-white">
+                  <div><strong>Name:</strong> {formData.name}</div>
+                  <div><strong>Location:</strong> {formData.city}, {formData.state}</div>
+                  <div><strong>Capacity:</strong> {formData.capacity}</div>
+                  <div><strong>Amenities:</strong> {formData.amenities}</div>
+                  <div><strong>Description:</strong> {formData.description}</div>
+                </div>
+              </div>
+            )}
+            {error && <div className="text-red-500 text-center mt-4">{error}</div>}
+            <div className="flex items-center justify-between mt-8">
+              <Button variant="outline" onClick={prevStep} disabled={currentStep === 1} className="px-6 py-2 hover:bg-primary/10 dark:hover:bg-primary/20 hover:border-primary/30 transition-all duration-200">
+                <ArrowLeft className="h-4 w-4 mr-2" />Previous
+              </Button>
+              {currentStep < totalSteps ? (
+                <Button onClick={nextStep} className="px-6 py-2 hover:shadow-lg hover:shadow-primary/20 dark:hover:shadow-primary/30 hover:scale-105 transition-all duration-300">
+                  Next<ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              ) : (
+                <Button onClick={handleSubmit} disabled={submitting} className="px-6 py-2 hover:shadow-lg hover:shadow-primary/20 dark:hover:shadow-primary/30 hover:scale-105 transition-all duration-300">
+                  {submitting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 mr-2 border-b-2 border-white"></div>
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="h-4 w-4 mr-2" />Create Venue
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+            <div className="flex justify-end mt-4">
+              <Button variant="outline" onClick={onClose}>Cancel</Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Show loading if auth is still loading
   if (isLoading) {
@@ -124,9 +337,6 @@ export default function OrganizerDashboard() {
     averageRating: 4.7
   };
 
-  const organizerEvents = Array.isArray(events) ? events : []; // Use real events
-  const organizerVenues = mockVenues.slice(0, 2);
-
   const stats = [
     {
       title: 'Total Events',
@@ -163,454 +373,237 @@ export default function OrganizerDashboard() {
   ];
 
   return (
-    <RouteGuard requiredRole="organizer">
-    <div className="min-h-screen bg-background relative">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 bg-grid-pattern opacity-5 dark:opacity-10"></div>
-      <div className="relative z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent pb-1">Organizer Dashboard</h1>
-              <p className="text-muted-foreground">Welcome back, {organizer.name}</p>
-            </div>
-            <Link href="/organizer/events/new">
-              <Button className="hover:shadow-lg hover:shadow-primary/20 dark:hover:shadow-primary/30 hover:scale-105 transition-all duration-300">
-                <Plus className="mr-2 h-4 w-4" />
-                Create Event
-              </Button>
-            </Link>
+    <div className="min-h-screen bg-background py-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Dashboard Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-extrabold text-white">Organizer Dashboard</h1>
+            <p className="text-muted-foreground mt-1">Welcome back, {organizer.name}!</p>
           </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          {stats.map((stat, index) => {
-            const Icon = stat.icon;
-            const getHoverColor = (color: string) => {
-              switch (color) {
-                case 'bg-blue-500': return 'hover:shadow-blue-500/5 dark:hover:shadow-blue-500/10 hover:border-blue-200 dark:hover:border-blue-800 group-hover:text-blue-600 dark:group-hover:text-blue-400';
-                case 'bg-green-500': return 'hover:shadow-green-500/5 dark:hover:shadow-green-500/10 hover:border-green-200 dark:hover:border-green-800 group-hover:text-green-600 dark:group-hover:text-green-400';
-                case 'bg-purple-500': return 'hover:shadow-purple-500/5 dark:hover:shadow-purple-500/10 hover:border-purple-200 dark:hover:border-purple-800 group-hover:text-purple-600 dark:group-hover:text-purple-400';
-                case 'bg-orange-500': return 'hover:shadow-orange-500/5 dark:hover:shadow-orange-500/10 hover:border-orange-200 dark:hover:border-orange-800 group-hover:text-orange-600 dark:group-hover:text-orange-400';
-                default: return 'hover:shadow-primary/5 dark:hover:shadow-primary/10';
-              }
-            };
-            return (
-              <div
-                key={index}
-                className={`bg-card rounded-lg border p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg group cursor-pointer ${getHoverColor(stat.color)}`}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className={`text-sm font-medium text-muted-foreground transition-colors duration-300 ${getHoverColor(stat.color)}`}>{stat.title}</p>
-                    <p className="text-2xl font-bold">{stat.value}</p>
-                  </div>
-                  <div className={`${stat.color} p-3 rounded-full group-hover:scale-110 transition-transform duration-300 group-hover:shadow-lg`}>
-                    <Icon className="h-6 w-6 text-white" />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          <Button onClick={handleLogout} variant="outline" className="flex items-center">
+            <LogOut className="w-5 h-5 mr-2" /> Logout
+          </Button>
         </div>
 
-   
-
-      
-        {/* Navigation Tabs */}
-        <div className="border-b mb-8 bg-card/50 dark:bg-card/30 rounded-t-lg backdrop-blur-sm">
-          <nav className="flex space-x-8 relative px-6">
-            {tabs.map((tab, index) => (
-              <button
+        {/* Tabs */}
+        <div className="mb-6">
+          <div className="flex space-x-2">
+            {tabs.map(tab => (
+              <Button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`py-4 px-1 font-medium text-sm relative transition-all duration-200 hover:scale-105 ${
+                className={`flex-1 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
                   activeTab === tab.id
-                    ? 'text-primary'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-primary/5 dark:hover:bg-primary/10 rounded-t-lg px-3'
+                    ? 'bg-primary text-white shadow-md'
+                    : 'bg-background text-muted-foreground hover:bg-primary/10'
                 }`}
               >
                 {tab.label}
-                {activeTab === tab.id && (
-                  <motion.div
-                    layoutId="tab-underline"
-                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary to-primary/70 rounded-full"
-                    transition={{
-                      type: 'spring',
-                      stiffness: 500,
-                      damping: 30,
-                    }}
-                  />
-                )}
-              </button>
+              </Button>
             ))}
-          </nav>
+          </div>
         </div>
-
-
 
         {/* Tab Content */}
-        {activeTab === 'overview' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-6">
-              {/* Recent Events */}
-              <div className="bg-card rounded-lg border p-6 hover:shadow-lg hover:shadow-primary/5 dark:hover:shadow-primary/10 transition-all duration-300 hover:border-primary/20 dark:hover:border-primary/30">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold">Recent Events</h3>
-                  <Link href="/organizer/events">
-                    <Button variant="outline" size="sm" className="hover:bg-primary/10 dark:hover:bg-primary/20 hover:border-primary/30 transition-all duration-200">View All</Button>
-                  </Link>
-                </div>
-                <div className="space-y-4">
-                  {organizerEvents.slice(0, 3).map(event => (
-                    <div key={event.id} className="flex items-center justify-between p-4 border rounded-lg hover:shadow-md hover:shadow-primary/5 dark:hover:shadow-primary/10 transition-all duration-300 group cursor-pointer hover:border-primary/20 dark:hover:border-primary/30 hover:bg-primary/5 dark:hover:bg-primary/10">
-                      <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-primary/20 to-primary/10 dark:from-primary/30 dark:to-primary/20 rounded-lg flex items-center justify-center group-hover:from-primary/30 group-hover:to-primary/20 dark:group-hover:from-primary/40 dark:group-hover:to-primary/30 transition-all duration-300">
-                          <Calendar className="h-6 w-6 text-primary group-hover:scale-110 transition-transform duration-300" />
-                        </div>
-                        <div>
-                          <h4 className="font-medium group-hover:text-primary transition-colors duration-300">{event.title}</h4>
-                          <p className="text-sm text-muted-foreground">
-                            {new Date(event.startDate).toLocaleDateString()} • {event.venueId || 'Venue TBD'}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Link href={`/organizer/events/${event.id}/view`}>
-                          <Button variant="outline" size="sm" className="hover:bg-primary/10 dark:hover:bg-primary/20 hover:border-primary/30 transition-all duration-200">
-                            <Eye className="h-4 w-4 mr-2" />
-                            View
-                          </Button>
-                        </Link>
-                        <Link href={`/organizer/events/${event.id}/edit`}>
-                          <Button variant="outline" size="sm" className="hover:bg-primary/10 dark:hover:bg-primary/20 hover:border-primary/30 transition-all duration-200">
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit
-                          </Button>
-                        </Link>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Performance Chart */}
-              <div className="bg-card rounded-lg border p-6 hover:shadow-lg hover:shadow-primary/5 dark:hover:shadow-primary/10 transition-all duration-300 hover:border-primary/20 dark:hover:border-primary/30">
-                <h3 className="text-lg font-semibold mb-4">Sales Performance</h3>
-                <div className="h-64 bg-gradient-to-br from-muted/50 to-muted rounded-lg flex items-center justify-center hover:from-primary/5 hover:to-primary/10 dark:hover:from-primary/10 dark:hover:to-primary/20 transition-all duration-300">
-                  <div className="text-center">
-                    <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-2 hover:text-primary transition-colors duration-300" />
-                    <p className="text-muted-foreground hover:text-primary/80 transition-colors duration-300">Chart visualization would go here</p>
+        <div className="bg-card rounded-2xl p-6 shadow-md">
+          {activeTab === 'overview' && (
+            <motion.div
+              initial="hidden"
+              animate="visible"
+              variants={containerVariants}
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
+            >
+              {stats.map(stat => (
+                <motion.div
+                  key={stat.title}
+                  variants={itemVariants}
+                  className={`p-4 rounded-lg flex items-center space-x-4 transition-all duration-200 cursor-pointer hover:scale-105 ${stat.color}`}
+                >
+                  <div className="text-white text-3xl">
+                    <stat.icon />
                   </div>
-                </div>
-              </div>
-            </div>
+                  <div className="text-white">
+                    <div className="text-sm font-medium">{stat.title}</div>
+                    <div className="text-lg font-bold">{stat.value}</div>
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
 
-            {/* Sidebar */}
-            <div className="space-y-6">
-              {/* Quick Actions */}
-              <div className="bg-card rounded-lg border p-6 hover:shadow-lg hover:shadow-primary/5 dark:hover:shadow-primary/10 transition-all duration-300 hover:border-primary/20 dark:hover:border-primary/30">
-                <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
-                <div className="space-y-3">
-                  <Link href="/organizer/events/new">
-                    <Button className="w-full justify-start hover:shadow-lg hover:shadow-primary/20 dark:hover:shadow-primary/30 hover:scale-105 transition-all duration-300">
-                      <Plus className="mr-2 h-4 w-4" />
-                      Create Event
-                    </Button>
-                  </Link>
-                  <Link href="/organizer/venues/new">
-                    <Button variant="outline" className="w-full justify-start hover:bg-primary/10 dark:hover:bg-primary/20 hover:border-primary/30 transition-all duration-200">
-                      <MapPin className="mr-2 h-4 w-4" />
-                      Add Venue
-                    </Button>
-                  </Link>
-                  <Button variant="outline" className="w-full justify-start hover:bg-primary/10 dark:hover:bg-primary/20 hover:border-primary/30 transition-all duration-200">
-                    <Users className="mr-2 h-4 w-4" />
-                    Manage Staff
-                  </Button>
-                </div>
-              </div>
-
-              {/* Upcoming Events */}
-              <div className="bg-card rounded-lg border p-6 hover:shadow-lg hover:shadow-primary/5 dark:hover:shadow-primary/10 transition-all duration-300 hover:border-primary/20 dark:hover:border-primary/30">
-                <h3 className="text-lg font-semibold mb-4">Upcoming Events</h3>
-                <div className="space-y-3">
-                  {organizerEvents.slice(0, 2).map(event => (
-                    <div key={event.id} className="p-3 bg-gradient-to-br from-muted/50 to-muted rounded-lg hover:from-primary/10 hover:to-primary/20 dark:hover:from-primary/20 dark:hover:to-primary/30 transition-all duration-300 cursor-pointer group">
-                      <h4 className="font-medium text-sm group-hover:text-primary transition-colors duration-300">{event.title}</h4>
-                      <div className="flex items-center text-xs text-muted-foreground mt-1">
-                        <Calendar className="h-3 w-3 mr-1 group-hover:text-primary transition-colors duration-300" />
-                        {new Date(event.startDate).toLocaleDateString()}
-                      </div>
-                      <div className="flex items-center text-xs text-muted-foreground">
-                        <Users className="h-3 w-3 mr-1 group-hover:text-primary transition-colors duration-300" />
-                        {event.availableTickets || 0} tickets available
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'events' && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">My Events</h2>
-              <Link href="/organizer/events/new">
-                <Button className="hover:shadow-lg hover:shadow-primary/20 dark:hover:shadow-primary/30 hover:scale-105 transition-all duration-300">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create Event
+          {activeTab === 'events' && (
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-white">My Events</h2>
+                <Button onClick={() => router.push('/organizer/events/create')} className="flex items-center">
+                  <Plus className="w-4 h-4 mr-2" /> Add New Event
                 </Button>
-              </Link>
-            </div>
-
-            {eventsLoading ? (
-              <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-                <p className="text-muted-foreground">Loading events...</p>
               </div>
-            ) : organizerEvents.length === 0 ? (
-              <div className="text-center py-12 bg-card rounded-lg border">
-                <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No Events Yet</h3>
-                <p className="text-muted-foreground mb-6">Start by creating your first event!</p>
-                <Link href="/organizer/events/new">
-                  <Button className="hover:shadow-lg hover:shadow-primary/20 dark:hover:shadow-primary/30 hover:scale-105 transition-all duration-300">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Create Your First Event
-                  </Button>
-                </Link>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {organizerEvents.map(event => (
-                <div key={event.id} className="bg-card rounded-lg border p-6 hover:shadow-lg hover:shadow-primary/5 dark:hover:shadow-primary/10 transition-all duration-300 group cursor-pointer hover:border-primary/20 dark:hover:border-primary/30 hover:scale-105">
-                  <div className="aspect-video bg-gradient-to-br from-primary/20 to-primary/10 dark:from-primary/30 dark:to-primary/20 rounded-lg mb-4 flex items-center justify-center group-hover:from-primary/30 group-hover:to-primary/20 dark:group-hover:from-primary/40 dark:group-hover:to-primary/30 transition-all duration-300">
-                    <Calendar className="h-8 w-8 text-primary group-hover:scale-110 transition-transform duration-300" />
-                  </div>
-                  
-                  <h3 className="font-semibold mb-2 group-hover:text-primary transition-colors duration-300">{event.title}</h3>
-                  <div className="space-y-1 text-sm text-muted-foreground mb-4">
-                    <div className="flex items-center">
-                      <Calendar className="h-4 w-4 mr-2 group-hover:text-primary transition-colors duration-300" />
-                      {new Date(event.startDate).toLocaleDateString()}
-                    </div>
-                    <div className="flex items-center">
-                      <MapPin className="h-4 w-4 mr-2 group-hover:text-primary transition-colors duration-300" />
-                      {event.venueId || 'Venue TBD'}
-                    </div>
-                    <div className="flex items-center">
-                      <Users className="h-4 w-4 mr-2 group-hover:text-primary transition-colors duration-300" />
-                      {event.availableTickets || 0} / {event.capacity || 0} available
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-lg font-bold text-primary group-hover:text-primary/80 transition-colors duration-300">${event.price || 0}</span>
-                    <div className="flex items-center space-x-2">
-                      <Link href={`/organizer/events/${event.id}/edit`}>
-                        <Button variant="outline" size="sm" className="hover:bg-primary/10 dark:hover:bg-primary/20 hover:border-primary/30 transition-all duration-200">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                      <Link href={`/organizer/events/${event.id}/view`}>
-                        <Button variant="outline" size="sm" className="hover:bg-primary/10 dark:hover:bg-primary/20 hover:border-primary/30 transition-all duration-200">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => handleDeleteEvent(event.id!)}
-                        className="hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-200 dark:hover:border-red-800 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200"
-                      >
-                        🗑️
-                      </Button>
-                    </div>
-                  </div>
+              {eventsLoading ? (
+                <div className="text-center py-10">
+                  <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto"></div>
+                  <p className="mt-4 text-muted-foreground">Loading your events...</p>
                 </div>
-              ))}
-            </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'venues' && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">My Venues</h2>
-              <Button className="hover:shadow-lg hover:shadow-primary/20 dark:hover:shadow-primary/30 hover:scale-105 transition-all duration-300">
-                <Plus className="mr-2 h-4 w-4" />
-                Add Venue
-              </Button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {organizerVenues.map(venue => (
-                <div key={venue.id} className="bg-card rounded-lg border p-6 hover:shadow-lg hover:shadow-primary/5 dark:hover:shadow-primary/10 transition-all duration-300 group cursor-pointer hover:border-primary/20 dark:hover:border-primary/30 hover:scale-105">
-                  <div className="aspect-video bg-gradient-to-br from-primary/20 to-primary/10 dark:from-primary/30 dark:to-primary/20 rounded-lg mb-4 flex items-center justify-center group-hover:from-primary/30 group-hover:to-primary/20 dark:group-hover:from-primary/40 dark:group-hover:to-primary/30 transition-all duration-300">
-                    <MapPin className="h-8 w-8 text-primary group-hover:scale-110 transition-transform duration-300" />
-                  </div>
-                  
-                  <h3 className="font-semibold mb-2 group-hover:text-primary transition-colors duration-300">{venue.name}</h3>
-                  <div className="space-y-1 text-sm text-muted-foreground mb-4">
-                    <div className="flex items-center">
-                      <MapPin className="h-4 w-4 mr-2 group-hover:text-primary transition-colors duration-300" />
-                      {venue.city}, {venue.state}
+              ) : (
+                <div className="bg-card rounded-2xl p-4">
+                  {organizerEvents.length === 0 ? (
+                    <div className="text-center py-10">
+                      <p className="text-muted-foreground">You have not created any events yet.</p>
                     </div>
-                    <div className="flex items-center">
-                      <Users className="h-4 w-4 mr-2 group-hover:text-primary transition-colors duration-300" />
-                      Capacity: {venue.capacity.toLocaleString()}
+                  ) : (
+                    <div className="grid grid-cols-1 gap-4">
+                      {organizerEvents.map(event => (
+                        <div key={event.id} className="p-4 rounded-lg bg-background shadow-md flex flex-col sm:flex-row items-start sm:items-center">
+                          <div className="flex-1 min-w-0">
+                            <Link href={`/organizer/events/${event.id}`} className="block text-lg font-semibold text-white truncate">
+                              {event.title}
+                            </Link>
+                            <p className="text-sm text-muted-foreground truncate">{event.description}</p>
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              <span className="text-xs rounded-full bg-primary/10 text-primary px-3 py-1">{event.category}</span>
+                              <span className="text-xs rounded-full bg-secondary/10 text-secondary px-3 py-1">{event.date}</span>
+                            </div>
+                          </div>
+                          <div className="mt-4 sm:mt-0 sm:ml-4">
+                            <Button onClick={() => handleDeleteEvent(event.id)} variant="outline" className="flex items-center text-red-500">
+                              <Trash className="w-4 h-4 mr-2" /> Delete
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">
-                      {venue.amenities.length} amenities
-                    </span>
-                    <div className="flex items-center space-x-2">
-                      <Button variant="outline" size="sm" className="hover:bg-primary/10 dark:hover:bg-primary/20 hover:border-primary/30 transition-all duration-200">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="outline" size="sm" className="hover:bg-primary/10 dark:hover:bg-primary/20 hover:border-primary/30 transition-all duration-200">
-                        <Settings className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
+                  )}
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'analytics' && (
-          <div className="space-y-6">
-            <h2 className="text-xl font-semibold">Analytics</h2>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-card rounded-lg border p-6 hover:shadow-lg hover:shadow-primary/5 dark:hover:shadow-primary/10 transition-all duration-300 hover:border-primary/20 dark:hover:border-primary/30">
-                <h3 className="text-lg font-semibold mb-4">Revenue Trends</h3>
-                <div className="h-64 bg-gradient-to-br from-muted/50 to-muted rounded-lg flex items-center justify-center hover:from-primary/5 hover:to-primary/10 dark:hover:from-primary/10 dark:hover:to-primary/20 transition-all duration-300">
-                  <div className="text-center">
-                    <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-2 hover:text-primary transition-colors duration-300" />
-                    <p className="text-muted-foreground hover:text-primary/80 transition-colors duration-300">Revenue chart would go here</p>
-                  </div>
-                </div>
+              )}
               </div>
+          )}
 
-              <div className="bg-card rounded-lg border p-6 hover:shadow-lg hover:shadow-primary/5 dark:hover:shadow-primary/10 transition-all duration-300 hover:border-primary/20 dark:hover:border-primary/30">
-                <h3 className="text-lg font-semibold mb-4">Event Categories</h3>
-                <div className="h-64 bg-gradient-to-br from-muted/50 to-muted rounded-lg flex items-center justify-center hover:from-primary/5 hover:to-primary/10 dark:hover:from-primary/10 dark:hover:to-primary/20 transition-all duration-300">
-                  <div className="text-center">
-                    <PieChart className="h-12 w-12 text-muted-foreground mx-auto mb-2 hover:text-primary transition-colors duration-300" />
-                    <p className="text-muted-foreground hover:text-primary/80 transition-colors duration-300">Category distribution chart</p>
-                  </div>
-                </div>
+          {activeTab === 'venues' && (
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-white">My Venues</h2>
+                <Button onClick={() => setShowVenueModal(true)} className="flex items-center">
+                  <Plus className="w-4 h-4 mr-2" /> Add New Venue
+                </Button>
               </div>
+              {venuesLoading ? (
+                <div className="text-center py-10">
+                  <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto"></div>
+                  <p className="mt-4 text-muted-foreground">Loading your venues...</p>
+                </div>
+              ) : (
+                <div className="bg-card rounded-2xl p-4">
+                  {venues.length === 0 ? (
+                    <div className="text-center py-10">
+                      <p className="text-muted-foreground">You have not added any venues yet.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-4">
+                      {venues.map(venue => (
+                        <div key={venue.id} className="p-4 rounded-lg bg-background shadow-md flex flex-col sm:flex-row items-start sm:items-center">
+                          <div className="flex-1 min-w-0">
+                            <Link href={`/organizer/venues/${venue.id}`} className="block text-lg font-semibold text-white truncate">
+                              {venue.name}
+                            </Link>
+                            <p className="text-sm text-muted-foreground truncate">{venue.description}</p>
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              <span className="text-xs rounded-full bg-primary/10 text-primary px-3 py-1">{venue.city}, {venue.state}</span>
+                              <span className="text-xs rounded-full bg-secondary/10 text-secondary px-3 py-1">Capacity: {venue.capacity}</span>
+                            </div>
+                          </div>
+                          <div className="mt-4 sm:mt-0 sm:ml-4">
+                            <Button onClick={() => handleDeleteEvent(venue.id)} variant="outline" className="flex items-center text-red-500">
+                              <Trash className="w-4 h-4 mr-2" /> Delete
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
+          )}
 
-            <div className="bg-card rounded-lg border p-6 hover:shadow-lg hover:shadow-primary/5 dark:hover:shadow-primary/10 transition-all duration-300 hover:border-primary/20 dark:hover:border-primary/30">
-              <h3 className="text-lg font-semibold mb-4">Top Performing Events</h3>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors duration-200">
-                      <th className="text-left py-2">Event</th>
-                      <th className="text-left py-2">Date</th>
-                      <th className="text-left py-2">Tickets Sold</th>
-                      <th className="text-left py-2">Revenue</th>
-                      <th className="text-left py-2">Rating</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {organizerEvents.map(event => (
-                      <tr key={event.id} className="border-b hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors duration-200 cursor-pointer group">
-                        <td className="py-2 font-medium group-hover:text-primary transition-colors duration-300">{event.title}</td>
-                        <td className="py-2 text-muted-foreground">
-                          {new Date(event.startDate).toLocaleDateString()}
-                        </td>
-                        <td className="py-2">{(event.capacity || 0) - (event.availableTickets || 0)}</td>
-                        <td className="py-2 group-hover:text-primary transition-colors duration-300">${((event.price || 0) * ((event.capacity || 0) - (event.availableTickets || 0))).toLocaleString()}</td>
-                        <td className="py-2">4.{Math.floor(Math.random() * 5) + 5}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          {activeTab === 'analytics' && (
+            <div>
+              <h2 className="text-xl font-bold text-white mb-4">Analytics</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {stats.map(stat => (
+                  <div key={stat.title} className="p-4 rounded-lg bg-background shadow-md flex flex-col">
+                    <div className="flex-1">
+                      <div className="text-sm font-medium text-muted-foreground mb-1">{stat.title}</div>
+                      <div className="text-lg font-bold text-white">{stat.value}</div>
+                    </div>
+                    <div className="mt-2">
+                      <div className={`w-full h-1 rounded-full ${stat.color} bg-opacity-20`}>
+                        <div className={`h-1 rounded-full ${stat.color}`} style={{ width: `${(stat.value / 100) * 100}%` }} />
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {activeTab === 'settings' && (
-          <div className="space-y-6">
-            <h2 className="text-xl font-semibold">Settings</h2>
-            
-            <div className="bg-card rounded-lg border p-6 hover:shadow-lg hover:shadow-primary/5 dark:hover:shadow-primary/10 transition-all duration-300 hover:border-primary/20 dark:hover:border-primary/30">
-              <h3 className="text-lg font-semibold mb-4">Profile Information</h3>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {activeTab === 'settings' && (
+            <div>
+              <h2 className="text-xl font-bold text-white mb-4">Settings</h2>
+              <div className="bg-card rounded-2xl p-6 shadow-md">
+                <div className="grid grid-cols-1 gap-4">
                   <div>
-                    <label className="block text-sm font-medium mb-2">Organization Name</label>
-                    <input
-                      type="text"
-                      defaultValue="Event Organizer"
-                      className="w-full px-3 py-2 border rounded-md bg-background hover:border-primary/30 focus:border-primary focus:ring-1 focus:ring-primary/20 dark:focus:ring-primary/30 transition-all duration-200"
-                    />
+                    <label className="block text-sm font-medium mb-2 text-white">Email Notifications</label>
+                    <Switch
+                      checked={userProfile?.emailNotifications}
+                      onCheckedChange={async (checked) => {
+                        try {
+                          await updateUserProfile({ emailNotifications: checked });
+                          router.reload();
+                        } catch (error) {
+                          console.error('Failed to update settings:', error);
+                        }
+                      }}
+                      className="w-10 h-6 rounded-full bg-primary relative cursor-pointer transition-all duration-200"
+                    >
+                      <span className="sr-only">Email notifications</span>
+                      <span
+                        className={`block w-4 h-4 rounded-full bg-white shadow-md transform transition-all duration-200 ${
+                          userProfile?.emailNotifications ? 'translate-x-4' : 'translate-x-0'
+                        }`}
+                      />
+                    </Switch>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-2">Contact Email</label>
-                    <input
-                      type="email"
-                      defaultValue={organizer.email}
-                      className="w-full px-3 py-2 border rounded-md bg-background hover:border-primary/30 focus:border-primary focus:ring-1 focus:ring-primary/20 dark:focus:ring-primary/30 transition-all duration-200"
-                    />
+                    <label className="block text-sm font-medium mb-2 text-white">Password</label>
+                    <Button onClick={() => router.push('/auth/reset-password')} className="w-full">
+                      Reset Password
+                    </Button>
                   </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Description</label>
-                  <textarea
-                    rows={4}
-                    className="w-full px-3 py-2 border rounded-md bg-background hover:border-primary/30 focus:border-primary focus:ring-1 focus:ring-primary/20 dark:focus:ring-primary/30 transition-all duration-200"
-                    placeholder="Tell us about your organization..."
-                  />
-                </div>
               </div>
             </div>
-
-            <div className="bg-card rounded-lg border p-6 hover:shadow-lg hover:shadow-primary/5 dark:hover:shadow-primary/10 transition-all duration-300 hover:border-primary/20 dark:hover:border-primary/30">
-              <h3 className="text-lg font-semibold mb-4">Payment Settings</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Bank Account</label>
-                  <input
-                    type="text"
-                    placeholder="Account number"
-                    className="w-full px-3 py-2 border rounded-md bg-background hover:border-primary/30 focus:border-primary focus:ring-1 focus:ring-primary/20 dark:focus:ring-primary/30 transition-all duration-200"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Routing Number</label>
-                  <input
-                    type="text"
-                    placeholder="Routing number"
-                    className="w-full px-3 py-2 border rounded-md bg-background hover:border-primary/30 focus:border-primary focus:ring-1 focus:ring-primary/20 dark:focus:ring-primary/30 transition-all duration-200"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end space-x-4">
-              <Button variant="outline" className="hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-200 dark:hover:border-red-800 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200">Cancel</Button>
-              <Button className="hover:shadow-lg hover:shadow-primary/20 dark:hover:shadow-primary/30 hover:scale-105 transition-all duration-300">Save Changes</Button>
-            </div>
-          </div>
-        )}
+          )}
         </div>
       </div>
+
+      {/* Venue Creation Modal */}
+      <AnimatePresence>
+        {showVenueModal && (
+          <Dialog open={showVenueModal} onClose={() => setShowVenueModal(false)} className="fixed inset-0 z-50 overflow-y-auto">
+            <div className="flex items-center justify-center min-h-screen">
+              <Dialog.Overlay className="fixed inset-0 bg-black opacity-30" />
+              <div className="bg-background rounded-2xl p-6 max-w-lg w-full z-50">
+                <Dialog.Title className="text-2xl font-bold text-white mb-4">Add New Venue</Dialog.Title>
+                <VenueCreationWizard onClose={() => setShowVenueModal(false)} onCreated={() => {
+                  setShowVenueModal(false);
+                  router.reload();
+                }} />
+              </div>
+            </div>
+          </Dialog>
+        )}
+      </AnimatePresence>
     </div>
-    </RouteGuard>
   );
 }
