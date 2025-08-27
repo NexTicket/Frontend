@@ -626,7 +626,7 @@ export default function OrganizerDashboard() {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-white">My Events</h2>
                 <Button
-                  onClick={() => router.push("/organizer/events/create")}
+                  onClick={() => router.push("/organizer/events/new")}
                   className="flex items-center"
                   style={{ backgroundColor: darkBg, borderColor: greenBorder }}
                 >

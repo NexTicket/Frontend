@@ -23,7 +23,11 @@ export async function publicFetch(url: string, options: RequestInit = {}) {
 
 export async function fetchVenues() {
   // Use publicFetch since venues should be accessible to everyone
-  const res = await publicFetch(`${process.env.NEXT_PUBLIC_API_URL}/venues/`);
+  const rawBase = process.env.NEXT_PUBLIC_EVENT_VENUE_SERVICE_URL || process.env.NEXT_PUBLIC_API_URL || '';
+  const trimmed = rawBase.replace(/\/$/, '');
+  const base = trimmed.endsWith('/api') ? trimmed.slice(0, -4) : trimmed;
+  const url = `${base}/api/venues`;
+  const res = await publicFetch(url);
   if (!res.ok) throw new Error("Failed to fetch venues");
   return res.json();
 }
@@ -137,20 +141,20 @@ export async function uploadVenueImages(id: string, imageFiles: File[]) {
 }
 
 export async function fetchEvents() {
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/events/`);
+  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events/`);
   if (!res.ok) throw new Error("Failed to fetch events");
   return res.json();
 }
 
 export async function fetchEventById(id: string) {
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/events/${id}`);
+  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events/${id}`);
   if (!res.ok) throw new Error("Failed to fetch event");
   return res.json();
 }
 
 //approveEvent and rejectEvent functions
 export async function approveEvent(id: string) {
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/events/${id}/approve`, {
+  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events/${id}/approve`, {
     method: 'POST'
   });
   if (!res.ok) throw new Error("Failed to approve event");
@@ -158,7 +162,7 @@ export async function approveEvent(id: string) {
 }
 
 export async function rejectEvent(id: string) {
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/events/${id}/reject`, {
+  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events/${id}/reject`, {
     method: 'POST'
   });
   if (!res.ok) throw new Error("Failed to reject event");
@@ -169,10 +173,12 @@ export async function rejectEvent(id: string) {
 export async function createEvent(eventData: {
   title: string;
   description: string;
-  category: string;
+  category: string; // Should be Prisma enum Category on backend
   type: 'MOVIE' | 'EVENT' | string;
   startDate: string; // ISO date or YYYY-MM-DD
   endDate?: string;  // ISO date or YYYY-MM-DD
+  startTime?: string; // HH:mm
+  endTime?: string;   // HH:mm
   venueId?: string | number;
   image?: string;
 }) {
@@ -183,11 +189,13 @@ export async function createEvent(eventData: {
     type: eventData.type,
     startDate: eventData.startDate,
     endDate: eventData.endDate ?? undefined,
+    startTime: eventData.startTime ?? undefined,
+    endTime: eventData.endTime ?? undefined,
     venueId: eventData.venueId !== undefined && eventData.venueId !== null ? String(eventData.venueId) : undefined,
     image: eventData.image ?? undefined
   };
 
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/events`, {
+  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events`, {
     method: 'POST',
     body: JSON.stringify(body)
   });
@@ -202,8 +210,8 @@ export async function createEvent(eventData: {
 
 // Delete event by id
 export async function deleteEvent(id: string) {
-  // Backend route expects /events/delete-event/:id
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/events/delete-event/${id}`, {
+  // Backend route expects /api/events/delete-event/:id
+  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events/delete-event/${id}`, {
     method: 'DELETE'
   });
   if (!res.ok) {
@@ -216,6 +224,23 @@ export async function deleteEvent(id: string) {
 export async function fetchmyVenues() {
   const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/venues/myvenues`);
   if (!res.ok) throw new Error("Failed to fetch my venues");
+  return res.json();
+}
+
+// Upload event image to Cloudinary via backend
+export async function uploadEventImage(eventId: string | number, file: File) {
+  const formData = new FormData();
+  formData.append('image', file);
+  const base = (process.env.NEXT_PUBLIC_EVENT_VENUE_SERVICE_URL || process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
+  const url = `${base}${base.endsWith('/api') ? '' : '/api'}/events/${eventId}/image`;
+  const res = await secureFetch(url, {
+    method: 'POST',
+    body: formData
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to upload event image: ${res.status} ${text}`);
+  }
   return res.json();
 }
 

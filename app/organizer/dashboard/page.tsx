@@ -18,11 +18,11 @@ import {
   Eye,
   Edit
 } from 'lucide-react';
-import { fetchEvents, deleteEvent, Event, fetchVenues, createEvent, createVenue } from '@/lib/api';
+import { fetchEvents, deleteEvent, fetchVenues, createEvent, createVenue } from '@/lib/api';
 import { AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 
-const containerVariants = {
+const containerVariants: any = {
   hidden: { opacity: 0, scale: 0.98 },
   visible: {
     opacity: 1,
@@ -31,14 +31,14 @@ const containerVariants = {
       staggerChildren: 0.12,
       delayChildren: 0.1,
       duration: 0.5,
-      ease: "easeOut"
+      ease: [0.17, 0.67, 0.83, 0.67] as any
     }
   }
 };
 
-const itemVariants = {
+const itemVariants: any = {
   hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } }
+  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.17, 0.67, 0.83, 0.67] as any } }
 };
 
 // Theme colors for matching admin dashboard
@@ -52,7 +52,8 @@ export default function OrganizerDashboard() {
   const { userProfile, firebaseUser, isLoading } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('overview');
-  const [events, setEvents] = useState<Event[]>([]);
+  type SimpleEvent = { id: string | number; title: string; category?: string; startDate?: string; date?: string };
+  const [events, setEvents] = useState<SimpleEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(true);
   const [venues, setVenues] = useState<any[]>([]);
   const [venuesLoading, setVenuesLoading] = useState(true);
@@ -67,20 +68,14 @@ export default function OrganizerDashboard() {
     }
   }, [isLoading, firebaseUser, userProfile, router]);
 
-  // Load events
+  // Load events (use shared API helper, expects NEXT_PUBLIC_API_URL=/api base)
   useEffect(() => {
     async function loadEvents() {
       try {
         setEventsLoading(true);
-        // Fetch events for this organizer from event_and_venue_service backend
-        if (userProfile?.id) {
-          const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_EVENT_VENUE_SERVICE_URL}/api/events?organizerId=${userProfile.id}`
-          );
-          setEvents(Array.isArray(response.data) ? response.data : []);
-        } else {
-          setEvents([]);
-        }
+        const eventsData = await fetchEvents();
+        const data = Array.isArray((eventsData as any)?.data) ? (eventsData as any).data : Array.isArray(eventsData) ? eventsData : [];
+        setEvents(data);
       } catch (error) {
         console.error('Failed to load events:', error);
         setEvents([]);
@@ -89,10 +84,8 @@ export default function OrganizerDashboard() {
       }
     }
 
-    if (userProfile?.role === 'organizer') {
-      loadEvents();
-    }
-  }, [userProfile]);
+    loadEvents();
+  }, []);
 
   // Fetch venues from backend
   useEffect(() => {
@@ -329,8 +322,8 @@ export default function OrganizerDashboard() {
     name: userProfile?.email?.split('@')[0] || 'Event Organizer',
     email: userProfile?.email || 'organizer@nexticket.com',
     totalEvents: Array.isArray(events) ? events.length : 0,
-    totalRevenue: Array.isArray(events) ? events.reduce((sum, event) => sum + ((event.price || 0) * ((event.capacity || 0) - (event.availableTickets || 0))), 0) : 0,
-    totalTicketsSold: Array.isArray(events) ? events.reduce((sum, event) => sum + ((event.capacity || 0) - (event.availableTickets || 0)), 0) : 0,
+    totalRevenue: 0,
+    totalTicketsSold: 0,
     averageRating: 4.7
   };
 
@@ -509,8 +502,8 @@ export default function OrganizerDashboard() {
                             {event.title}
                           </Link>
                           <div className="flex flex-wrap items-center gap-2 mt-1 text-xs">
-                            <span className="px-2 py-0.5 rounded-full" style={{ color: greenBorder, backgroundColor: greenBorder + '20' }}>{event.category}</span>
-                            <span className="px-2 py-0.5 rounded-full" style={{ color: '#fff', backgroundColor: '#2a2d34' }}>{event.date}</span>
+                            <span className="px-2 py-0.5 rounded-full" style={{ color: greenBorder, backgroundColor: greenBorder + '20' }}>{(event as any).category || '—'}</span>
+                            <span className="px-2 py-0.5 rounded-full" style={{ color: '#fff', backgroundColor: '#2a2d34' }}>{(event as any).startDate ? new Date((event as any).startDate).toLocaleString() : (event as any).date || '—'}</span>
                           </div>
                         </div>
                       </div>
@@ -587,7 +580,7 @@ export default function OrganizerDashboard() {
                     </div>
                     <div className="mt-2">
                       <div className={`w-full h-1 rounded-full ${stat.color} bg-opacity-20`}>
-                        <div className={`h-1 rounded-full ${stat.color}`} style={{ width: `${(stat.value / 100) * 100}%` }} />
+                        <div className={`h-1 rounded-full ${stat.color}`} style={{ width: `60%` }} />
                       </div>
                     </div>
                   </div>
@@ -644,7 +637,17 @@ export default function OrganizerDashboard() {
               <div className="p-8">
                 <VenueCreationWizard onClose={() => setShowVenueModal(false)} onCreated={() => {
                   setShowVenueModal(false);
-                  router.reload();
+                  // refresh events and venues after creation
+                  (async () => {
+                    try {
+                      setVenuesLoading(true);
+                      const response = await fetchVenues();
+                      const data = Array.isArray((response as any)?.data) ? (response as any).data : Array.isArray(response) ? response : [];
+                      setVenues(data);
+                    } finally {
+                      setVenuesLoading(false);
+                    }
+                  })();
                 }} />
               </div>
             </div>
