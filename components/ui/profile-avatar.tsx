@@ -23,7 +23,7 @@ export function ProfileAvatar({ size = 'md', showDropdown = false }: ProfileAvat
     return (
       <div className="relative">
         <Link href="/profile" className="block">
-          <div className={`${sizeClasses[size]} rounded-full overflow-hidden border-2 border-primary/20 hover:border-primary/40 transition-colors cursor-pointer`}>
+          <div className={`${sizeClasses[size]} rounded-full overflow-hidden border border-primary/20 hover:border-primary/40 transition-colors cursor-pointer`}>
             <Image
               src={user.profilePicture || "/Images/profile-avatar-account-icon.png"}
               alt={`${user.firstName} ${user.lastName}`}
@@ -62,7 +62,7 @@ export function ProfileAvatar({ size = 'md', showDropdown = false }: ProfileAvat
   // Empty profile circle for unauthenticated users
   return (
     <Link href="/auth/signin" className="block">
-      <div className={`${sizeClasses[size]} rounded-full bg-muted hover:bg-muted/80 border-2 border-border hover:border-primary/40 transition-colors cursor-pointer flex items-center justify-center`}>
+      <div className={`${sizeClasses[size]} rounded-full bg-muted hover:bg-muted/80 border border-border hover:border-primary/40 transition-colors cursor-pointer flex items-center justify-center`}>
         <User className="w-5 h-5 text-muted-foreground" />
       </div>
     </Link>

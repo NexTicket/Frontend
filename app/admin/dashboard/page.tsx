@@ -51,6 +51,13 @@ import {
 import { format, subDays, startOfWeek, endOfWeek } from 'date-fns';
 import RouteGuard from '@/components/auth/routeGuard';
 
+// Theme to match organizer dashboard
+const darkBg = "#181A20";
+const blueHeader = "#1877F2";
+const cardBg = "#23262F";
+const greenBorder = "#39FD48";
+const cardShadow = "0 2px 16px 0 rgba(57,253,72,0.08)";
+
 // Animation variants for smooth transitions
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -197,10 +204,10 @@ export default function AdminDashboard() {
   // Show loading if auth is still loading
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #ffffff, #E3F2FD, #FFFDE7)' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: darkBg }}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-4 mx-auto" style={{ borderColor: '#0D6EFD' + '30', borderTopColor: '#0D6EFD' }}></div>
-          <p className="mt-4 text-lg font-semibold" style={{ color: '#1565C0' }}>Loading admin dashboard...</p>
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-lg font-semibold" style={{ color: '#fff' }}>Loading admin dashboard...</p>
         </div>
       </div>
     );
@@ -209,19 +216,19 @@ export default function AdminDashboard() {
   // Show access denied if not authenticated or not admin
   if (!firebaseUser || !userProfile || userProfile.role !== 'admin') {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #ffffff, #E3F2FD, #FFFDE7)' }}>
-        <div className="backdrop-blur-xl bg-white/90 border rounded-3xl p-8 shadow-2xl text-center max-w-md" style={{ borderColor: '#0D6EFD' + '30', boxShadow: '0 25px 50px -12px rgba(74, 144, 226, 0.1)' }}>
-          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6" style={{ background: 'linear-gradient(135deg, #D32F2F' + '20, #FF5722' + '20)' }}>
-            <AlertTriangle className="h-8 w-8" style={{ color: '#D32F2F' }} />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: darkBg }}>
+        <div className="backdrop-blur-xl border rounded-3xl p-8 shadow-2xl text-center max-w-md" style={{ backgroundColor: cardBg, borderColor: greenBorder + '30', boxShadow: cardShadow }}>
+          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6" style={{ background: '#FF5722' + '20' }}>
+            <AlertTriangle className="h-8 w-8" style={{ color: '#FF5722' }} />
           </div>
-          <h1 className="text-2xl font-bold mb-4" style={{ color: '#1565C0' }}>Access Denied</h1>
-          <p className="mb-6" style={{ color: '#0D6EFD' }}>
+          <h1 className="text-2xl font-bold mb-4" style={{ color: '#fff' }}>Access Denied</h1>
+          <p className="mb-6" style={{ color: '#ABA8A9' }}>
             You need admin privileges to access this page.
           </p>
           <Button 
             onClick={() => router.push('/auth/signin')}
             className="text-white hover:opacity-90 transition-opacity"
-            style={{ background: 'linear-gradient(135deg, #0D6EFD, #FFD60A)' }}
+            style={{ background: blueHeader }}
           >
             Sign In
           </Button>
@@ -282,7 +289,7 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <div className="min-h-screen" style={{ background: '#191C24' }}>
+    <div className="min-h-screen" style={{ background: darkBg }}>
       {/* Simple Background Elements */}
       <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-20" style={{ backgroundColor: '#ABA8A9' }}></div>
       <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-15" style={{ backgroundColor: '#D8DFEE' }}></div>
@@ -298,7 +305,7 @@ export default function AdminDashboard() {
         >
           {/* Clean Header */}
           <motion.div variants={itemVariants} className="mb-12">
-            <div className="border rounded-2xl p-6 shadow-lg" style={{ backgroundColor: '#0D6EFD', borderColor: '#000' }}>
+            <div className="border rounded-2xl p-6 shadow-lg" style={{ backgroundColor: blueHeader, borderColor: greenBorder, boxShadow: cardShadow }}>
               <div className="flex items-center justify-between">
                 <div>
                   <motion.h1 
@@ -370,7 +377,7 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <Button 
                 onClick={() => router.push('/admin/users')}
-                className=" h-10 backdrop-blur-xl border text-lg rounded-2xl p-8 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}
+                className=" h-10 backdrop-blur-xl border text-lg rounded-2xl p-8 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}
                 
               >
                 <Users className="h-8 w-8 mr-3" style={{ color: '#CBF83E' }} />
@@ -378,14 +385,14 @@ export default function AdminDashboard() {
               </Button>
               <Button 
                 onClick={() => router.push('/admin/events')}
-                className=" h-10 backdrop-blur-xl border text-lg rounded-2xl p-8 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}
+                className=" h-10 backdrop-blur-xl border text-lg rounded-2xl p-8 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}
               >
                 <Calendar className="h-8 w-8 mr-3" style={{ color: '#CBF83E' }}/>
                 Manage Events
               </Button>
               <Button 
                 onClick={() => router.push('/admin/staff')}
-                className=" h-10 backdrop-blur-xl text-lg border rounded-2xl p-8 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}
+                className=" h-10 backdrop-blur-xl text-lg border rounded-2xl p-8 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}
               >
                 <PersonStanding className="h-8 w-8 mr-3" style={{ color: '#CBF83E' }} />
                 Manage Staff
@@ -393,7 +400,7 @@ export default function AdminDashboard() {
               <Button 
                 onClick={handleRefresh}
                 disabled={refreshing}
-                className=" h-10 backdrop-blur-xl text-lg border rounded-2xl p-8 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}
+                className=" h-10 backdrop-blur-xl text-lg border rounded-2xl p-8 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}
               >
                 <RefreshCw className={`h-8 w-8 mr-3 ${refreshing ? 'animate-spin' : ''}`} style={{ color: '#CBF83E' }} />
                 System Refresh
@@ -413,11 +420,11 @@ export default function AdminDashboard() {
           <motion.div variants={itemVariants} className="mb-16">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {/* Analytics Chart */}
-              <div className="lg:col-span-2 backdrop-blur-xl  border rounded-2xl p-8 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#0D6EFD' + '30', boxShadow: '0 25px 50px -12px rgba(74, 144, 226, 0.1)' }}>
+              <div className="lg:col-span-2 backdrop-blur-xl  border rounded-2xl p-8 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-2xl font-bold" style={{ color: '#fff' }}>Revenue Analytics</h3>
                   <div className="flex items-center space-x-2">
-                    <BarChart3 className="h-5 w-5" style={{ color: '#0D6EFD' }} />
+                    <BarChart3 className="h-5 w-5" style={{ color: '#CBF83E' }} />
                     <span className="text-sm font-medium" style={{ color: '#fff' }}>Monthly View</span>
                   </div>
                 </div>
@@ -426,29 +433,22 @@ export default function AdminDashboard() {
                     <AreaChart data={revenueData}>
                       <defs>
                         <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#0D6EFD" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#0D6EFD" stopOpacity={0}/>
+                          <stop offset="5%" stopColor={greenBorder} stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor={greenBorder} stopOpacity={0}/>
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#E3F2FD" />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#2a2d34" />
                       <XAxis dataKey="name" style={{ fill: '#fff' }} />
                       <YAxis style={{ fill: '#fff' }} />
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: 'rgba(255, 255, 255, 0.95)', 
-                          border: '1px solid #0D6EFD',
-                          borderRadius: '12px',
-                          boxShadow: '0 10px 15px -3px rgba(74, 144, 226, 0.1)'
-                        }}
-                      />
-                      <Area type="monotone" dataKey="revenue" stroke="#0D6EFD" fillOpacity={1} fill="url(#colorRevenue)" strokeWidth={3}/>
+                      <Tooltip contentStyle={{ backgroundColor: '#0f1115', border: `1px solid ${greenBorder}`, color: '#fff' }} />
+                      <Area type="monotone" dataKey="revenue" stroke={greenBorder} fillOpacity={1} fill="url(#colorRevenue)" strokeWidth={2}/>
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
               </div>
 
               {/* Recent Activities */}
-              <div className="backdrop-blur-xl border rounded-2xl p-8 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}>
+              <div className="backdrop-blur-xl border rounded-2xl p-8 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-2xl font-bold" style={{ color: '#fff' }}>Live Activities</h3>
                   <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
@@ -456,16 +456,16 @@ export default function AdminDashboard() {
                 <div className="space-y-4">
                   {recentActivities.slice(0, 6).map((activity, index) => (
                     <div key={activity.id} className="flex items-start space-x-4 p-3 rounded-xl transition-colors duration-200 hover:bg-blue-50/20">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg, #0D6EFD' + '20, #FFD60A' + '20)' }}>
-                        <Activity className="h-4 w-4" style={{ color: '#0D6EFD' }} />
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: greenBorder + '20' }}>
+                        <Activity className="h-4 w-4" style={{ color: greenBorder }} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold truncate" style={{ color: '#1565C0' }}>{activity.user}</p>
+                        <p className="text-sm font-semibold truncate" style={{ color: '#fff' }}>{activity.user}</p>
                         <p className="text-xs truncate" style={{ color: '#fff' }}>{activity.action}</p>
                         {activity.event && (
-                          <p className="text-xs font-medium truncate" style={{ color: '#FF5722' }}>{activity.event}</p>
+                          <p className="text-xs font-medium truncate" style={{ color: greenBorder }}>{activity.event}</p>
                         )}
-                        <p className="text-xs mt-1 " style={{ color: '#198754' + 'ff' }}>{activity.time}</p>
+                        <p className="text-xs mt-1 " style={{ color: '#ABA8A9' }}>{activity.time}</p>
                       </div>
                     </div>
                   ))}
@@ -474,13 +474,9 @@ export default function AdminDashboard() {
                   variant="outline" 
                   className="w-full mt-4 transition-all duration-200 hover:shadow-md"
                   onClick={() => setActivityDialogOpen(true)}
-                  style={{ 
-                    borderColor: '#0D6EFD' + '50',
-                    color: '#0D6EFD',
-                    backgroundColor: 'transparent'
-                  }}
+                  style={{ borderColor: greenBorder, color: '#fff', backgroundColor: 'transparent' }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#0D6EFD' + '10';
+                    e.currentTarget.style.backgroundColor = '#1f222a';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.backgroundColor = 'transparent';
@@ -494,7 +490,7 @@ export default function AdminDashboard() {
 
           {/* Top Events Performance */}
           <motion.div variants={itemVariants} className="mb-16">
-            <div className="backdrop-blur-xl border rounded-2xl p-8 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#0D6EFD' + '50', boxShadow: '0 25px 50px -12px rgba(74, 144, 226, 0.1)' }}>
+            <div className="backdrop-blur-xl border rounded-2xl p-8 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
               <div className="flex items-center justify-between mb-8">
                 <h3 className="text-3xl font-bold" style={{ color: '#fff' }}>Top Performing Events</h3>
                 <div className="flex items-center space-x-4">
@@ -502,13 +498,9 @@ export default function AdminDashboard() {
                     variant="outline" 
                     size="sm" 
                     className="transition-all duration-200 hover:shadow-md"
-                    style={{ 
-                      borderColor: '#0D6EFD' + '50',
-                      color: '#0D6EFD',
-                      backgroundColor: 'transparent'
-                    }}
+                    style={{ borderColor: greenBorder, color: '#fff', backgroundColor: 'transparent' }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#0D6EFD' + '10';
+                      e.currentTarget.style.backgroundColor = '#1f222a';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.backgroundColor = 'transparent';
@@ -530,25 +522,25 @@ export default function AdminDashboard() {
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr style={{ borderBottom: '1px solid #0D6EFD' + '30' }}>
-                      <th className="text-left py-4 px-6 font-semibold" style={{ color: '#0D6EFD' }}>Event Name</th>
-                      <th className="text-left py-4 px-6 font-semibold" style={{ color: '#0D6EFD' }}>Tickets Sold</th>
-                      <th className="text-left py-4 px-6 font-semibold" style={{ color: '#0D6EFD' }}>Revenue</th>
-                      <th className="text-left py-4 px-6 text-purple-800 font-semibold" style={{ color: '#0D6EFD' }}>Growth</th>
-                      <th className="text-left py-4 px-6 text-purple-800 font-semibold" style={{ color: '#0D6EFD' }}>Actions</th>
+                    <tr style={{ borderBottom: `1px solid ${greenBorder}30` }}>
+                      <th className="text-left py-4 px-6 font-semibold" style={{ color: '#fff' }}>Event Name</th>
+                      <th className="text-left py-4 px-6 font-semibold" style={{ color: '#fff' }}>Tickets Sold</th>
+                      <th className="text-left py-4 px-6 font-semibold" style={{ color: '#fff' }}>Revenue</th>
+                      <th className="text-left py-4 px-6 text-purple-800 font-semibold" style={{ color: '#fff' }}>Growth</th>
+                      <th className="text-left py-4 px-6 text-purple-800 font-semibold" style={{ color: '#fff' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {topEvents.map((event, index) => (
-                      <tr key={event.id} className="border-b transition-colors duration-200" style={{ borderColor: '#0D6EFD' + '20', backgroundColor: 'transparent' }} 
-                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#0D6EFD' + '05'; }}
+                      <tr key={event.id} className="border-b transition-colors duration-200" style={{ borderColor: greenBorder + '20', backgroundColor: 'transparent' }} 
+                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#1f222a'; }}
                         onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
                       >
                         <td className="py-4 px-6">
                           <div className="font-semibold" style={{ color: '#fff' }}>{event.name}</div>
                         </td>
                         <td className="py-4 px-6">
-                          <div className="font-medium" style={{ color: '#FFC107' }}>{event.tickets.toLocaleString()}</div>
+                          <div className="font-medium" style={{ color: greenBorder }}>{event.tickets.toLocaleString()}</div>
                         </td>
                         <td className="py-4 px-6">
                           <div className="font-bold" style={{ color: '#fff' }}>LKR {event.revenue.toLocaleString()}</div>
@@ -588,7 +580,66 @@ export default function AdminDashboard() {
             </div>
           </motion.div>
 
-          
+          {/* Mock Events and Venues */}
+          <motion.div variants={itemVariants} className="mb-20">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Mock Events */}
+              <div className="border rounded-2xl p-6 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
+                <h3 className="text-2xl font-bold mb-4" style={{ color: '#fff' }}>Mock Events</h3>
+                <div className="space-y-4">
+                  {[
+                    { id: 'e1', title: 'Rock Fest Colombo', description: 'A night of rock music with top bands.', category: 'Concert', date: '2025-09-12' },
+                    { id: 'e2', title: 'Tech Summit 2025', description: 'Talks and workshops on emerging tech.', category: 'Conference', date: '2025-10-03' },
+                    { id: 'e3', title: 'Laughter Night', description: 'Stand-up comedy special.', category: 'Comedy', date: '2025-08-21' }
+                  ].map(ev => (
+                    <div key={ev.id} className="rounded-2xl border p-4 bg-background shadow-md flex flex-col sm:flex-row items-start sm:items-center" style={{ backgroundColor: darkBg, borderColor: greenBorder }}>
+                      <div className="flex-1 min-w-0">
+                        <div className="block text-lg font-semibold text-white truncate">{ev.title}</div>
+                        <p className="text-sm text-muted-foreground truncate" style={{ color: '#ABA8A9' }}>{ev.description}</p>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          <span className="text-xs rounded-full bg-primary/10 text-primary px-3 py-1" style={{ color: greenBorder, backgroundColor: greenBorder + '20' }}>{ev.category}</span>
+                          <span className="text-xs rounded-full bg-secondary/10 text-secondary px-3 py-1" style={{ color: '#fff', backgroundColor: '#2a2d34' }}>{ev.date}</span>
+                        </div>
+                      </div>
+                      <div className="mt-4 sm:mt-0 sm:ml-4">
+                        <Button variant="outline" className="flex items-center" style={{ backgroundColor: darkBg, borderColor: greenBorder, color: '#fff' }}>
+                          View
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Mock Venues */}
+              <div className="border rounded-2xl p-6 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
+                <h3 className="text-2xl font-bold mb-4" style={{ color: '#fff' }}>Mock Venues</h3>
+                <div className="space-y-4">
+                  {[
+                    { id: 'v1', name: 'Nelum Pokuna', description: 'Iconic performing arts theatre.', city: 'Colombo', state: 'WP', capacity: 1200 },
+                    { id: 'v2', name: 'Sugathadasa Indoor Stadium', description: 'Large indoor venue for sports and events.', city: 'Colombo', state: 'WP', capacity: 5000 },
+                    { id: 'v3', name: 'BMICH Hall A', description: 'Convention center hall.', city: 'Colombo', state: 'WP', capacity: 2000 }
+                  ].map(venue => (
+                    <div key={venue.id} className="rounded-2xl border p-4 bg-background shadow-md flex flex-col sm:flex-row items-start sm:items-center" style={{ backgroundColor: darkBg, borderColor: greenBorder }}>
+                      <div className="flex-1 min-w-0">
+                        <div className="block text-lg font-semibold text-white truncate">{venue.name}</div>
+                        <p className="text-sm text-muted-foreground truncate" style={{ color: '#ABA8A9' }}>{venue.description}</p>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          <span className="text-xs rounded-full bg-primary/10 text-primary px-3 py-1" style={{ color: '#fff', backgroundColor: '#2a2d34' }}>{venue.city}, {venue.state}</span>
+                          <span className="text-xs rounded-full bg-secondary/10 text-secondary px-3 py-1" style={{ color: greenBorder, backgroundColor: greenBorder + '20' }}>Capacity: {venue.capacity}</span>
+                        </div>
+                      </div>
+                      <div className="mt-4 sm:mt-0 sm:ml-4">
+                        <Button variant="outline" className="flex items-center" style={{ backgroundColor: darkBg, borderColor: greenBorder, color: '#fff' }}>
+                          View
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </motion.div>
 
         </motion.div>
       </div>
