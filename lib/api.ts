@@ -23,7 +23,11 @@ export async function publicFetch(url: string, options: RequestInit = {}) {
 
 export async function fetchVenues() {
   // Use publicFetch since venues should be accessible to everyone
-  const res = await publicFetch(`${process.env.NEXT_PUBLIC_API_URL}/venues/`);
+  const rawBase = process.env.NEXT_PUBLIC_EVENT_VENUE_SERVICE_URL || process.env.NEXT_PUBLIC_API_URL || '';
+  const trimmed = rawBase.replace(/\/$/, '');
+  const base = trimmed.endsWith('/api') ? trimmed.slice(0, -4) : trimmed;
+  const url = `${base}/api/venues`;
+  const res = await publicFetch(url);
   if (!res.ok) throw new Error("Failed to fetch venues");
   return res.json();
 }
