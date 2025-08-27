@@ -398,50 +398,100 @@ export default function Home() {
 
           {/* CTA Section */}
           <section className="py-16 px-4 sm:px-6 lg:px-8">
-            <motion.div variants={itemVariants} className="backdrop-blur-xl border rounded-3xl p-12 shadow-xl text-center" style={{ backgroundColor: '#0D6EFD', borderColor: '#CBF83E' }}>
-              <h2 className="text-3xl md:text-4xl font-bold mb-6" style={{ color: '#fff' }}>
-                Ready to Find Your Next Event?
-              </h2>
-              <p className="text-xl mb-8" style={{ color: '#fff', opacity: 0.9 }}>
-                Join thousands of event-goers who trust NexTicket for their entertainment needs
-              </p>
+            <motion.div 
+              variants={itemVariants} 
+              whileHover={{ scale: 1.01, y: -2 }}
+              className="backdrop-blur-xl border rounded-3xl p-12 shadow-xl text-center relative overflow-hidden" 
+              style={{ 
+                backgroundColor: '#191C24', 
+                borderColor: '#0D6EFD' + '50',
+                boxShadow: '0 25px 50px -12px rgba(13, 110, 253, 0.2)' 
+              }}
+            >
+              {/* Background gradient overlay */}
+              <div 
+                className="absolute inset-0 opacity-5 rounded-3xl"
+                style={{ 
+                  background: 'linear-gradient(135deg, #CBF83E, #39FD48, #0D6EFD)' 
+                }}
+              />
               
-              <div className="flex flex-col sm:flex-row gap-6 justify-center">
-                <Button 
-                  size="lg" 
-                  asChild
-                  className="px-8 py-4 text-lg font-medium rounded-xl shadow-lg hover:opacity-90 transition-all duration-200"
-                  style={{ 
-                    background: 'linear-gradient(135deg, #CBF83E, #39FD48)',
-                    color: '#191C24'
-                  }}
+              {/* Content */}
+              <div className="relative z-10">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6 }}
+                  className="mb-8"
                 >
-                  <Link href="/events">
-                    Start Exploring
-                    <ArrowRight className="ml-2 h-5 w-5" />
-                  </Link>
-                </Button>
-                <Button 
-                  size="lg" 
-                  variant="outline" 
-                  asChild
-                  className="px-8 py-4 text-lg font-medium rounded-xl transition-all duration-200 hover:shadow-lg"
-                  style={{ 
-                    borderColor: '#fff',
-                    color: '#fff',
-                    backgroundColor: 'transparent'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#fff' + '10';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                  }}
+                  <div className="flex items-center justify-center mb-6">
+                    <div className="rounded-xl p-3" style={{ backgroundColor: '#0D6EFD' + '20' }}>
+                      <ArrowRight className="h-8 w-8" style={{ color: '#CBF83E' }} />
+                    </div>
+                  </div>
+                  <h2 className="text-3xl md:text-4xl font-bold mb-6" style={{ color: '#fff' }}>
+                    Ready to Find Your Next{' '}
+                    <span style={{ 
+                      background: 'linear-gradient(135deg, #CBF83E, #39FD48)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      backgroundClip: 'text'
+                    }}>
+                      Adventure
+                    </span>
+                    ?
+                  </h2>
+                  <p className="text-xl mb-8" style={{ color: '#ABA8A9' }}>
+                    Join thousands of event-goers who trust NexTicket for their entertainment needs
+                  </p>
+                </motion.div>
+                
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.2 }}
+                  className="flex flex-col sm:flex-row gap-6 justify-center"
                 >
-                  <Link href="/auth/signup">
-                    Create Account
-                  </Link>
-                </Button>
+                  <Button 
+                    size="lg" 
+                    asChild
+                    className="px-8 py-4 text-lg font-medium rounded-xl shadow-lg transition-all duration-200 group hover:scale-105"
+                    style={{ 
+                      background: '#0D6EFD',
+                      color: '#FFFFFF'
+                    }}
+                  >
+                    <Link href="/events" className="flex items-center justify-center gap-2">
+                      <span>Start Exploring</span>
+                      <ArrowRight className="ml-2 h-5 w-5 transition-transform duration-200 group-hover:translate-x-1" />
+                    </Link>
+                  </Button>
+                  <Button 
+                    size="lg" 
+                    variant="outline" 
+                    asChild
+                    className="px-8 py-4 text-lg font-medium rounded-xl transition-all duration-200 hover:scale-105 group"
+                    style={{ 
+                      borderColor: '#39FD48',
+                      color: '#39FD48',
+                      backgroundColor: 'transparent'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#39FD48' + '10';
+                      e.currentTarget.style.borderColor = '#CBF83E';
+                      e.currentTarget.style.color = '#CBF83E';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                      e.currentTarget.style.borderColor = '#39FD48';
+                      e.currentTarget.style.color = '#39FD48';
+                    }}
+                  >
+                    <Link href="/auth/signup" className="flex items-center gap-2">
+                      <span>Create Account</span>
+                    </Link>
+                  </Button>
+                </motion.div>
               </div>
             </motion.div>
           </section>
