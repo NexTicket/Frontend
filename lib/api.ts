@@ -28,8 +28,8 @@ export async function fetchVenues() {
   return res.json();
 }
 
-export const fetchVenueById = async (id: number) => {
-  const res = await publicFetch(`${process.env.NEXT_PUBLIC_API_URL}/venues/${id}`);
+export const fetchVenueById = async (id: number | string) => {
+  const res = await publicFetch(`${process.env.NEXT_PUBLIC_API_URL}/venues/getvenuebyid/${id}`);
   if (!res.ok) throw new Error("Failed to fetch venue");
   return res.json();
 };

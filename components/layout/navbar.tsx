@@ -49,7 +49,7 @@ export function Navbar() {
       case 'admin':
         return [
           { href: '/admin/dashboard', label: 'Admin Panel', icon: Settings },
-          { href: '/admin/events', label: 'Manage Staff', icon: Calendar },
+          { href: '/admin/staff', label: 'Manage Staff', icon: Calendar },
           { href: '/admin/users', label: 'Manage Users', icon: Users }
         ];
       // case 'checkin_officer':

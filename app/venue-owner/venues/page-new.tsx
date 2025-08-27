@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/components/auth/auth-provider';
 import { fetchmyVenues, deleteVenue } from '@/lib/api';
 import { 
   Building2, 
@@ -66,7 +65,6 @@ const itemVariants = {
 };
 
 export default function VenueOwnerVenues() {
-  const { firebaseUser, userProfile, isLoading: authLoading } = useAuth();
   const [venues, setVenues] = useState<Venue[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -75,15 +73,6 @@ export default function VenueOwnerVenues() {
 
   // Fetch venues on component mount
   useEffect(() => {
-    // Don't fetch if still loading auth or user not logged in
-    if (authLoading) return;
-    
-    if (!firebaseUser) {
-      setError('Please log in to view your venues');
-      setLoading(false);
-      return;
-    }
-
     const loadVenues = async () => {
       try {
         setLoading(true);
@@ -128,7 +117,7 @@ export default function VenueOwnerVenues() {
     };
 
     loadVenues();
-  }, [authLoading, firebaseUser]);
+  }, []);
 
   const retryFetch = () => {
     window.location.reload();
@@ -181,56 +170,6 @@ export default function VenueOwnerVenues() {
     }
   };
 
-  // Show loading while auth is being checked
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#191C24' }}>
-        <div className="text-center">
-          <div className="relative">
-            <motion.div
-              className="w-16 h-16 border-4 border-[#0D6EFD] border-t-[#39FD48] rounded-full mx-auto"
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-            />
-          </div>
-          <motion.h3 
-            className="text-2xl font-bold mt-6 mb-4"
-            style={{ color: '#fff' }}
-            animate={{ opacity: [0.5, 1, 0.5] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          >
-            Authenticating...
-          </motion.h3>
-          <p style={{ color: '#ABA8A9' }}>Verifying your credentials</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Redirect to login if not authenticated
-  if (!firebaseUser) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#191C24' }}>
-        <div className="text-center">
-          <div className="backdrop-blur-xl border rounded-2xl p-12 max-w-md mx-auto shadow-xl" 
-            style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '50' }}>
-            <Building2 className="h-16 w-16 mx-auto mb-6" style={{ color: '#39FD48' }} />
-            <h3 className="text-2xl font-bold mb-4" style={{ color: '#fff' }}>Authentication Required</h3>
-            <p className="mb-8 leading-relaxed" style={{ color: '#ABA8A9' }}>
-              Please log in to access your venue dashboard
-            </p>
-            <Link href="/auth/signin">
-              <Button className="text-white font-semibold px-8 py-3 rounded-xl hover:opacity-90 transition-opacity"
-                style={{ background: 'linear-gradient(135deg, #39FD48, #0D6EFD)' }}>
-                Sign In
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen" style={{ background: '#191C24' }}>
       {/* Background Elements */}
@@ -247,7 +186,7 @@ export default function VenueOwnerVenues() {
           className="max-w-7xl mx-auto"
         >
           {/* Header */}
-          <motion.div variants={itemVariants} className="mb-12 h-25">
+          <motion.div variants={itemVariants} className="mb-12">
             <div className="border rounded-2xl p-6 shadow-lg" style={{ backgroundColor: '#0D6EFD', borderColor: '#000' }}>
               <div className="flex items-center justify-between">
                 <div>
@@ -276,29 +215,7 @@ export default function VenueOwnerVenues() {
                   transition={{ delay: 0.3, duration: 0.4 }}
                   className="flex items-center space-x-3"
                 >
-                  {/* <Button 
-                    onClick={retryFetch}
-                    disabled={loading}
-                    className="px-4 py-2 text-white font-medium rounded-xl hover:opacity-90 transition-opacity shadow-md"
-                    style={{ background: 'linear-gradient(135deg, #0D6EFD, #1565C0)' }}
-                  >
-                    <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                    Refresh
-                  </Button> */}
-                  {/* <Link href="/venue-owner/venues/new">
-                    <Button className="px-4 py-2 text-white font-medium rounded-xl hover:opacity-90 transition-opacity shadow-md"
-                      style={{ background: 'linear-gradient(135deg, #39FD48, #0D6EFD)' }}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Venue
-                    </Button>
-                  </Link> */}
-                </motion.div>
-              </div>
-            </div>
-          </motion.div>
-
-          <div className="flex h-15 justify-end gap-3">
-            <Button 
+                  <Button 
                     onClick={retryFetch}
                     disabled={loading}
                     className="px-4 py-2 text-white font-medium rounded-xl hover:opacity-90 transition-opacity shadow-md"
@@ -307,16 +224,17 @@ export default function VenueOwnerVenues() {
                     <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                     Refresh
                   </Button>
-  
-
-  <Link href="/venue-owner/venues/new">
+                  <Link href="/venue-owner/venues/new">
                     <Button className="px-4 py-2 text-white font-medium rounded-xl hover:opacity-90 transition-opacity shadow-md"
-                      style={{ background: '#0D6EFD' }}>
+                      style={{ background: 'linear-gradient(135deg, #39FD48, #0D6EFD)' }}>
                       <Plus className="h-4 w-4 mr-2" />
                       Add Venue
                     </Button>
                   </Link>
-</div>
+                </motion.div>
+              </div>
+            </div>
+          </motion.div>
 
           {/* Search and Filters */}
           <motion.div variants={itemVariants} className="mb-8">
@@ -529,10 +447,10 @@ export default function VenueOwnerVenues() {
                     <div className="flex items-center space-x-2 pt-2">
                       <Link href={`/venues/${venue.id}`} className="flex-1">
                         <Button 
-                           
+                          variant="outline" 
                           size="sm" 
-                          className="w-full  text-white hover:bg-[#0D6EFD] hover:text-white transition-all duration-300" style={{ backgroundColor: '#0D6EFD' }}>
-                        
+                          className="w-full border-[#0D6EFD] text-[#0D6EFD] hover:bg-[#0D6EFD] hover:text-white transition-all duration-300"
+                        >
                           <Eye className="h-4 w-4 mr-2" />
                           View
                         </Button>
@@ -540,9 +458,9 @@ export default function VenueOwnerVenues() {
                       
                       <Link href={`/venue-owner/venues/${venue.id}/edit`} className="flex-1">
                         <Button 
-                          
+                          variant="outline" 
                           size="sm" 
-                          className="w-full text-white hover:bg-[#39FD48] hover:text-black transition-all duration-300" style={{ backgroundColor: '#0D6EFD' }}
+                          className="w-full border-[#39FD48] text-[#39FD48] hover:bg-[#39FD48] hover:text-black transition-all duration-300"
                         >
                           <Edit className="h-4 w-4 mr-2" />
                           Edit
