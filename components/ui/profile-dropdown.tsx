@@ -35,6 +35,8 @@ export function ProfileDropdown({ size = 'md' }: ProfileDropdownProps) {
 
   const handleLogout = async () => {
     try {
+      // Redirect to the root page
+      window.location.href = '/';
       await logout();
       setIsOpen(false);
     } catch (error) {
