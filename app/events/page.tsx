@@ -236,10 +236,10 @@ export default function EventsPage() {
               <div className="space-y-3">
                 <label className="text-sm font-medium text-blue-400">Event Features</label>
                 <div className="space-y-2">
-                  <label className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2">
                     <input type="checkbox" className="rounded border-gray-300" />
                     <span className="text-sm">Outdoor Venue</span>
-                  </label>
+                  </div>
                   <label className="flex items-center space-x-2">
                     <input type="checkbox" className="rounded border-gray-300" />
                     <span className="text-sm">Food & Drinks</span>
