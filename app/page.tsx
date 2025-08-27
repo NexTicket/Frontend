@@ -227,41 +227,35 @@ export default function Home() {
                   transition={{ delay: 0.7, duration: 0.6 }}
                   className="flex flex-col sm:flex-row gap-6 justify-center"
                 >
-                  <Button 
-                    size="lg" 
+                  <Button
+                    size="lg"
                     asChild
-                    className="px-8 py-4 text-lg font-medium rounded-xl shadow-lg hover:opacity-90 transition-all duration-200"
-                    style={{ 
-                      background: 'linear-gradient(135deg, #CBF83E, #39FD48)',
-                      color: '#191C24'
+                    className="px-8 py-4 text-lg font-medium rounded-xl shadow-lg transition-all duration-200 group"
+                    style={{
+                      background: '#0D6EFD',
+                      color: '#FFFFFF'
                     }}
                   >
-                    <Link href="/events">
-                      Browse All Events
-                      <ArrowRight className="ml-2 h-5 w-5" />
+                    <Link href="/events" className="flex items-center justify-center gap-2">
+                      <span>Browse All Events</span>
+                      <ArrowRight
+                        className="ml-2 h-5 w-5 transition-transform duration-200 group-hover:translate-x-1"
+                      />
                     </Link>
                   </Button>
-                  <Button 
-                    size="lg" 
-                    variant="outline" 
+                    <Button
+                    size="lg"
+                    variant="outline"
                     asChild
-                    className="px-8 py-4 text-lg font-medium rounded-xl transition-all duration-200 hover:shadow-lg"
-                    style={{ 
-                      borderColor: '#0D6EFD',
-                      color: '#0D6EFD',
+                    className="px-8 py-4 text-lg font-medium rounded-xl transition-all duration-200 border-[#0D6EFD] text-[#0D6EFD] hover:bg-[#0D6EFD]/10 hover:scale-105 hover:text-[#0D6EFD]"
+                    style={{
                       backgroundColor: 'transparent'
                     }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#0D6EFD' + '10';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                    }}
-                  >
+                    >
                     <Link href="/venues">
                       Explore Venues
                     </Link>
-                  </Button>
+                    </Button>
                 </motion.div>
               </motion.div>
             </div>
@@ -354,7 +348,7 @@ export default function Home() {
                   }}
                 >
                   <div className="aspect-video flex items-center justify-center" style={{ backgroundColor: '#191C24', borderBottom: '1px solid #0D6EFD30' }}>
-                    <Calendar className="h-12 w-12" style={{ color: '#CBF83E' }} />
+                    <Calendar className="h-12 w-12" style={{ color: '#0D6EFD' }} />
                   </div>
                   
                   <div className="p-6">
@@ -397,7 +391,7 @@ export default function Home() {
                       <Button 
                         asChild
                         className="px-6 py-2 text-white font-medium rounded-xl shadow-lg hover:opacity-90 transition-opacity"
-                        style={{ background: 'linear-gradient(135deg, #0D6EFD, #CBF83E)' }}
+                        style={{ background: '#0D6EFD' }}
                       >
                         <Link href={`/events/${event.id}`}>
                           View Details
