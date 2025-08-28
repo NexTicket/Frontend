@@ -378,7 +378,7 @@ export default function CheckoutPage() {
                     {selectedSeats.map(seat => (
                       <div key={seat.id} className="flex items-center justify-between text-sm">
                         <span style={{ color: '#ABA8A9' }}>{seat.section} {seat.row}{seat.number}</span>
-                        <span style={{ color: '#CBF83E' }}>{seat.price} LKR</span>
+                        <span style={{ color: '#CBF83E' }}>${seat.price}</span>
                       </div>
                     ))}
                   </div>
@@ -388,15 +388,15 @@ export default function CheckoutPage() {
                 <div className="space-y-2 mb-6">
                   <div className="flex items-center justify-between">
                     <span style={{ color: '#ABA8A9' }}>Subtotal</span>
-                    <span style={{ color: '#fff' }}>{subtotal} LKR</span>
+                    <span style={{ color: '#fff' }}>${subtotal}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span style={{ color: '#ABA8A9' }}>Service fee</span>
-                    <span style={{ color: '#ABA8A9' }}>{serviceFee} LKR</span>
+                    <span style={{ color: '#ABA8A9' }}>${serviceFee}</span>
                   </div>
                   <div className="flex items-center justify-between font-medium text-lg border-t pt-2" style={{ borderColor: '#0D6EFD' + '30' }}>
                     <span style={{ color: '#fff' }}>Total</span>
-                    <span style={{ color: '#CBF83E' }}>{total} LKR</span>
+                    <span style={{ color: '#CBF83E' }}>${total}</span>
                   </div>
                 </div>
 
