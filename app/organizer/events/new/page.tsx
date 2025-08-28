@@ -62,7 +62,7 @@ function NewEventPageInner() {
         const res = await fetchVenues();
         const data: VenueCard[] = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
         setVenues(data);
-        if (data.length > 0) setForm(prev => ({ ...prev, venueId: prev.venueId || data[0].id || "" }));
+        if (data.length > 0) setForm(prev => ({ ...prev, venueId: prev.venueId || String(data[0].id) || "" }));
       } catch (err) {
         console.error("Failed loading venues", err);
       } finally {
@@ -77,8 +77,8 @@ function NewEventPageInner() {
       setSeatMapData(null);
       const base = (process.env.NEXT_PUBLIC_EVENT_VENUE_SERVICE_URL || process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
       const tryUrls = [
-        `${base}${base.endsWith('/api') ? '' : '/api'}/venues/${venueId}/seats`,
-        `${base}${base.endsWith('/api') ? '' : '/api'}/${venueId}/seats`
+        `${base}/venues/${venueId}/seats`,
+        `${base}/${venueId}/seats`
       ];
       for (const url of tryUrls) {
         const resp = await fetch(url);

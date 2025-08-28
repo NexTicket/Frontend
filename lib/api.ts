@@ -1,5 +1,31 @@
 import { secureFetch } from "@/utils/secureFetch";
 
+// Utility function to construct API URLs correctly
+function getApiUrl(endpoint: string): string {
+  const rawBase = process.env.NEXT_PUBLIC_API_URL || '';
+  const trimmed = rawBase.replace(/\/$/, '');
+  
+  // If the base URL already ends with /api, use it as is
+  // If not, add /api to the base
+  const base = trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
+  
+  // Ensure endpoint starts with /
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  
+  return `${base}${cleanEndpoint}`;
+}
+
+// Utility function to construct venue service URLs (these might not need /api)
+function getVenueServiceUrl(endpoint: string): string {
+  const rawBase = process.env.NEXT_PUBLIC_EVENT_VENUE_SERVICE_URL || process.env.NEXT_PUBLIC_API_URL || '';
+  const trimmed = rawBase.replace(/\/$/, '');
+  
+  // For venue service, we assume the endpoint already includes the correct path
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  
+  return `${trimmed}${cleanEndpoint}`;
+}
+
 // Public fetch function for endpoints that don't require authentication
 export async function publicFetch(url: string, options: RequestInit = {}) {
   const headers: Record<string, string> = {};
@@ -23,23 +49,22 @@ export async function publicFetch(url: string, options: RequestInit = {}) {
 
 export async function fetchVenues() {
   // Use publicFetch since venues should be accessible to everyone
-  const rawBase = process.env.NEXT_PUBLIC_EVENT_VENUE_SERVICE_URL || process.env.NEXT_PUBLIC_API_URL || '';
-  const trimmed = rawBase.replace(/\/$/, '');
-  const base = trimmed.endsWith('/api') ? trimmed.slice(0, -4) : trimmed;
-  const url = `${base}/api/venues`;
+  const url = getApiUrl('/venues');
   const res = await publicFetch(url);
   if (!res.ok) throw new Error("Failed to fetch venues");
   return res.json();
 }
 
 export const fetchVenueById = async (id: number | string) => {
-  const res = await publicFetch(`${process.env.NEXT_PUBLIC_API_URL}/venues/getvenuebyid/${id}`);
+  const url = getApiUrl(`/venues/getvenuebyid/${id}`);
+  const res = await publicFetch(url);
   if (!res.ok) throw new Error("Failed to fetch venue");
   return res.json();
 };
 
 export async function createVenue(venueData: any) {
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/venues/`, {
+  const url = getApiUrl('/venues/');
+  const res = await secureFetch(url, {
     method: 'POST',
     body: JSON.stringify(venueData)
   });
@@ -48,7 +73,8 @@ export async function createVenue(venueData: any) {
 }
 
 export async function updateVenue(id: string, venueData: any) {
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/venues/${id}`, {
+  const url = getApiUrl(`/venues/${id}`);
+  const res = await secureFetch(url, {
     method: 'PUT',
     body: JSON.stringify(venueData)
   });
@@ -70,9 +96,11 @@ export async function uploadVenueImage(id: string, imageFile: File) {
   console.log('📤 API: FormData created with field name "image"');
   console.log('📤 API: FormData instanceof FormData:', formData instanceof FormData);
   console.log('📤 API: typeof formData:', typeof formData);
-  console.log('📤 API: Making request to:', `${process.env.NEXT_PUBLIC_API_URL}/venues/${id}/image`);
+  const url = getApiUrl(`/venues/${id}/image`);
   
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/venues/${id}/image`, {
+  console.log('📤 API: Making request to:', url);
+  
+  const res = await secureFetch(url, {
     method: 'POST',
     body: formData
     // No headers - let secureFetch and browser handle Content-Type
@@ -119,9 +147,9 @@ export async function uploadVenueImages(id: string, imageFiles: File[]) {
   formData.append('images', firstImage); // Use 'images' to match the route
   
   console.log('📤 FormData created with image field name: images');
-  console.log('📤 Uploading to URL:', `${process.env.NEXT_PUBLIC_API_URL}/venues/${id}/images`);
+  console.log('📤 Uploading to URL:', getApiUrl(`/venues/${id}/images`));
   
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/venues/${id}/images`, {
+  const res = await secureFetch(getApiUrl(`/venues/${id}/images`), {
     method: 'POST',
     body: formData
     // No headers - let secureFetch and browser handle Content-Type
@@ -141,20 +169,20 @@ export async function uploadVenueImages(id: string, imageFiles: File[]) {
 }
 
 export async function fetchEvents() {
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events/`);
+  const res = await secureFetch(getApiUrl('/events/'));
   if (!res.ok) throw new Error("Failed to fetch events");
   return res.json();
 }
 
 export async function fetchEventById(id: string) {
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events/${id}`);
+  const res = await secureFetch(getApiUrl(`/events/${id}`));
   if (!res.ok) throw new Error("Failed to fetch event");
   return res.json();
 }
 
 //approveEvent and rejectEvent functions
 export async function approveEvent(id: string) {
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events/${id}/approve`, {
+  const res = await secureFetch(getApiUrl(`/events/${id}/approve`), {
     method: 'POST'
   });
   if (!res.ok) throw new Error("Failed to approve event");
@@ -162,7 +190,7 @@ export async function approveEvent(id: string) {
 }
 
 export async function rejectEvent(id: string) {
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events/${id}/reject`, {
+  const res = await secureFetch(getApiUrl(`/events/${id}/reject`), {
     method: 'POST'
   });
   if (!res.ok) throw new Error("Failed to reject event");
@@ -195,7 +223,7 @@ export async function createEvent(eventData: {
     image: eventData.image ?? undefined
   };
 
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events`, {
+  const res = await secureFetch(getApiUrl('/events'), {
     method: 'POST',
     body: JSON.stringify(body)
   });
@@ -211,7 +239,7 @@ export async function createEvent(eventData: {
 // Delete event by id
 export async function deleteEvent(id: string) {
   // Backend route expects /api/events/delete-event/:id
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events/delete-event/${id}`, {
+  const res = await secureFetch(getApiUrl(`/events/delete-event/${id}`), {
     method: 'DELETE'
   });
   if (!res.ok) {
@@ -222,7 +250,7 @@ export async function deleteEvent(id: string) {
 }
 
 export async function fetchmyVenues() {
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/venues/myvenues`);
+  const res = await secureFetch(getVenueServiceUrl('/venues/myvenues'));
   if (!res.ok) throw new Error("Failed to fetch my venues");
   return res.json();
 }
@@ -231,8 +259,7 @@ export async function fetchmyVenues() {
 export async function uploadEventImage(eventId: string | number, file: File) {
   const formData = new FormData();
   formData.append('image', file);
-  const base = (process.env.NEXT_PUBLIC_EVENT_VENUE_SERVICE_URL || process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
-  const url = `${base}${base.endsWith('/api') ? '' : '/api'}/events/${eventId}/image`;
+  const url = getApiUrl(`/events/${eventId}/image`);
   const res = await secureFetch(url, {
     method: 'POST',
     body: formData
@@ -251,7 +278,7 @@ export async function createTenant(tenantData: {
   email: string;
   role: string;
 }) {
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/tenants`, {
+  const res = await secureFetch(getApiUrl('/tenants'), {
     method: 'POST',
     body: JSON.stringify(tenantData)
   });
@@ -260,14 +287,14 @@ export async function createTenant(tenantData: {
 }
 
 export async function getTenantByFirebaseUid(firebaseUid: string) {
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/tenants/firebase/${firebaseUid}`);
+  const res = await secureFetch(getApiUrl(`/tenants/firebase/${firebaseUid}`));
   if (!res.ok) throw new Error("Failed to fetch tenant");
   return res.json();
 }
 
 // Set Firebase custom claims for users
 export async function setUserClaims(firebaseUid: string, claims: { role: string }) {
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/users/set-claims`, {
+  const res = await secureFetch(getApiUrl('/users/set-claims'), {
     method: 'POST',
     body: JSON.stringify({ firebaseUid, claims })
   });
@@ -277,7 +304,7 @@ export async function setUserClaims(firebaseUid: string, claims: { role: string 
 
 // Bootstrap admin role (no auth required - only for initial setup)
 export async function bootstrapAdmin(firebaseUid: string, email: string) {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/bootstrap-admin`, {
+  const res = await fetch(getApiUrl('/users/bootstrap-admin'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -289,7 +316,7 @@ export async function bootstrapAdmin(firebaseUid: string, email: string) {
 }
 
 export async function deleteVenue(id: string) {
-  const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_URL}/venues/deletevenue/${id}`, {
+  const res = await secureFetch(getApiUrl(`/venues/deletevenue/${id}`), {
     method: 'DELETE'
   });
   if (!res.ok) throw new Error("Failed to delete venue");
