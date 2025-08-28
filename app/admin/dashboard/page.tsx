@@ -56,7 +56,7 @@ import { fetchEvents, approveEvent, rejectEvent } from '@/lib/api';
 const darkBg = "#181A20";
 const blueHeader = "#1877F2";
 const cardBg = "#23262F";
-const greenBorder = "#39FD48";
+const greenBorder = "#CBF83E" + '50';
 const cardShadow = "0 2px 16px 0 rgba(57,253,72,0.08)";
 
 // Animation variants for smooth transitions
@@ -355,7 +355,7 @@ export default function AdminDashboard() {
         >
           {/* Clean Header */}
           <motion.div variants={itemVariants} className="mb-12">
-            <div className="border rounded-2xl p-6 shadow-lg" style={{ backgroundColor: blueHeader, borderColor: greenBorder, boxShadow: cardShadow }}>
+            <div className=" rounded-2xl p-6 shadow-lg" style={{ backgroundColor: blueHeader, borderColor: greenBorder, boxShadow: cardShadow }}>
               <div className="flex items-center justify-between">
                 <div>
                   <motion.h1 
@@ -502,7 +502,7 @@ export default function AdminDashboard() {
                 </div>
               ) : pendingEvents.length === 0 ? (
                 <div className="text-center py-8">
-                  <Calendar className="h-12 w-12 mx-auto mb-4" style={{ color: greenBorder }} />
+                  <Calendar className="h-12 w-12 mx-auto mb-4" style={{ color: '#CBF83E' }} />
                   <p className="text-lg font-semibold" style={{ color: '#fff' }}>No Pending Events</p>
                   <p className="text-sm" style={{ color: '#ABA8A9' }}>All events have been reviewed</p>
                 </div>
@@ -520,7 +520,7 @@ export default function AdminDashboard() {
                           </div>
                           <p className="text-sm text-muted-foreground mb-3" style={{ color: '#ABA8A9' }}>{event.description}</p>
                           <div className="flex flex-wrap gap-3">
-                            <span className="text-xs rounded-full bg-primary/10 text-primary px-3 py-1" style={{ color: greenBorder, backgroundColor: greenBorder + '20' }}>
+                            <span className="text-xs rounded-full bg-primary/10 text-primary px-3 py-1" style={{ color: '#CBF83E', backgroundColor: greenBorder + '20' }}>
                               {event.category}
                             </span>
                             <span className="text-xs rounded-full bg-secondary/10 text-secondary px-3 py-1" style={{ color: '#fff', backgroundColor: '#2a2d34' }}>
@@ -570,24 +570,24 @@ export default function AdminDashboard() {
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-2xl font-bold" style={{ color: '#fff' }}>Revenue Analytics</h3>
                   <div className="flex items-center space-x-2">
-                    <BarChart3 className="h-5 w-5" style={{ color: '#CBF83E' }} />
+                    <BarChart3 className="h-5 w-5" style={{ color: '#fff' }} />
                     <span className="text-sm font-medium" style={{ color: '#fff' }}>Monthly View</span>
                   </div>
                 </div>
                 <div className="h-80">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={revenueData}>
+                    <AreaChart data={revenueData} >
                       <defs>
                         <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor={greenBorder} stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor={greenBorder} stopOpacity={0}/>
+                          <stop offset="5%" stopColor='0D6EFD' stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor='#fff' stopOpacity={0}/>
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#2a2d34" />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#808080" />
                       <XAxis dataKey="name" style={{ fill: '#fff' }} />
                       <YAxis style={{ fill: '#fff' }} />
                       <Tooltip contentStyle={{ backgroundColor: '#0f1115', border: `1px solid ${greenBorder}`, color: '#fff' }} />
-                      <Area type="monotone" dataKey="revenue" stroke={greenBorder} fillOpacity={1} fill="url(#colorRevenue)" strokeWidth={2}/>
+                      <Area type="monotone" dataKey="revenue" stroke='#0D6EFD' fillOpacity={1} fill="url(#colorRevenue)" strokeWidth={2}/>
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
@@ -603,13 +603,13 @@ export default function AdminDashboard() {
                   {recentActivities.slice(0, 6).map((activity, index) => (
                     <div key={activity.id} className="flex items-start space-x-4 p-3 rounded-xl transition-colors duration-200 hover:bg-blue-50/20">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: greenBorder + '20' }}>
-                        <Activity className="h-4 w-4" style={{ color: greenBorder }} />
+                        <Activity className="h-4 w-4" style={{ color: '#CBF83E' }} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold truncate" style={{ color: '#fff' }}>{activity.user}</p>
                         <p className="text-xs truncate" style={{ color: '#fff' }}>{activity.action}</p>
                         {activity.event && (
-                          <p className="text-xs font-medium truncate" style={{ color: greenBorder }}>{activity.event}</p>
+                          <p className="text-xs font-medium truncate" style={{ color: '#0D6EFD' }}>{activity.event}</p>
                         )}
                         <p className="text-xs mt-1 " style={{ color: '#ABA8A9' }}>{activity.time}</p>
                       </div>
@@ -620,7 +620,7 @@ export default function AdminDashboard() {
                   variant="outline" 
                   className="w-full mt-4 transition-all duration-200 hover:shadow-md"
                   onClick={() => setActivityDialogOpen(true)}
-                  style={{ borderColor: greenBorder, color: '#fff', backgroundColor: 'transparent' }}
+                  style={{ borderColor: greenBorder, color: '#fff', backgroundColor: '#0D6EFD' }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.backgroundColor = '#1f222a';
                   }}
@@ -686,7 +686,7 @@ export default function AdminDashboard() {
                           <div className="font-semibold" style={{ color: '#fff' }}>{event.name}</div>
                         </td>
                         <td className="py-4 px-6">
-                          <div className="font-medium" style={{ color: greenBorder }}>{event.tickets.toLocaleString()}</div>
+                          <div className="font-medium" style={{ color: '#CBF83E' }}>{event.tickets.toLocaleString()}</div>
                         </td>
                         <td className="py-4 px-6">
                           <div className="font-bold" style={{ color: '#fff' }}>LKR {event.revenue.toLocaleString()}</div>
@@ -728,9 +728,9 @@ export default function AdminDashboard() {
 
           {/* Mock Events and Venues */}
           <motion.div variants={itemVariants} className="mb-20">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-8"> */}
               {/* Mock Events */}
-              <div className="border rounded-2xl p-6 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
+              {/* <div className="border rounded-2xl p-6 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
                 <h3 className="text-2xl font-bold mb-4" style={{ color: '#fff' }}>Mock Events</h3>
                 <div className="space-y-4">
                   {[
@@ -755,10 +755,10 @@ export default function AdminDashboard() {
                     </div>
                   ))}
                 </div>
-              </div>
+              </div> */}
 
               {/* Mock Venues */}
-              <div className="border rounded-2xl p-6 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
+              {/* <div className="border rounded-2xl p-6 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
                 <h3 className="text-2xl font-bold mb-4" style={{ color: '#fff' }}>Mock Venues</h3>
                 <div className="space-y-4">
                   {[
@@ -784,7 +784,7 @@ export default function AdminDashboard() {
                   ))}
                 </div>
               </div>
-            </div>
+            </div> */}
           </motion.div>
 
         </motion.div>
