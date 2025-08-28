@@ -4,6 +4,7 @@ import { useState, use } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
+import { SeatingDisplay } from '@/components/ui/seating-display';
 import { 
   Calendar, 
   MapPin, 
@@ -16,7 +17,8 @@ import {
   Ticket,
   Play,
   Facebook,
-  Twitter
+  Twitter,
+  Armchair
 } from 'lucide-react';
 import { mockEvents, mockVenues } from '@/lib/mock-data';
 
@@ -195,6 +197,20 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                 )}
               </button>
               <button 
+                className={`pb-4 px-2 transition-all duration-300 ease-out relative flex items-center gap-2 ${
+                  activeTab === 'seating' 
+                    ? 'text-blue-400 transform scale-105' 
+                    : 'text-gray-400 hover:text-gray-300 hover:scale-102'
+                }`}
+                onClick={() => setActiveTab('seating')}
+              >
+                <Armchair className="h-4 w-4" />
+                Seating Map
+                {activeTab === 'seating' && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 to-blue-400 animate-pulse" />
+                )}
+              </button>
+              <button 
                 className={`pb-4 px-2 transition-all duration-300 ease-out relative ${
                   activeTab === 'reviews' 
                     ? 'text-blue-400 transform scale-105' 
@@ -344,6 +360,48 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                               </div>
                             ))}
                           </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Seating Map Tab */}
+                    <div 
+                      className={`absolute inset-0 transition-all duration-500 ease-in-out transform ${
+                        activeTab === 'seating' 
+                          ? 'opacity-100 translate-x-0 z-10' 
+                          : 'opacity-0 translate-x-8 z-0 pointer-events-none'
+                      }`}
+                    >
+                      <div>
+                        <h3 className={`text-2xl font-bold mb-8 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent transform transition-all duration-700 ${
+                          activeTab === 'seating' ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
+                        }`}>
+                          SEATING MAP
+                        </h3>
+                        
+                        <div className={`transform transition-all duration-700 ${
+                          activeTab === 'seating' ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
+                        }`} style={{ transitionDelay: '200ms' }}>
+                          {venue && venue.id ? (
+                            <SeatingDisplay 
+                              venueId={parseInt(venue.id.toString())}
+                              eventId={parseInt(id)}
+                              showPrices={true}
+                              onSeatSelect={(seatId, seatInfo) => {
+                                console.log('Seat selected:', seatId, seatInfo);
+                                // You can implement seat selection logic here
+                              }}
+                              selectedSeats={[]}
+                            />
+                          ) : (
+                            <div className="bg-gray-800/30 rounded-lg p-8 text-center">
+                              <Armchair className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+                              <h4 className="text-xl font-semibold text-gray-300 mb-2">No Seating Map Available</h4>
+                              <p className="text-gray-400">
+                                Seating arrangements have not been configured for this venue yet.
+                              </p>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>

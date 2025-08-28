@@ -3,10 +3,15 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { createVenue, uploadVenueImage } from '@/lib/api';
+import { createVenue, uploadVenueImage, createSeatingArrangement, createSeats } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import '@/utils/test-venue-creation'; // Load test utilities
 import { SeatingLayoutDesigner, type SeatingDesign } from '@/components/venue';
+import { 
+  convertSeatingDesignToArrangements,
+  validateSeatingArrangements,
+  calculateSeatingStatistics
+} from '@/utils/seatingUtils';
 import { 
   Building2,
   MapPin,
@@ -543,9 +548,69 @@ export default function CreateVenue() {
       const newVenueId = createResponse.data.id;
       console.log('🆔 New venue ID:', newVenueId);
 
-      // Step 2: Upload image if any exists
+      // Step 2: Save seating arrangements to database if custom design exists
+      if (formData.seatMap.seatingDesign && formData.seatMap.seatingDesign.seatingAreas.length > 0) {
+        console.log('🪑 Step 2: Saving seating arrangements...');
+        
+        try {
+          // Convert seating design to database format
+          const arrangements = convertSeatingDesignToArrangements(
+            parseInt(newVenueId.toString()),
+            formData.seatMap.seatingDesign
+          );
+          
+          console.log('🧮 Seating arrangements generated:', {
+            totalArrangements: arrangements.length,
+            arrangements: arrangements.map(a => ({
+              floorLabel: a.arrangement.floorLabel,
+              rows: a.arrangement.rows,
+              cols: a.arrangement.cols,
+              totalVip: a.arrangement.totalVip,
+              totalRegular: a.arrangement.totalRegular,
+              totalSeats: a.seats.length
+            }))
+          });
+          
+          // Validate arrangements
+          const validation = validateSeatingArrangements(arrangements);
+          if (!validation.isValid) {
+            console.warn('⚠️ Seating arrangement validation errors:', validation.errors);
+            throw new Error(`Seating validation failed: ${validation.errors.join(', ')}`);
+          }
+          
+          // Calculate statistics
+          const stats = calculateSeatingStatistics(arrangements);
+          console.log('📊 Seating statistics:', stats);
+          
+          // Save each arrangement to database
+          for (const { arrangement, seats } of arrangements) {
+            console.log(`💾 Saving arrangement: ${arrangement.floorLabel}`);
+            
+            // Create seating arrangement
+            const arrangementResponse = await createSeatingArrangement(arrangement);
+            const arrangementId = arrangementResponse.data.id;
+            
+            console.log(`✅ Arrangement created with ID: ${arrangementId}`);
+            
+            // Create seats in bulk
+            if (seats.length > 0) {
+              await createSeats(arrangementId, seats);
+              console.log(`✅ Created ${seats.length} seats for arrangement ${arrangementId}`);
+            }
+          }
+          
+          console.log('✅ All seating arrangements saved successfully');
+          
+        } catch (seatingError: any) {
+          console.error('⚠️ Failed to save seating arrangements:', seatingError);
+          // Don't fail the entire process, just warn the user
+          alert(`⚠️ Venue "${createResponse.data.name}" was created successfully, but seating arrangements could not be saved. You can set them up later by editing the venue.\n\nError: ${seatingError?.message || 'Unknown error'}`);
+        }
+      }
+
+      // Step 3: Upload image if any exists
       if (imageFiles.length > 0) {
-        console.log(`🖼️ Step 2: Uploading single image to venue ${newVenueId}...`);
+        console.log(`🖼️ Step 3: Uploading single image to venue ${newVenueId}...`);
         console.log('🖼️ Image file details:', {
           name: imageFiles[0].name,
           size: imageFiles[0].size,
@@ -558,14 +623,17 @@ export default function CreateVenue() {
           console.log('✅ Image uploaded successfully:', uploadResponse);
           
           // Show success message
-          alert(`✅ Venue "${createResponse.data.name}" created successfully with image!`);
+          alert(`✅ Venue "${createResponse.data.name}" created successfully with image and seating arrangements!`);
         } catch (imageError) {
           console.warn('⚠️ Venue created but image upload failed:', imageError);
-          alert(`⚠️ Venue "${createResponse.data.name}" was created successfully, but image upload failed. You can add images later by editing the venue.`);
+          alert(`⚠️ Venue "${createResponse.data.name}" was created successfully with seating arrangements, but image upload failed. You can add images later by editing the venue.`);
         }
       } else {
         // Success without images
-        alert(`✅ Venue "${createResponse.data.name}" created successfully!`);
+        const seatingMessage = (formData.seatMap.seatingDesign?.seatingAreas?.length || 0) > 0 
+          ? ' with seating arrangements' 
+          : '';
+        alert(`✅ Venue "${createResponse.data.name}" created successfully${seatingMessage}!`);
       }
       
       // Navigate to venues page
@@ -1064,6 +1132,37 @@ export default function CreateVenue() {
                                 ))}
                               </div>
                             </div>
+                            {/* Seating Statistics */}
+                            {(() => {
+                              const arrangements = convertSeatingDesignToArrangements(
+                                1, // temporary ID for preview
+                                formData.seatMap.seatingDesign
+                              );
+                              const stats = calculateSeatingStatistics(arrangements);
+                              return (
+                                <div className="mt-4 pt-4 border-t">
+                                  <span className="text-sm text-muted-foreground">Statistics Preview:</span>
+                                  <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                                    <div className="flex justify-between">
+                                      <span>Total Seats:</span>
+                                      <span className="font-medium">{stats.totalSeats}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span>VIP Seats:</span>
+                                      <span className="font-medium text-yellow-600">{stats.totalVipSeats}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span>Regular Seats:</span>
+                                      <span className="font-medium text-blue-600">{stats.totalRegularSeats}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span>Inactive:</span>
+                                      <span className="font-medium text-gray-500">{stats.totalInactiveSeats}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })()}
                           </>
                         ) : (
                           // Show traditional grid layout info

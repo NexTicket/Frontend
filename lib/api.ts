@@ -322,3 +322,48 @@ export async function deleteVenue(id: string) {
   if (!res.ok) throw new Error("Failed to delete venue");
   return res.json();
 }
+
+// Seating arrangement API functions
+export async function createSeatingArrangement(arrangementData: {
+  venueId: number;
+  floorLabel: string;
+  rows: number;
+  cols: number;
+  totalVip: number;
+  totalRegular: number;
+}) {
+  const res = await secureFetch(getApiUrl('/seating-arrangements'), {
+    method: 'POST',
+    body: JSON.stringify(arrangementData)
+  });
+  if (!res.ok) throw new Error("Failed to create seating arrangement");
+  return res.json();
+}
+
+export async function createSeats(arrangementId: number, seats: {
+  seatCode: string;
+  rowNo: number;
+  colNo: number;
+  status: 'active' | 'inactive';
+  seatType: 'vip' | 'regular' | 'none';
+  price?: number;
+}[]) {
+  const res = await secureFetch(getApiUrl('/seats/bulk'), {
+    method: 'POST',
+    body: JSON.stringify({ arrangementId, seats })
+  });
+  if (!res.ok) throw new Error("Failed to create seats");
+  return res.json();
+}
+
+export async function getSeatingArrangementsByVenue(venueId: number) {
+  const res = await publicFetch(getApiUrl(`/seating-arrangements/venue/${venueId}`));
+  if (!res.ok) throw new Error("Failed to fetch seating arrangements");
+  return res.json();
+}
+
+export async function getSeatsByArrangement(arrangementId: number) {
+  const res = await publicFetch(getApiUrl(`/seats/arrangement/${arrangementId}`));
+  if (!res.ok) throw new Error("Failed to fetch seats");
+  return res.json();
+}
