@@ -368,7 +368,7 @@ export default function VenueDetailPage({ params }: VenueDetailPageProps) {
                     }`}
                     style={{ 
                       background: activeTab === tab.id 
-                        ? 'linear-gradient(135deg, #0D6EFD, #39FD48)' 
+                        ? '#0D6EFD' 
                         : 'transparent',
                       color: activeTab === tab.id ? '#fff' : '#ABA8A9'
                     }}
@@ -758,20 +758,20 @@ export default function VenueDetailPage({ params }: VenueDetailPageProps) {
                   <h3 className="text-xl font-bold mb-6" style={{ color: '#fff' }}>Quick Actions</h3>
                   <div className="space-y-4">
                     <Button className="w-full text-white font-semibold py-3 rounded-xl hover:opacity-90 transition-opacity"
-                      style={{ background: 'linear-gradient(135deg, #39FD48, #0D6EFD)' }}>
+                      style={{ background: '#0D6EFD' }}>
                       <Phone className="mr-2 h-5 w-5" />
                       Call Venue
                     </Button>
                     <Button 
-                      variant="outline" 
-                      className="w-full py-3 rounded-xl border-[#0D6EFD] text-[#0D6EFD] hover:bg-[#0D6EFD] hover:text-white transition-all duration-300"
+                      
+                      className="w-full py-3 rounded-xl  text-white   transition-all duration-300" style={{ background: '#0D6EFD' }}
                     >
                       <Mail className="mr-2 h-5 w-5" />
                       Send Email
                     </Button>
                     <Button 
-                      variant="outline" 
-                      className="w-full py-3 rounded-xl border-[#39FD48] text-[#39FD48] hover:bg-[#39FD48] hover:text-black transition-all duration-300"
+                      
+                      className="w-full py-3 rounded-xl  text-white  hover:text-black transition-all duration-300" style={{ background: '#0D6EFD' }}
                     >
                       <MapPin className="mr-2 h-5 w-5" />
                       Get Directions
