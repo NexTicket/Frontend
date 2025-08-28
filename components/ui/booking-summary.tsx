@@ -104,7 +104,7 @@ export function BookingSummary({
                     </Button>
                   </div>
                   <span className="text-sm font-medium" style={{ color: '#CBF83E' }}>
-                    ${seat.price}
+                    {seat.price} LKR
                   </span>
                 </div>
               ))}
@@ -114,15 +114,15 @@ export function BookingSummary({
             <div className="border-t pt-4" style={{ borderColor: '#0D6EFD' + '30' }}>
               <div className="flex items-center justify-between text-sm mb-2">
                 <span style={{ color: '#ABA8A9' }}>Subtotal</span>
-                <span style={{ color: '#fff' }}>${totalPrice}</span>
+                <span style={{ color: '#fff' }}>{totalPrice} LKR</span>
               </div>
               <div className="flex items-center justify-between text-sm mb-2">
                 <span style={{ color: '#ABA8A9' }}>Service fee</span>
-                <span style={{ color: '#ABA8A9' }}>${serviceFee.toFixed(2)}</span>
+                <span style={{ color: '#ABA8A9' }}>{serviceFee.toFixed(2)} LKR</span>
               </div>
               <div className="flex items-center justify-between font-medium">
                 <span style={{ color: '#fff' }}>Total</span>
-                <span style={{ color: '#CBF83E' }}>${(totalPrice + serviceFee).toFixed(2)}</span>
+                <span style={{ color: '#CBF83E' }}>{(totalPrice + serviceFee).toFixed(2)} LKR</span>
               </div>
             </div>
 
