@@ -2,11 +2,14 @@
 
 import { useAuth } from '@/components/auth/auth-provider';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import axios from 'axios';
 
 export default function OrganizerLayout({ children }: { children: React.ReactNode }) {
   const { firebaseUser, userProfile, isLoading } = useAuth();
   const router = useRouter();
+  const [events, setEvents] = useState<any[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(false);
 
   useEffect(() => {
     // Only redirect if we're not loading and have a clear auth state
@@ -19,6 +22,25 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
         // User is authenticated but not an organizer, redirect to home
         console.log("here 2");
         router.replace('/');
+      } else if (userProfile && userProfile.role === 'organizer') {
+        // Fetch events for this organizer from event_and_venue_service
+        const fetchOrganizerEvents = async () => {
+          setEventsLoading(true);
+          try {
+            // Adjust the endpoint to match your event_and_venue_service controller/routes
+            // Example: /api/events/organizer/:organizerId
+            const response = await axios.get(
+              `${process.env.NEXT_PUBLIC_EVENT_VENUE_SERVICE_URL}/api/events/organizer/${userProfile.id}`
+            );
+            setEvents(Array.isArray(response.data) ? response.data : []);
+          } catch (error) {
+            setEvents([]);
+            console.error('Failed to fetch organizer events:', error);
+          } finally {
+            setEventsLoading(false);
+          }
+        };
+        fetchOrganizerEvents();
       }
     }
   }, [firebaseUser, userProfile, isLoading, router]);
