@@ -3,30 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/auth/auth-provider';
-import { 
-  Box, 
-  Typography, 
-  Paper, 
-  Card, 
-  CardContent, 
-  Avatar, 
-  Chip, 
-  LinearProgress,
-  IconButton,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemAvatar,
-  Divider,
-  Alert,
-  Fab,
-  Badge,
-  Container
-} from '@mui/material';
+import { motion } from 'framer-motion';
 import {
   TrendingUp,
   TrendingDown,
@@ -35,7 +12,6 @@ import {
   DollarSign,
   Activity,
   MapPin,
-  Clock,
   Star,
   AlertTriangle,
   RefreshCw,
@@ -44,16 +20,25 @@ import {
   Bell,
   Download,
   LogOut,
-  ArrowLeft
+  ArrowLeft,
+  BarChart3,
+  PieChart,
+  LineChart,
+  Eye,
+  Edit,
+  Trash2,
+  MoreVertical,
+  PersonStanding
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import {
   AreaChart,
   Area,
   BarChart,
   Bar,
-  LineChart,
+  LineChart as RechartsLineChart,
   Line,
-  PieChart,
+  PieChart as RechartsPieChart,
   Pie,
   Cell,
   XAxis,
@@ -65,6 +50,37 @@ import {
 } from 'recharts';
 import { format, subDays, startOfWeek, endOfWeek } from 'date-fns';
 import RouteGuard from '@/components/auth/routeGuard';
+import { fetchEvents, approveEvent, rejectEvent } from '@/lib/api';
+
+// Theme to match organizer dashboard
+const darkBg = "#181A20";
+const blueHeader = "#1877F2";
+const cardBg = "#23262F";
+const greenBorder = "#CBF83E" + '50';
+const cardShadow = "0 2px 16px 0 rgba(57,253,72,0.08)";
+
+// Animation variants for smooth transitions
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      delayChildren: 0.1,
+      staggerChildren: 0.05
+    }
+  }
+};
+
+const itemVariants = {
+  hidden: { y: 20, opacity: 0 },
+  visible: {
+    y: 0,
+    opacity: 1,
+    transition: {
+      duration: 0.5
+    }
+  }
+};
 
 // Mock data for analytics
 const revenueData = [
@@ -122,50 +138,36 @@ interface StatCardProps {
 
 const StatCard: React.FC<StatCardProps> = ({ title, value, icon, trend, color, subtitle }) => {
   const TrendIcon = trend && trend > 0 ? TrendingUp : TrendingDown;
-  const trendColor = trend && trend > 0 ? '#10b981' : '#ef4444';
+  const trendColor = trend && trend > 0 ? 'text-green-500' : 'text-red-500';
 
   return (
-    <RouteGuard requiredRole="admin">
-    <Card elevation={2} sx={{ height: '100%', position: 'relative', overflow: 'visible' }}>
-      <CardContent>
-        <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-          <Box>
-            <Typography variant="body2" color="text.secondary" gutterBottom>
-              {title}
-            </Typography>
-            <Typography variant="h4" fontWeight="bold" color={color}>
-              {value}
-            </Typography>
-            {subtitle && (
-              <Typography variant="body2" color="text.secondary" mt={0.5}>
-                {subtitle}
-              </Typography>
-            )}
-            {trend && (
-              <Box display="flex" alignItems="center" mt={1}>
-                <TrendIcon size={16} color={trendColor} />
-                <Typography variant="body2" color={trendColor} ml={0.5}>
-                  {Math.abs(trend)}% from last month
-                </Typography>
-              </Box>
-            )}
-          </Box>
-          <Box
-            sx={{
-              backgroundColor: `${color}20`,
-              borderRadius: 2,
-              p: 1,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            {icon}
-          </Box>
-        </Box>
-      </CardContent>
-    </Card>
-    </RouteGuard>
+    <motion.div
+      variants={itemVariants}
+      whileHover={{ scale: 1.02, y: -2 }}
+      className=" backdrop-blur-xl border rounded-2xl  p-4 shadow-xl hover:shadow-md transition-all duration-200 "
+      style={{ backgroundColor: '#191C24' , borderColor: '#39FD48' + '50',boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex-1">
+          <p className="text-sm font-medium mb-1" style={{ color: '#fff' }}>{title}</p>
+          <div className="text-2xl font-bold mb-1" style={{ color: '#ABA8A9' }}>{value}</div>
+          {subtitle && (
+            <p className="text-xs" style={{ color: '#ABA8A9' }}>{subtitle}</p>
+          )}
+          {trend && (
+            <div className="flex items-center mt-2">
+              <TrendIcon size={12} className={trendColor} />
+              <span className={`text-xs ml-1 font-medium ${trendColor}`}>
+                {Math.abs(trend)}% from last month
+              </span>
+            </div>
+          )}
+        </div>
+        <div className="rounded-lg p-3 ml-4" style={{ backgroundColor: '#D8DFEE' + '40' }}>
+          {icon}
+        </div>
+      </div>
+    </motion.div>
   );
 };
 
@@ -175,7 +177,56 @@ export default function AdminDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [activityDialogOpen, setActivityDialogOpen] = useState(false);
   const [notifications, setNotifications] = useState(3);
+  const [pendingEvents, setPendingEvents] = useState<any[]>([]);
+  const [loadingEvents, setLoadingEvents] = useState(false);
   console.log('User profile after admin redirectory:', userProfile);
+
+  // Fetch pending events
+  useEffect(() => {
+    const loadPendingEvents = async () => {
+      setLoadingEvents(true);
+      try {
+        const response = await fetchEvents();
+        const events = response?.data || response || [];
+        const pending = events.filter((event: any) => event.status === 'PENDING');
+        setPendingEvents(pending);
+      } catch (error) {
+        console.error('Failed to load pending events:', error);
+      } finally {
+        setLoadingEvents(false);
+      }
+    };
+
+    if (userProfile?.role === 'admin') {
+      loadPendingEvents();
+    }
+  }, [userProfile]);
+
+  const handleApproveEvent = async (eventId: string) => {
+    try {
+      await approveEvent(eventId);
+      // Refresh pending events
+      const response = await fetchEvents();
+      const events = response?.data || response || [];
+      const pending = events.filter((event: any) => event.status === 'PENDING');
+      setPendingEvents(pending);
+    } catch (error) {
+      console.error('Failed to approve event:', error);
+    }
+  };
+
+  const handleRejectEvent = async (eventId: string) => {
+    try {
+      await rejectEvent(eventId);
+      // Refresh pending events
+      const response = await fetchEvents();
+      const events = response?.data || response || [];
+      const pending = events.filter((event: any) => event.status === 'PENDING');
+      setPendingEvents(pending);
+    } catch (error) {
+      console.error('Failed to reject event:', error);
+    }
+  };
 
   // No need for additional auth checks - admin layout handles this
   // useEffect(() => {
@@ -203,26 +254,36 @@ export default function AdminDashboard() {
   // Show loading if auth is still loading
   if (isLoading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
-        <Typography variant="h6">Loading admin dashboard...</Typography>
-      </Box>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: darkBg }}>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-lg font-semibold" style={{ color: '#fff' }}>Loading admin dashboard...</p>
+        </div>
+      </div>
     );
   }
 
   // Show access denied if not authenticated or not admin
   if (!firebaseUser || !userProfile || userProfile.role !== 'admin') {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
-        <Paper sx={{ p: 4, textAlign: 'center' }}>
-          <Typography variant="h5" gutterBottom>Access Denied</Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: darkBg }}>
+        <div className="backdrop-blur-xl border rounded-3xl p-8 shadow-2xl text-center max-w-md" style={{ backgroundColor: cardBg, borderColor: greenBorder + '30', boxShadow: cardShadow }}>
+          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6" style={{ background: '#FF5722' + '20' }}>
+            <AlertTriangle className="h-8 w-8" style={{ color: '#FF5722' }} />
+          </div>
+          <h1 className="text-2xl font-bold mb-4" style={{ color: '#fff' }}>Access Denied</h1>
+          <p className="mb-6" style={{ color: '#ABA8A9' }}>
             You need admin privileges to access this page.
-          </Typography>
-          <Button variant="contained" onClick={() => router.push('/auth/signin')}>
+          </p>
+          <Button 
+            onClick={() => router.push('/auth/signin')}
+            className="text-white hover:opacity-90 transition-opacity"
+            style={{ background: blueHeader }}
+          >
             Sign In
           </Button>
-        </Paper>
-      </Box>
+        </div>
+      </div>
     );
   }
 
@@ -230,554 +291,505 @@ export default function AdminDashboard() {
     {
       title: 'Total Users',
       value: '2,847',
-      icon: <Users size={24} color="#3b82f6" />,
+      icon: <Users size={24} style={{ color: '#CBF83E' }} />,
       trend: 12.5,
-      color: '#3b82f6',
+      color: '#000',
       subtitle: '145 new this week'
     },
     {
       title: 'Active Events',
       value: '186',
-      icon: <Calendar size={24} color="#10b981" />,
+      icon: <Calendar size={24} style={{ color: '#CBF83E' }} />,
       trend: 8.2,
-      color: '#10b981',
+      color: '#000',
       subtitle: '23 ending soon'
     },
     {
       title: 'Monthly Revenue',
       value: 'LKR 847K',
-      icon: <DollarSign size={24} color="#f59e0b" />,
+      icon: <DollarSign size={24} style={{ color: '#CBF83E' }} />,
       trend: 15.8,
-      color: '#f59e0b',
+      color: '#CBF83E',
       subtitle: 'Target: LKR 1M'
     },
     {
       title: 'Tickets Sold',
       value: '12,493',
-      icon: <Activity size={24} color="#8b5cf6" />,
+      icon: <Activity size={24} style={{ color: '#CBF83E' }} />,
       trend: 23.1,
-      color: '#8b5cf6',
+      color: '#CBF83E',
       subtitle: '1,847 today'
     },
     {
       title: 'Active Venues',
       value: '67',
-      icon: <MapPin size={24} color="#ef4444" />,
+      icon: <MapPin size={24} style={{ color: '#CBF83E' }} />,
       trend: 5.4,
-      color: '#ef4444',
+      color: '#CBF83E',
       subtitle: '12 pending approval'
     },
     {
       title: 'Avg. Rating',
       value: '4.8',
-      icon: <Star size={24} color="#f97316" />,
+      icon: <Star size={24} style={{ color: '#CBF83E' }} />,
       trend: 2.1,
-      color: '#f97316',
+      color: '#CBF83E',
       subtitle: 'From 2,847 reviews'
     }
   ];
 
   return (
-    <Box sx={{ backgroundColor: '#f8fafc', minHeight: '100vh' }}>
-      <Container maxWidth="xl" sx={{ py: 4 }}>
-        {/* Header */}
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
-          <Box>
-            <Typography variant="h4" fontWeight="bold" color="#1e293b">
-              Admin Dashboard
-            </Typography>
-            <Typography variant="body1" color="text.secondary" mt={0.5}>
-              Welcome back, {userProfile.firstName || 'Admin'}! Here's what's happening with NexTicket today.
-            </Typography>
-          </Box>
-          <Box display="flex" gap={2} alignItems="center">
-            <Button
-              variant="outlined"
-              startIcon={<ArrowLeft />}
-              onClick={() => router.push('/dashboard')}
-              sx={{ mr: 1 }}
-            >
-              Dashboard
-            </Button>
-            <Button
-              variant="contained"
-              startIcon={<Users size={16} />}
-              onClick={() => router.push('/admin/users')}
-              sx={{ 
-                textTransform: 'none',
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)',
-                '&:hover': {
-                  background: 'linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%)',
-                  boxShadow: '0 6px 20px rgba(102, 126, 234, 0.6)',
-                  transform: 'translateY(-2px)'
-                },
-                transition: 'all 0.3s ease'
-              }}
-            >
-              Manage Users
-            </Button>
-            <IconButton 
-              onClick={handleRefresh} 
-              disabled={refreshing}
-              sx={{ backgroundColor: 'white', boxShadow: 1 }}
-            >
-              <RefreshCw className={refreshing ? 'animate-spin' : ''} size={20} />
-            </IconButton>
-            <Badge badgeContent={notifications} color="error">
-              <IconButton sx={{ backgroundColor: 'white', boxShadow: 1 }}>
-                <Bell size={20} />
-              </IconButton>
-            </Badge>
-            <Button
-              variant="contained"
-              startIcon={<Download size={16} />}
-              sx={{ textTransform: 'none' }}
-            >
-              Export Report
-            </Button>
-            <Button
-              variant="outlined"
-              startIcon={<LogOut size={16} />}
-              onClick={handleLogout}
-              sx={{ 
-                textTransform: 'none',
-                color: '#dc2626',
-                borderColor: '#dc2626',
-                '&:hover': {
-                  borderColor: '#b91c1c',
-                  backgroundColor: 'rgba(220, 38, 38, 0.04)'
-                }
-              }}
-            >
-              Logout
-            </Button>
-          </Box>
-        </Box>
-
-        {/* System Alerts */}
-        <Box mb={3}>
-          <Alert 
-            severity="warning" 
-            icon={<AlertTriangle size={20} />}
-            action={
-              <Button color="inherit" size="small">
-                Review
-              </Button>
-            }
-          >
-            <strong>System Maintenance:</strong> Scheduled maintenance on July 25, 2025 from 2:00 AM - 4:00 AM LKT
-          </Alert>
-        </Box>
-
-        {/* Stats Grid */}
-        <Box display="grid" 
-             gridTemplateColumns={{ 
-               xs: '1fr', 
-               sm: 'repeat(2, 1fr)', 
-               md: 'repeat(3, 1fr)', 
-               lg: 'repeat(6, 1fr)' 
-             }} 
-             gap={3} 
-             mb={4}>
-          {stats.map((stat, index) => (
-            <StatCard key={index} {...stat} />
-          ))}
-        </Box>
-
-        {/* Quick Actions Section */}
-        <Box display="grid" 
-             gridTemplateColumns={{ xs: '1fr', md: 'repeat(3, 1fr)' }} 
-             gap={3} 
-             mb={4}>
-          {/* User Management Quick Action */}
-          <Paper 
-            elevation={3} 
-            sx={{ 
-              p: 3, 
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: 'white',
-              cursor: 'pointer',
-              transition: 'all 0.3s ease',
-              position: 'relative',
-              overflow: 'hidden',
-              '&:hover': {
-                transform: 'translateY(-4px)',
-                boxShadow: '0 8px 25px rgba(102, 126, 234, 0.4)',
-              },
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
-                opacity: 0,
-                transition: 'opacity 0.3s ease',
-              },
-              '&:hover::before': {
-                opacity: 1,
-              }
-            }}
-            onClick={() => router.push('/admin/users')}
-          >
-            <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
-              <Box>
-                <Typography variant="h6" fontWeight="bold" gutterBottom>
-                  👥 User Management
-                </Typography>
-                <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                  Manage role requests, user permissions, and account settings
-                </Typography>
-              </Box>
-              <Box
-                sx={{
-                  backgroundColor: 'rgba(255,255,255,0.2)',
-                  borderRadius: 2,
-                  p: 1.5,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                <Users size={32} />
-              </Box>
-            </Box>
-            <Box display="flex" alignItems="center" justifyContent="space-between">
-              <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                • Review role upgrade requests<br/>
-                • Approve/reject permissions<br/>
-                • View user statistics
-              </Typography>
-              <Button
-                variant="contained"
-                size="small"
-                sx={{
-                  backgroundColor: 'rgba(255,255,255,0.2)',
-                  color: 'white',
-                  '&:hover': {
-                    backgroundColor: 'rgba(255,255,255,0.3)',
-                  }
-                }}
-              >
-                Go →
-              </Button>
-            </Box>
-          </Paper>
-
-          {/* Events Management */}
-          <Paper 
-            elevation={3} 
-            sx={{ 
-              p: 3, 
-              background: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
-              color: '#8b4513',
-              cursor: 'pointer',
-              transition: 'all 0.3s ease',
-              '&:hover': {
-                transform: 'translateY(-4px)',
-                boxShadow: '0 8px 25px rgba(252, 182, 159, 0.4)',
-              }
-            }}
-            onClick={() => router.push('/admin/events')}
-          >
-            <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
-              <Box>
-                <Typography variant="h6" fontWeight="bold" gutterBottom>
-                  🎪 Event Management
-                </Typography>
-                <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                  Oversee all events, approvals, and performance
-                </Typography>
-              </Box>
-              <Box
-                sx={{
-                  backgroundColor: 'rgba(139,69,19,0.1)',
-                  borderRadius: 2,
-                  p: 1.5,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                <Calendar size={32} />
-              </Box>
-            </Box>
-            <Typography variant="body2" sx={{ opacity: 0.8 }}>
-              186 active events • 23 pending approval
-            </Typography>
-          </Paper>
-
-          {/* Analytics & Reports */}
-          <Paper 
-            elevation={3} 
-            sx={{ 
-              p: 3, 
-              background: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
-              color: '#2d3748',
-              cursor: 'pointer',
-              transition: 'all 0.3s ease',
-              '&:hover': {
-                transform: 'translateY(-4px)',
-                boxShadow: '0 8px 25px rgba(168, 237, 234, 0.4)',
-              }
-            }}
-          >
-            <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
-              <Box>
-                <Typography variant="h6" fontWeight="bold" gutterBottom>
-                  📊 Analytics Hub
-                </Typography>
-                <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                  Deep insights and performance reports
-                </Typography>
-              </Box>
-              <Box
-                sx={{
-                  backgroundColor: 'rgba(45,55,72,0.1)',
-                  borderRadius: 2,
-                  p: 1.5,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                <Activity size={32} />
-              </Box>
-            </Box>
-            <Typography variant="body2" sx={{ opacity: 0.8 }}>
-              LKR 847K revenue • 15.8% growth this month
-            </Typography>
-          </Paper>
-        </Box>
-
-        {/* Charts Section */}
-        <Box display="grid" 
-             gridTemplateColumns={{ xs: '1fr', lg: '2fr 1fr' }} 
-             gap={3} 
-             mb={4}>
-          {/* Revenue Trend */}
-          <Paper elevation={2} sx={{ p: 3, height: 400 }}>
-            <Typography variant="h6" fontWeight="bold" mb={2}>
-              Revenue Trend
-            </Typography>
-            <ResponsiveContainer width="100%" height="90%">
-              <AreaChart data={revenueData}>
-                <defs>
-                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip 
-                  formatter={(value: any, name: string) => [
-                    name === 'revenue' ? `LKR ${value.toLocaleString()}` : value,
-                    name === 'revenue' ? 'Revenue' : name
-                  ]}
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="revenue" 
-                  stroke="#3b82f6" 
-                  fillOpacity={1} 
-                  fill="url(#colorRevenue)" 
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </Paper>
-
-          {/* Event Categories */}
-          <Paper elevation={2} sx={{ p: 3, height: 400 }}>
-            <Typography variant="h6" fontWeight="bold" mb={2}>
-              Event Categories
-            </Typography>
-            <ResponsiveContainer width="100%" height="90%">
-              <PieChart>
-                <Pie
-                  data={categoryData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
+    <div className="min-h-screen" style={{ background: darkBg }}>
+      {/* Simple Background Elements */}
+      <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-20" style={{ backgroundColor: '#ABA8A9' }}></div>
+      <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-15" style={{ backgroundColor: '#D8DFEE' }}></div>
+      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl opacity-10" style={{ backgroundColor: '#ABA8A9' }}></div>
+      
+      {/* Content Container */}
+      <div className="relative z-10 pt-8 px-8">
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={containerVariants}
+          className="max-w-7xl mx-auto"
+        >
+          {/* Clean Header */}
+          <motion.div variants={itemVariants} className="mb-12">
+            <div className=" rounded-2xl p-6 shadow-lg" style={{ backgroundColor: blueHeader, borderColor: greenBorder, boxShadow: cardShadow }}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <motion.h1 
+                    initial={{ opacity: 0, x: -30 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.6, ease: "easeOut" }}
+                    className="text-3xl font-bold mb-2"
+                    style={{ color: '#fff' }}
+                  >
+                    Admin Dashboard
+                  </motion.h1>
+                  <motion.p
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2, duration: 0.5 }}
+                    className="text-lg font-normal"
+                    style={{ color: '#fff' }}
+                  >
+                    Welcome back, {userProfile?.firstName || 'Admin'}! 
+                  </motion.p>
+                </div>
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.3, duration: 0.4 }}
                 >
-                  {categoryData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </Paper>
-        </Box>
+                  {/* <Button 
+                    onClick={handleRefresh}
+                    disabled={refreshing}
+                    className="px-6 py-3 text-white font-medium rounded-xl hover:opacity-90 transition-opacity shadow-md"
+                    style={{ background: 'linear-gradient(135deg, #0D6EFD, #1565C0)' }}
+                  >
+                    <RefreshCw className={`h-5 w-5 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                    Refresh
+                  </Button> */}
+                </motion.div>
+              </div>
+            </div>
+          </motion.div>
 
-        {/* Weekly Performance & Recent Activity */}
-        <Box display="grid" 
-             gridTemplateColumns={{ xs: '1fr', lg: '2fr 1fr' }} 
-             gap={3} 
-             mb={4}>
-          <Paper elevation={2} sx={{ p: 3, height: 400 }}>
-            <Typography variant="h6" fontWeight="bold" mb={2}>
-              Weekly Performance
-            </Typography>
-            <ResponsiveContainer width="100%" height="90%">
-              <BarChart data={weeklyData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="day" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="sales" fill="#10b981" name="Ticket Sales" />
-                <Bar dataKey="users" fill="#3b82f6" name="New Users" />
-              </BarChart>
-            </ResponsiveContainer>
-          </Paper>
+          {/* System Alert
+          <motion.div variants={itemVariants} className="mb-8">
+            <div className="bg-white border rounded-xl p-4 shadow-sm" style={{ borderColor: '#FFC107' + '50' }}>
+              <div className="flex items-center">
+                <div className="rounded-full p-2 mr-3" style={{ backgroundColor: '#FFD60A' + '20' }}>
+                  <AlertTriangle className="h-5 w-5" style={{ color: '#FF5722' }} />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-sm" style={{ color: '#FF5722' }}>System Maintenance Notice</h4>
+                  <p className="text-sm" style={{ color: '#666' }}>Scheduled maintenance on July 25, 2025 from 2:00 AM - 4:00 AM LKT</p>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="text-sm"
+                  style={{ 
+                    borderColor: '#FFC107',
+                    color: '#FF5722',
+                  }}
+                >
+                  Review
+                </Button>
+              </div>
+            </div>
+          </motion.div> */}
 
-          <Paper elevation={2} sx={{ p: 3, height: 400 }}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-              <Typography variant="h6" fontWeight="bold">
-                Recent Activity
-              </Typography>
+          {/* Quick Action Buttons */}
+          <motion.div variants={itemVariants} className="mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <Button 
-                size="small" 
-                onClick={() => setActivityDialogOpen(true)}
-                sx={{ textTransform: 'none' }}
+                onClick={() => router.push('/admin/users')}
+                className=" h-10 backdrop-blur-xl border text-lg rounded-2xl p-8 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}
+                
               >
-                View All
+                <Users className="h-8 w-8 mr-3" style={{ color: '#CBF83E' }} />
+                Manage Users
               </Button>
-            </Box>
-            <List sx={{ maxHeight: 320, overflow: 'auto' }}>
-              {recentActivities.slice(0, 5).map((activity, index) => (
-                <React.Fragment key={activity.id}>
-                  <ListItem alignItems="flex-start" sx={{ px: 0 }}>
-                    <ListItemAvatar>
-                      <Avatar src={activity.avatar} sx={{ width: 32, height: 32 }} />
-                    </ListItemAvatar>
-                    <ListItemText
-                      primary={
-                        <Typography variant="body2">
-                          <strong>{activity.user}</strong> {activity.action}
-                          {activity.event && ` for ${activity.event}`}
-                        </Typography>
-                      }
-                      secondary={
-                        <Typography variant="caption" color="text.secondary">
-                          {activity.time}
-                        </Typography>
-                      }
-                    />
-                  </ListItem>
-                  {index < recentActivities.length - 1 && <Divider />}
-                </React.Fragment>
+              <Button 
+                onClick={() => router.push('/admin/events')}
+                className=" h-10 backdrop-blur-xl border text-lg rounded-2xl p-8 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}
+              >
+                <Calendar className="h-8 w-8 mr-3" style={{ color: '#CBF83E' }}/>
+                Manage Events
+              </Button>
+              <Button 
+                onClick={() => router.push('/admin/staff')}
+                className=" h-10 backdrop-blur-xl text-lg border rounded-2xl p-8 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}
+              >
+                <PersonStanding className="h-8 w-8 mr-3" style={{ color: '#CBF83E' }} />
+                Manage Staff
+              </Button>
+              <Button 
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className=" h-10 backdrop-blur-xl text-lg border rounded-2xl p-8 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}
+              >
+                <RefreshCw className={`h-8 w-8 mr-3 ${refreshing ? 'animate-spin' : ''}`} style={{ color: '#CBF83E' }} />
+                System Refresh
+              </Button>
+            </div>
+          </motion.div>
+
+          {/* Stats Grid */}
+          <motion.div variants={itemVariants} className="mb-16">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
+              {stats.map((stat, index) => (
+                <StatCard key={index} {...stat} />
               ))}
-            </List>
-          </Paper>
-        </Box>
+            </div>
+          </motion.div>
 
-        {/* Top Events */}
-        <Paper elevation={2} sx={{ p: 3 }}>
-          <Typography variant="h6" fontWeight="bold" mb={3}>
-            Top Performing Events
-          </Typography>
-          <Box display="grid" 
-               gridTemplateColumns={{ 
-                 xs: '1fr', 
-                 sm: 'repeat(2, 1fr)', 
-                 md: 'repeat(3, 1fr)', 
-                 lg: 'repeat(5, 1fr)' 
-               }} 
-               gap={2}>
-            {topEvents.map((event) => (
-              <Card variant="outlined" sx={{ height: '100%' }} key={event.id}>
-                <CardContent>
-                  <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-                    {event.name}
-                  </Typography>
-                  <Box display="flex" justifyContent="space-between" mb={1}>
-                    <Typography variant="body2" color="text.secondary">
-                      Tickets
-                    </Typography>
-                    <Typography variant="body2" fontWeight="bold">
-                      {event.tickets.toLocaleString()}
-                    </Typography>
-                  </Box>
-                  <Box display="flex" justifyContent="space-between" mb={2}>
-                    <Typography variant="body2" color="text.secondary">
-                      Revenue
-                    </Typography>
-                    <Typography variant="body2" fontWeight="bold">
-                      LKR {(event.revenue / 1000).toFixed(0)}K
-                    </Typography>
-                  </Box>
-                  <Box display="flex" alignItems="center" justifyContent="space-between">
-                    <Typography variant="caption" color="text.secondary">
-                      Growth
-                    </Typography>
-                    <Chip
-                      size="small"
-                      label={`${event.growth > 0 ? '+' : ''}${event.growth}%`}
-                      color={event.growth > 0 ? 'success' : 'error'}
-                      variant="outlined"
-                    />
-                  </Box>
-                </CardContent>
-              </Card>
-            ))}
-          </Box>
-        </Paper>
+          {/* Pending Events Section */}
+          <motion.div variants={itemVariants} className="mb-16">
+            <div className="backdrop-blur-xl border rounded-2xl p-8 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-3xl font-bold" style={{ color: '#fff' }}>Pending Event Approvals</h3>
+                <div className="flex items-center space-x-4">
+                  <div className="text-sm font-medium" style={{ color: '#fff' }}>
+                    {loadingEvents ? 'Loading...' : `${pendingEvents.length} events pending`}
+                  </div>
+                  <Button 
+                    onClick={() => window.location.reload()}
+                    variant="outline" 
+                    size="sm" 
+                    className="transition-all duration-200 hover:shadow-md"
+                    style={{ borderColor: greenBorder, color: '#fff', backgroundColor: 'transparent' }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#1f222a';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh
+                  </Button>
+                </div>
+              </div>
+              
+              {loadingEvents ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                  <p className="mt-4 text-sm" style={{ color: '#fff' }}>Loading pending events...</p>
+                </div>
+              ) : pendingEvents.length === 0 ? (
+                <div className="text-center py-8">
+                  <Calendar className="h-12 w-12 mx-auto mb-4" style={{ color: '#CBF83E' }} />
+                  <p className="text-lg font-semibold" style={{ color: '#fff' }}>No Pending Events</p>
+                  <p className="text-sm" style={{ color: '#ABA8A9' }}>All events have been reviewed</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {pendingEvents.map((event) => (
+                    <div key={event.id} className="rounded-2xl border p-6 bg-background shadow-md" style={{ backgroundColor: darkBg, borderColor: greenBorder }}>
+                      <div className="flex flex-col lg:flex-row lg:items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-3 mb-2">
+                            <h4 className="text-xl font-semibold text-white truncate">{event.title}</h4>
+                            <span className="text-xs rounded-full bg-yellow-100 text-yellow-800 px-3 py-1 font-medium">
+                              PENDING
+                            </span>
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-3" style={{ color: '#ABA8A9' }}>{event.description}</p>
+                          <div className="flex flex-wrap gap-3">
+                            <span className="text-xs rounded-full bg-primary/10 text-primary px-3 py-1" style={{ color: '#CBF83E', backgroundColor: greenBorder + '20' }}>
+                              {event.category}
+                            </span>
+                            <span className="text-xs rounded-full bg-secondary/10 text-secondary px-3 py-1" style={{ color: '#fff', backgroundColor: '#2a2d34' }}>
+                              {event.startDate ? new Date(event.startDate).toLocaleDateString() : 'No date'}
+                            </span>
+                            {event.venue?.name && (
+                              <span className="text-xs rounded-full bg-blue-100 text-blue-800 px-3 py-1">
+                                {event.venue.name}
+                              </span>
+                            )}
+                            {event.Tenant?.name && (
+                              <span className="text-xs rounded-full bg-purple-100 text-purple-800 px-3 py-1">
+                                By: {event.Tenant.name}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="mt-4 lg:mt-0 lg:ml-6 flex space-x-2">
+                          <Button 
+                            onClick={() => handleApproveEvent(String(event.id))}
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                            size="sm"
+                          >
+                            Approve
+                          </Button>
+                          <Button 
+                            onClick={() => handleRejectEvent(String(event.id))}
+                            variant="outline"
+                            className="border-red-500 text-red-500 hover:bg-red-500 hover:text-white"
+                            size="sm"
+                          >
+                            Reject
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </motion.div>
+              {/* Quick Actions Dashboard */}
+          <motion.div variants={itemVariants} className="mb-16">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {/* Analytics Chart */}
+              <div className="lg:col-span-2 backdrop-blur-xl  border rounded-2xl p-8 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-2xl font-bold" style={{ color: '#fff' }}>Revenue Analytics</h3>
+                  <div className="flex items-center space-x-2">
+                    <BarChart3 className="h-5 w-5" style={{ color: '#fff' }} />
+                    <span className="text-sm font-medium" style={{ color: '#fff' }}>Monthly View</span>
+                  </div>
+                </div>
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={revenueData} >
+                      <defs>
+                        <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor='0D6EFD' stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor='#fff' stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#808080" />
+                      <XAxis dataKey="name" style={{ fill: '#fff' }} />
+                      <YAxis style={{ fill: '#fff' }} />
+                      <Tooltip contentStyle={{ backgroundColor: '#0f1115', border: `1px solid ${greenBorder}`, color: '#fff' }} />
+                      <Area type="monotone" dataKey="revenue" stroke='#0D6EFD' fillOpacity={1} fill="url(#colorRevenue)" strokeWidth={2}/>
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
 
-        {/* Recent Activity Dialog */}
-        <Dialog 
-          open={activityDialogOpen} 
-          onClose={() => setActivityDialogOpen(false)}
-          maxWidth="md"
-          fullWidth
-        >
-          <DialogTitle>All Recent Activities</DialogTitle>
-          <DialogContent>
-            <List>
-              {recentActivities.map((activity, index) => (
-                <React.Fragment key={activity.id}>
-                  <ListItem alignItems="flex-start">
-                    <ListItemAvatar>
-                      <Avatar src={activity.avatar} />
-                    </ListItemAvatar>
-                    <ListItemText
-                      primary={
-                        <Typography variant="body1">
-                          <strong>{activity.user}</strong> {activity.action}
-                          {activity.event && ` for ${activity.event}`}
-                        </Typography>
-                      }
-                      secondary={activity.time}
-                    />
-                  </ListItem>
-                  {index < recentActivities.length - 1 && <Divider />}
-                </React.Fragment>
-              ))}
-            </List>
-          </DialogContent>
-        </Dialog>
+              {/* Recent Activities */}
+              <div className="backdrop-blur-xl border rounded-2xl p-8 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-2xl font-bold" style={{ color: '#fff' }}>Live Activities</h3>
+                  <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                </div>
+                <div className="space-y-4">
+                  {recentActivities.slice(0, 6).map((activity, index) => (
+                    <div key={activity.id} className="flex items-start space-x-4 p-3 rounded-xl transition-colors duration-200 hover:bg-blue-50/20">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: greenBorder + '20' }}>
+                        <Activity className="h-4 w-4" style={{ color: '#CBF83E' }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold truncate" style={{ color: '#fff' }}>{activity.user}</p>
+                        <p className="text-xs truncate" style={{ color: '#fff' }}>{activity.action}</p>
+                        {activity.event && (
+                          <p className="text-xs font-medium truncate" style={{ color: '#0D6EFD' }}>{activity.event}</p>
+                        )}
+                        <p className="text-xs mt-1 " style={{ color: '#ABA8A9' }}>{activity.time}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <Button 
+                  variant="outline" 
+                  className="w-full mt-4 transition-all duration-200 hover:shadow-md"
+                  onClick={() => setActivityDialogOpen(true)}
+                  style={{ borderColor: greenBorder, color: '#fff', backgroundColor: '#0D6EFD' }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#1f222a';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  View All Activities
+                </Button>
+              </div>
+            </div>
+          </motion.div>
 
-        {/* Floating Action Button */}
-        <Fab
-          color="primary"
-          aria-label="add"
-          sx={{
-            position: 'fixed',
-            bottom: 24,
-            right: 24,
-          }}
-        >
-          <Plus />
-        </Fab>
-      </Container>
-    </Box>
+          {/* Top Events Performance */}
+          <motion.div variants={itemVariants} className="mb-16">
+            <div className="backdrop-blur-xl border rounded-2xl p-8 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-3xl font-bold" style={{ color: '#fff' }}>Top Performing Events</h3>
+                <div className="flex items-center space-x-4">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="transition-all duration-200 hover:shadow-md"
+                    style={{ borderColor: greenBorder, color: '#fff', backgroundColor: 'transparent' }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#1f222a';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Export
+                  </Button>
+                  {/* <Button 
+                    size="sm" 
+                    className="text-white hover:opacity-90 transition-opacity shadow-lg"
+                    style={{ background: '#0D6EFD' }}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Event
+                  </Button> */}
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr style={{ borderBottom: `1px solid ${greenBorder}30` }}>
+                      <th className="text-left py-4 px-6 font-semibold" style={{ color: '#fff' }}>Event Name</th>
+                      <th className="text-left py-4 px-6 font-semibold" style={{ color: '#fff' }}>Tickets Sold</th>
+                      <th className="text-left py-4 px-6 font-semibold" style={{ color: '#fff' }}>Revenue</th>
+                      <th className="text-left py-4 px-6 text-purple-800 font-semibold" style={{ color: '#fff' }}>Growth</th>
+                      <th className="text-left py-4 px-6 text-purple-800 font-semibold" style={{ color: '#fff' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {topEvents.map((event, index) => (
+                      <tr key={event.id} className="border-b transition-colors duration-200" style={{ borderColor: greenBorder + '20', backgroundColor: 'transparent' }} 
+                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#1f222a'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                      >
+                        <td className="py-4 px-6">
+                          <div className="font-semibold" style={{ color: '#fff' }}>{event.name}</div>
+                        </td>
+                        <td className="py-4 px-6">
+                          <div className="font-medium" style={{ color: '#CBF83E' }}>{event.tickets.toLocaleString()}</div>
+                        </td>
+                        <td className="py-4 px-6">
+                          <div className="font-bold" style={{ color: '#fff' }}>LKR {event.revenue.toLocaleString()}</div>
+                        </td>
+                        <td className="py-4 px-6">
+                          <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                            event.growth >= 0 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {event.growth >= 0 ? (
+                              <TrendingUp className="h-4 w-4 mr-1" />
+                            ) : (
+                              <TrendingDown className="h-4 w-4 mr-1" />
+                            )}
+                            {Math.abs(event.growth)}%
+                          </div>
+                        </td>
+                        <td className="py-4 px-6">
+                          <div className="flex items-center space-x-2">
+                            <Button variant="ghost" size="sm">
+                              <Eye className="h-4 w-4" style={{ color: '#fff' }}/>
+                            </Button>
+                            <Button variant="ghost" size="sm">
+                              <Edit className="h-4 w-4" style={{ color: '#fff' }} />
+                            </Button>
+                            <Button variant="ghost" size="sm" className="hover:opacity-80" style={{ color: '#fff' }}>
+                              <MoreVertical className="h-4 w-4"style={{ color: '#fff' }} />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Mock Events and Venues */}
+          <motion.div variants={itemVariants} className="mb-20">
+            {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-8"> */}
+              {/* Mock Events */}
+              {/* <div className="border rounded-2xl p-6 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
+                <h3 className="text-2xl font-bold mb-4" style={{ color: '#fff' }}>Mock Events</h3>
+                <div className="space-y-4">
+                  {[
+                    { id: 'e1', title: 'Rock Fest Colombo', description: 'A night of rock music with top bands.', category: 'Concert', date: '2025-09-12' },
+                    { id: 'e2', title: 'Tech Summit 2025', description: 'Talks and workshops on emerging tech.', category: 'Conference', date: '2025-10-03' },
+                    { id: 'e3', title: 'Laughter Night', description: 'Stand-up comedy special.', category: 'Comedy', date: '2025-08-21' }
+                  ].map(ev => (
+                    <div key={ev.id} className="rounded-2xl border p-4 bg-background shadow-md flex flex-col sm:flex-row items-start sm:items-center" style={{ backgroundColor: darkBg, borderColor: greenBorder }}>
+                      <div className="flex-1 min-w-0">
+                        <div className="block text-lg font-semibold text-white truncate">{ev.title}</div>
+                        <p className="text-sm text-muted-foreground truncate" style={{ color: '#ABA8A9' }}>{ev.description}</p>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          <span className="text-xs rounded-full bg-primary/10 text-primary px-3 py-1" style={{ color: greenBorder, backgroundColor: greenBorder + '20' }}>{ev.category}</span>
+                          <span className="text-xs rounded-full bg-secondary/10 text-secondary px-3 py-1" style={{ color: '#fff', backgroundColor: '#2a2d34' }}>{ev.date}</span>
+                        </div>
+                      </div>
+                      <div className="mt-4 sm:mt-0 sm:ml-4">
+                        <Button variant="outline" className="flex items-center" style={{ backgroundColor: darkBg, borderColor: greenBorder, color: '#fff' }}>
+                          View
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div> */}
+
+              {/* Mock Venues */}
+              {/* <div className="border rounded-2xl p-6 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
+                <h3 className="text-2xl font-bold mb-4" style={{ color: '#fff' }}>Mock Venues</h3>
+                <div className="space-y-4">
+                  {[
+                    { id: 'v1', name: 'Nelum Pokuna', description: 'Iconic performing arts theatre.', city: 'Colombo', state: 'WP', capacity: 1200 },
+                    { id: 'v2', name: 'Sugathadasa Indoor Stadium', description: 'Large indoor venue for sports and events.', city: 'Colombo', state: 'WP', capacity: 5000 },
+                    { id: 'v3', name: 'BMICH Hall A', description: 'Convention center hall.', city: 'Colombo', state: 'WP', capacity: 2000 }
+                  ].map(venue => (
+                    <div key={venue.id} className="rounded-2xl border p-4 bg-background shadow-md flex flex-col sm:flex-row items-start sm:items-center" style={{ backgroundColor: darkBg, borderColor: greenBorder }}>
+                      <div className="flex-1 min-w-0">
+                        <div className="block text-lg font-semibold text-white truncate">{venue.name}</div>
+                        <p className="text-sm text-muted-foreground truncate" style={{ color: '#ABA8A9' }}>{venue.description}</p>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          <span className="text-xs rounded-full bg-primary/10 text-primary px-3 py-1" style={{ color: '#fff', backgroundColor: '#2a2d34' }}>{venue.city}, {venue.state}</span>
+                          <span className="text-xs rounded-full bg-secondary/10 text-secondary px-3 py-1" style={{ color: greenBorder, backgroundColor: greenBorder + '20' }}>Capacity: {venue.capacity}</span>
+                        </div>
+                      </div>
+                      <div className="mt-4 sm:mt-0 sm:ml-4">
+                        <Button variant="outline" className="flex items-center" style={{ backgroundColor: darkBg, borderColor: greenBorder, color: '#fff' }}>
+                          View
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div> */}
+          </motion.div>
+
+        </motion.div>
+      </div>
+    </div>
   );
 }
+

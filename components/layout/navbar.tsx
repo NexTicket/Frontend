@@ -49,7 +49,7 @@ export function Navbar() {
       case 'admin':
         return [
           { href: '/admin/dashboard', label: 'Admin Panel', icon: Settings },
-          { href: '/admin/events', label: 'Manage Events', icon: Calendar },
+          { href: '/admin/staff', label: 'Manage Staff', icon: Calendar },
           { href: '/admin/users', label: 'Manage Users', icon: Users }
         ];
       // case 'checkin_officer':
@@ -68,7 +68,7 @@ export function Navbar() {
       isScrolled 
         ? 'bg-background/80 backdrop-blur-lg border-b shadow-lg' 
         : 'bg-background border-b'
-    }`}>
+    }`} style={{ backgroundColor: '#191C24', borderColor: '#191C24' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
@@ -79,11 +79,11 @@ export function Navbar() {
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center space-x-1">
             {/* Public Navigation */}
-            <Link href="/events" className="group flex items-center px-4 py-2 rounded-lg text-foreground hover:text-primary hover:bg-primary/5 transition-all duration-200">
+            <Link href="/events" className="group flex items-center px-4 py-2 rounded-lg text-white hover:text-primary hover:bg-primary/5 transition-all duration-200">
               <Calendar className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
               Events
             </Link>
-            <Link href="/venues" className="group flex items-center px-4 py-2 rounded-lg text-foreground hover:text-primary hover:bg-primary/5 transition-all duration-200">
+            <Link href="/venues" className="group flex items-center px-4 py-2 rounded-lg text-white hover:text-primary hover:bg-primary/5 transition-all duration-200">
               <MapPin className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
               Venues
             </Link>
@@ -95,7 +95,7 @@ export function Navbar() {
                 <Link 
                   key={link.href}
                   href={link.href} 
-                  className="group flex items-center px-4 py-2 rounded-lg text-foreground hover:text-primary hover:bg-primary/5 transition-all duration-200"
+                  className="group flex items-center px-4 py-2 rounded-lg text-white hover:text-primary hover:bg-primary/5 transition-all duration-200"
                 >
                   <Icon className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
                   {link.label}
@@ -136,18 +136,18 @@ export function Navbar() {
               {/* Public Navigation */}
               <Link
                 href="/events"
-                className="group flex items-center px-3 py-3 rounded-lg text-foreground hover:text-primary hover:bg-primary/5 transition-all duration-200"
+                className="group flex items-center px-3 py-3 rounded-lg text-white hover:text-primary hover:bg-primary/5 transition-all duration-200"
                 onClick={() => setIsMenuOpen(false)}
               >
-                <Calendar className="w-5 h-5 mr-3 group-hover:scale-110 transition-transform" />
+                <Calendar className="w-5 h-5 mr-3 group-hover:scale-110 transition-transform text-white" />
                 Events
               </Link>
               <Link
                 href="/venues"
-                className="group flex items-center px-3 py-3 rounded-lg text-foreground hover:text-primary hover:bg-primary/5 transition-all duration-200"
+                className="group flex items-center px-3 py-3 rounded-lg text-white hover:text-primary hover:bg-primary/5 transition-all duration-200"
                 onClick={() => setIsMenuOpen(false)}
               >
-                <MapPin className="w-5 h-5 mr-3 group-hover:scale-110 transition-transform" />
+                <MapPin className="w-5 h-5 mr-3 group-hover:scale-110 transition-transform text-white" />
                 Venues
               </Link>
               {/* Role-specific Navigation */}
@@ -164,10 +164,10 @@ export function Navbar() {
                       <Link 
                         key={link.href}
                         href={link.href}
-                        className="group flex items-center px-3 py-3 rounded-lg text-foreground hover:text-primary hover:bg-primary/5 transition-all duration-200"
+                        className="group flex items-center px-3 py-3 rounded-lg text-white hover:text-primary hover:bg-primary/5 transition-all duration-200"
                         onClick={() => setIsMenuOpen(false)}
                       >
-                        <Icon className="w-5 h-5 mr-3 group-hover:scale-110 transition-transform" />
+                        <Icon className="w-5 h-5 mr-3 group-hover:scale-110 transition-transform text-white" />
                         {link.label}
                       </Link>
                     );

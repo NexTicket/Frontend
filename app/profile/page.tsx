@@ -313,6 +313,9 @@ export default function ProfilePage() {
                   <option value="">Select a role...</option>
                   <option value="organizer">Organizer</option>
                   <option value="admin">Admin</option>
+                  <option value="venue_owner">Venue Owner</option>
+                  <option value="event_admin">Event Admin</option>
+                  <option value="checkin_officer">Check-in Officer</option>
                 </select>
                 
                 {selectedRole && (

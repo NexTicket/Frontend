@@ -1,69 +1,104 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import type { LinkProps } from 'next/link';
-import MuiLink from '@mui/material/Link';
 import { 
-  Box, 
-  TextField, 
-  Button, 
-  Typography, 
-  Alert, 
-  Paper,
-  InputAdornment,
-  IconButton,
-  Divider,
-  Chip,
-  FormControlLabel,
-  Checkbox
-} from '@mui/material';
-import { 
-  Visibility, 
-  VisibilityOff, 
-  Email, 
+  Eye, 
+  EyeOff, 
+  Mail, 
   Lock, 
-  ArrowBack,
-  Google,
-  Facebook,
-  Login,
-  AdminPanelSettings,
-  Person,
-  Business
-} from '@mui/icons-material';
+  User,
+  ArrowLeft,
+  CheckCircle,
+  AlertCircle,
+  Shield,
+  
+  UserCheck
+} from 'lucide-react';
 import { useAuth } from '@/components/auth/auth-provider';
-import { useEffect } from 'react';
-//import { useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { motion } from 'framer-motion';
 
 
 
 export default function SignInPage() {
-  const { signIn, userProfile, firebaseUser, isLoading: authLoading } = useAuth();
+  const { signIn, userProfile, firebaseUser, isLoading: authLoading, signInWithGoogle } = useAuth();
   const router = useRouter();
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [formData, setFormData] = useState({
+    email: '',
+    password: ''
+  });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
-  const { signInAndRedirect, signInWithGoogle } = useAuth();
-   
+
+  // Container and item animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        duration: 0.6,
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.5,
+        ease: [0.6, -0.05, 0.01, 0.99] as any
+      }
+    }
+  };
+
+  // Handle redirect after successful authentication
   useEffect(() => {
-  if (authLoading) return; // wait until auth status is resolved
+    if (authLoading) return;
 
-  if (firebaseUser && userProfile && !isRedirecting) {
-    setIsRedirecting(true); // prevent multiple redirects
-  }
-}, [authLoading, firebaseUser, userProfile, isRedirecting, router]);
+    if (firebaseUser && userProfile && !isRedirecting) {
+      setIsRedirecting(true);
+      console.log('User authenticated, redirecting...', { userProfile });
+      
+      // Redirect based on user role
+      switch (userProfile.role) {
+        case 'admin':
+          console.log('Redirecting to admin dashboard');
+          router.push('/admin/dashboard');
+          break;
+        case 'organizer':
+          router.push('/organizer/dashboard');
+          break;
+        case 'customer':
+          router.push('/events');
+          break;
+        default:
+          router.push('/events');
+          break;
+      }
+    }
+  }, [authLoading, firebaseUser, userProfile, isRedirecting, router]);
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!email || !password) {
+    if (!formData.email || !formData.password) {
       setError('Please enter both email and password');
       return;
     }
@@ -72,16 +107,13 @@ export default function SignInPage() {
     setError('');
 
     try {
-      console.log('Attempting signin for:', email);
-      await signIn(email, password);
+      console.log('Attempting signin for:', formData.email);
+      await signIn(formData.email, formData.password);
       console.log('SignIn successful, waiting for redirect...');
-      console.log('User profile:', userProfile);
-      await signInAndRedirect(email, password, router);
       // Redirect will be handled by useEffect above
     } catch (err: any) {
       console.error('Sign in error:', err);
       
-      // Handle specific Firebase auth errors
       let errorMessage = 'Sign in failed. Please try again.';
       
       switch (err.code) {
@@ -112,7 +144,7 @@ export default function SignInPage() {
     }
   };
 
-  const quickSignIn = async (demoEmail: string, demoPassword: string) => {
+  const quickSignIn = async (demoEmail: string, demoPassword: string, role: string) => {
     setLoading(true);
     setError('');
     
@@ -131,325 +163,342 @@ export default function SignInPage() {
   // Show loading state while auth is initializing or redirecting
   if (authLoading || isRedirecting) {
     return (
-      <Box 
-        sx={{ 
-          minHeight: '100vh',
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: 2
-        }}
-      >
-        <Paper 
-          elevation={12}
-          sx={{ 
-            maxWidth: 450,
-            width: '100%',
-            padding: 4,
-            borderRadius: 3,
-            backgroundColor: 'rgba(255, 255, 255, 0.95)',
-            backdropFilter: 'blur(10px)',
-            textAlign: 'center'
-          }}
-        >
-          <Typography variant="h6" gutterBottom>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#191C24' }}>
+        <div className="backdrop-blur-xl border rounded-3xl p-8 shadow-xl text-center max-w-md w-full mx-4" style={{ backgroundColor: '#191C24', borderColor: '#ABA8A9' + '30' }}>
+          <h2 className="text-xl font-bold text-white mb-4">
             {isRedirecting ? 'Redirecting...' : loading ? 'Signing you in...' : 'Loading...'}
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          </h2>
+          <p className="text-white opacity-70 mb-4">
             {isRedirecting 
-              ? `Welcome back! Taking you to your dashboard...`
+              ? 'Welcome back! Taking you to your dashboard...'
               : firebaseUser 
               ? 'Setting up your profile...' 
               : 'Checking authentication...'}
-          </Typography>
-          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-            <div style={{ 
-              width: '40px', 
-              height: '40px', 
-              border: '4px solid #f3f3f3',
-              borderTop: '4px solid #667eea',
-              borderRadius: '50%',
-              animation: 'spin 1s linear infinite'
-            }} />
-          </Box>
-        </Paper>
-      </Box>
+          </p>
+          <div className="w-10 h-10 border-4 border-gray-300 border-t-4 rounded-full mx-auto animate-spin" style={{ borderTopColor: '#0D6EFD' }}></div>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Box 
-      sx={{ 
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 2
-      }}
-    >
-      <Paper 
-        elevation={12}
-        sx={{ 
-          maxWidth: 450,
-          width: '100%',
-          padding: 4,
-          borderRadius: 3,
-          backgroundColor: 'rgba(255, 255, 255, 0.95)',
-          backdropFilter: 'blur(10px)'
+    <div className="min-h-screen relative" style={{ background: '#191C24' }}>
+      {/* Background Image */}
+      <div 
+        className="absolute inset-0 z-0"
+        style={{
+          backgroundImage: 'url("/Images/signup.jpg")',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          opacity: 0.3,
         }}
-      >
-        {/* Header */}
-        <Box sx={{ textAlign: 'center', mb: 3 }}>
-          
-            <Button 
-              component={Link}
-              href="/"
-              startIcon={<ArrowBack />}
-              sx={{ mb: 2, color: 'text.secondary' }}
-            >
-              Back to Home
-            </Button>
-          
-          
-          <Typography variant="h4" fontWeight="bold" color="primary" gutterBottom>
-            Welcome Back
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Sign in to your NexTicket account
-          </Typography>
-        </Box>
+      />
 
-        {/* Demo Credentials */}
-        <Alert 
-          severity="info" 
-          sx={{ mb: 3 }}
-          icon={<Login />}
+      {/* Background Elements */}
+      <div className="absolute inset-0 z-1">
+        <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-20" style={{ backgroundColor: '#ABA8A9' }}></div>
+        <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-15" style={{ backgroundColor: '#0D6EFD' }}></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl opacity-10" style={{ backgroundColor: '#0D6EFD' }}></div>
+      </div>
+
+      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 min-h-screen">
+        {/* Left Side - Welcome Section */}
+        <motion.div 
+          initial="hidden"
+          animate="visible"
+          variants={containerVariants}
+          className="hidden lg:flex items-center justify-center p-8"
         >
-          <Typography variant="body2">
-            <strong>Demo Access:</strong> Use the quick login buttons below or these credentials:
-          </Typography>
-          <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-            <Chip size="small" label="admin@nexticket.com / admin123" />
-          </Box>
-        </Alert>
-
-        {/* Form */}
-        <Box component="form" onSubmit={handleSignIn}>
-          {error && (
-            <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError('')}>
-              {error}
-            </Alert>
-          )}
-
-          {/* Email Field */}
-          <TextField
-            label="Email Address"
-            type="email"
-            variant="outlined"
-            fullWidth
-            margin="normal"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Email color="action" />
-                </InputAdornment>
-              ),
-            }}
-          />
-
-          {/* Password Field */}
-          <TextField
-            label="Password"
-            type={showPassword ? 'text' : 'password'}
-            variant="outlined"
-            fullWidth
-            margin="normal"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Lock color="action" />
-                </InputAdornment>
-              ),
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton
-                    onClick={() => setShowPassword(!showPassword)}
-                    edge="end"
+          <motion.div variants={itemVariants} className="w-full max-w-md">
+            <motion.div 
+              className="relative group cursor-pointer"
+              whileHover={{ scale: 1.02 }}
+              transition={{ duration: 0.3 }}
+            >
+              <motion.div 
+                className="absolute -inset-4 rounded-3xl blur-2xl opacity-30 transition-opacity duration-300 group-hover:opacity-50" 
+                style={{ backgroundColor: '#0D6EFD' }}
+                animate={{ 
+                  rotate: [0, 5, -5, 0],
+                  scale: [1, 1.02, 0.98, 1]
+                }}
+                transition={{ 
+                  duration: 4,
+                  repeat: Infinity,
+                  repeatType: "reverse"
+                }}
+              ></motion.div>
+              <motion.div 
+                className="relative backdrop-blur-xl border rounded-3xl p-8 text-center shadow-2xl transition-all duration-300 group-hover:shadow-3xl" 
+                style={{ backgroundColor: '#191C24' + '80', borderColor: '#0D6EFD' + '30' }}
+                whileHover={{ borderColor: '#0D6EFD' + '60' }}
+              >
+                <motion.div 
+                  className="w-32 h-32 mx-auto mb-6 rounded-2xl flex items-center justify-center transition-all duration-300" 
+                  style={{ backgroundColor: '#0D6EFD' + '20' }}
+                  whileHover={{ 
+                    scale: 1.1,
+                    backgroundColor: '#0D6EFD' + '30' 
+                  }}
+                  animate={{ 
+                    y: [0, -5, 0],
+                  }}
+                  transition={{ 
+                    duration: 3,
+                    repeat: Infinity,
+                    repeatType: "reverse"
+                  }}
+                >
+                  <motion.div
+                    animate={{ 
+                      rotate: [0, 10, -10, 0],
+                      scale: [1, 1.1, 1]
+                    }}
+                    transition={{ 
+                      duration: 2,
+                      repeat: Infinity,
+                      repeatType: "reverse"
+                    }}
                   >
-                    {showPassword ? <VisibilityOff /> : <Visibility />}
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
-          />
+                    <Shield 
+                      className="w-16 h-16 transition-colors duration-300" 
+                      style={{ color: '#0D6EFD' }} 
+                    />
+                  </motion.div>
+                </motion.div>
+                <motion.h2 
+                  className="text-3xl font-bold text-white mb-4 transition-all duration-300 group-hover:text-blue-100"
+                  animate={{ 
+                    textShadow: [
+                      '0 0 0px rgba(216, 223, 238, 0)',
+                      '0 0 10px rgba(216, 223, 238, 0.3)',
+                      '0 0 0px rgba(216, 223, 238, 0)'
+                    ]
+                  }}
+                  transition={{ 
+                    duration: 3,
+                    repeat: Infinity,
+                    repeatType: "reverse"
+                  }}
+                >
+                  Welcome Back
+                </motion.h2>
+                <motion.p 
+                  className="text-white opacity-80 text-lg leading-relaxed transition-opacity duration-300 group-hover:opacity-100"
+                  initial={{ opacity: 0.8 }}
+                  animate={{ opacity: [0.8, 1, 0.8] }}
+                  transition={{ 
+                    duration: 4,
+                    repeat: Infinity,
+                    repeatType: "reverse"
+                  }}
+                >
+                  Sign in to access your NexTicket dashboard and continue managing your events seamlessly.
+                </motion.p>
+              </motion.div>
+            </motion.div>
+          </motion.div>
+        </motion.div>
 
-          {/* Remember Me & Forgot Password */}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
-            <FormControlLabel
-              control={
-                <Checkbox 
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  color="primary"
-                />
-              }
-              label="Remember me"
-            />
-            <Button 
-              variant="text" 
-              color="primary"
-              size="small"
-            >
-              Forgot password?
-            </Button>
-          </Box>
+        {/* Right Side - Form */}
+        <motion.div 
+          initial="hidden"
+          animate="visible"
+          variants={containerVariants}
+          className="flex items-center justify-center p-8"
+        >
+          <motion.div variants={itemVariants} className="w-full max-w-md">
+            <div className="backdrop-blur-xl border rounded-3xl p-8 shadow-2xl" style={{ backgroundColor: '#191C24' + '80', borderColor: '#ABA8A9' + '30' }}>
+              {/* Header */}
+              <div className="text-center mb-8">
+                <Link href="/" className="inline-flex items-center text-white hover:opacity-80 transition-opacity mb-6">
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back to Home
+                </Link>
+                
+                <h1 className="text-3xl font-bold text-white mb-2">Sign In</h1>
+                <p className="text-white opacity-70">Welcome back to NexTicket</p>
+              </div>
 
-          {/* Submit Button */}
-          <Button
-            type="submit"
-            variant="contained"
-            fullWidth
-            size="large"
-            disabled={loading}
-            sx={{ 
-              mt: 3, 
-              mb: 2, 
-              py: 1.5,
-              fontSize: '1.1rem',
-              background: 'linear-gradient(45deg, #667eea 30%, #764ba2 90%)',
-              '&:hover': {
-                background: 'linear-gradient(45deg, #5a6fd8 30%, #6a4190 90%)',
-              }
-            }}
-          >
-            {loading ? 'Signing In...' : 'Sign In'}
-          </Button>
+              {/* Demo Access Info */}
+              {/* <div className="mb-6 p-4 rounded-lg" style={{ backgroundColor: '#0D6EFD' + '20', border: '1px solid ' + '#0D6EFD' + '30' }}>
+                <div className="flex items-center space-x-2 mb-2">
+                  <CheckCircle className="w-4 h-4" style={{ color: '#0D6EFD' }} />
+                  <p className="text-white font-medium">Demo Access Available</p>
+                </div>
+                <p className="text-white opacity-70 text-sm">Use the quick login buttons below or: admin@nexticket.com / admin123</p>
+              </div> */}
 
-          {/* Quick Demo Access */}
-          <Divider sx={{ my: 3 }}>
-            <Typography variant="body2" color="text.secondary">
-              Quick Demo Access
-            </Typography>
-          </Divider>
+              {/* Form */}
+              <form onSubmit={handleSignIn} className="space-y-6">
+                {error && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center space-x-2 p-3 rounded-lg" style={{ backgroundColor: '#ef4444' + '20', border: '1px solid #ef4444' + '30' }}
+                  >
+                    <AlertCircle className="w-5 h-5 text-red-400" />
+                    <p className="text-red-300 text-sm">{error}</p>
+                  </motion.div>
+                )}
 
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 3 }}>
-            <Button
-              variant="outlined"
-              fullWidth
-              startIcon={<AdminPanelSettings />}
-              onClick={() => quickSignIn('admin@nexticket.com', 'admin123')}
-              disabled={loading}
-              sx={{ 
-                py: 1.2,
-                borderColor: '#ff5722',
-                color: '#ff5722',
-                '&:hover': {
-                  borderColor: '#e64a19',
-                  backgroundColor: 'rgba(255, 87, 34, 0.04)'
-                }
-              }}
-            >
-              Sign in as Admin
-            </Button>
-            <Button
-              variant="outlined"
-              fullWidth
-              startIcon={<Person />}
-              onClick={() => quickSignIn('customer@nexticket.com', 'customer123')}
-              disabled={loading}
-              sx={{ 
-                py: 1.2,
-                borderColor: '#4caf50',
-                color: '#4caf50',
-                '&:hover': {
-                  borderColor: '#388e3c',
-                  backgroundColor: 'rgba(76, 175, 80, 0.04)'
-                }
-              }}
-            >
-              Sign in as Customer
-            </Button>
-            <Button
-              variant="outlined"
-              fullWidth
-              startIcon={<Business />}
-              onClick={() => quickSignIn('organizer@nexticket.com', 'organizer123')}
-              disabled={loading}
-              sx={{ 
-                py: 1.2,
-                borderColor: '#2196f3',
-                color: '#2196f3',
-                '&:hover': {
-                  borderColor: '#1976d2',
-                  backgroundColor: 'rgba(33, 150, 243, 0.04)'
-                }
-              }}
-            >
-              Sign in as Organizer
-            </Button>
-          </Box>
+                {/* Email Field */}
+                <motion.div variants={itemVariants} className="relative">
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    name="email"
+                    type="email"
+                    placeholder="Email Address"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full pl-10 pr-4 py-3 rounded-lg border bg-transparent text-white placeholder-gray-400 focus:outline-none focus:border-yellow-400 transition-all"
+                    style={{ 
+                      borderColor: '#ABA8A9' + '30'
+                    }}
+                  />
+                </motion.div>
 
-          {/* Social Login */}
-          <Divider sx={{ my: 3 }}>
-            <Typography variant="body2" color="text.secondary">
-              Or continue with
-            </Typography>
-          </Divider>
+                {/* Password Field */}
+                <motion.div variants={itemVariants} className="relative">
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    name="password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full pl-10 pr-12 py-3 rounded-lg border bg-transparent text-white placeholder-gray-400 focus:outline-none focus:border-yellow-400 transition-all"
+                    style={{ 
+                      borderColor: '#ABA8A9' + '30'
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </motion.div>
 
-          <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-            <Button
-              variant="outlined"
-              fullWidth
-              startIcon={<Google />}
-              onClick={signInWithGoogle}
-              sx={{ 
-                py: 1.5,
-                borderColor: '#db4437',
-                color: '#db4437',
-                '&:hover': {
-                  borderColor: '#c23321',
-                  backgroundColor: 'rgba(219, 68, 55, 0.04)'
-                }
-              }}
-            >
-              Google
-            </Button>
-            <Button
-              variant="outlined"
-              fullWidth
-              startIcon={<Facebook />}
-              sx={{ 
-                py: 1.5,
-                borderColor: '#3b5998',
-                color: '#3b5998',
-                '&:hover': {
-                  borderColor: '#2d4373',
-                  backgroundColor: 'rgba(59, 89, 152, 0.04)'
-                }
-              }}
-            >
-              Facebook
-            </Button>
-          </Box>
+                {/* Remember Me & Forgot Password */}
+                <motion.div variants={itemVariants} className="flex items-center justify-between">
+                  <label className="flex items-center space-x-2 text-white opacity-80 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="w-4 h-4 rounded"
+                    />
+                    <span className="text-sm">Remember me</span>
+                  </label>
+                  <button type="button" className="text-sm hover:underline" style={{ color: '#0D6EFD' }}>
+                    Forgot password?
+                  </button>
+                </motion.div>
 
-          <Box sx={{ textAlign: 'center' }}>
-            <Typography variant="body2" color="text.secondary">
-              Don&apos;t have an account?{' '}
-              <MuiLink href="/auth/signup" underline="hover" fontWeight="bold">
-                Create one now
-              </MuiLink>
-            </Typography>
-          </Box>
-        </Box>
-      </Paper>
-    </Box>
+                {/* Submit Button */}
+                <motion.div variants={itemVariants}>
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-3 text-black font-semibold rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+                    style={{ backgroundColor: '#0D6EFD' }}
+                  >
+                    {loading ? 'Signing In...' : 'Sign In'}
+                  </Button>
+                </motion.div>
+
+                {/* Quick Demo Access */}
+                {/* <motion.div variants={itemVariants}>
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t" style={{ borderColor: '#ABA8A9' + '30' }}></div>
+                    </div>
+                    <div className="relative flex justify-center text-sm">
+                      <span className="px-2 text-gray-400" style={{ backgroundColor: '#191C24' }}>Quick Demo Access</span>
+                    </div>
+                  </div>
+                </motion.div>
+
+                <motion.div variants={itemVariants} className="grid grid-cols-1 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => quickSignIn('admin@nexticket.com', 'admin123', 'admin')}
+                    disabled={loading}
+                    className="flex items-center justify-center space-x-2 py-2 px-4 border rounded-lg text-white hover:bg-gray-700 transition-colors text-sm"
+                    style={{ borderColor: '#ff5722' + '60', color: '#ff5722' }}
+                  >
+                    <Shield className="w-4 h-4" />
+                    <span>Admin Demo</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => quickSignIn('customer@nexticket.com', 'customer123', 'customer')}
+                    disabled={loading}
+                    className="flex items-center justify-center space-x-2 py-2 px-4 border rounded-lg text-white hover:bg-gray-700 transition-colors text-sm"
+                    style={{ borderColor: '#4caf50' + '60', color: '#4caf50' }}
+                  >
+                    <UserCheck className="w-4 h-4" />
+                    <span>Customer Demo</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => quickSignIn('organizer@nexticket.com', 'organizer123', 'organizer')}
+                    disabled={loading}
+                    className="flex items-center justify-center space-x-2 py-2 px-4 border rounded-lg text-white hover:bg-gray-700 transition-colors text-sm"
+                    style={{ borderColor: '#2196f3' + '60', color: '#2196f3' }}
+                  >
+                    <User className="w-4 h-4" />
+                    <span>Organizer Demo</span>
+                  </button>
+                </motion.div> */}
+
+                {/* Divider */}
+                <motion.div variants={itemVariants} className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t" style={{ borderColor: '#ABA8A9' + '30' }}></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-2 text-gray-400" style={{ backgroundColor: '#191C24' }}>Or continue with</span>
+                  </div>
+                </motion.div>
+
+                {/* Social Login */}
+                <motion.div variants={itemVariants}>
+                  <button
+                    type="button"
+                    onClick={signInWithGoogle}
+                    className="w-full py-3 px-4 border rounded-lg text-white hover:bg-gray-700 transition-colors flex items-center justify-center space-x-2"
+                    style={{ borderColor: '#ABA8A9' + '30' }}
+                  >
+                    <svg className="w-5 h-5" viewBox="0 0 24 24">
+                      <path fill="#4285f4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                      <path fill="#34a853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                      <path fill="#fbbc05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                      <path fill="#ea4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    <span>Sign in with Google</span>
+                  </button>
+                </motion.div>
+
+                {/* Sign Up Link */}
+                <motion.div variants={itemVariants} className="text-center">
+                  <p className="text-gray-400">
+                    Don't have an account?{' '}
+                    <Link href="/auth/signup" className="font-semibold hover:underline" style={{ color: '#0D6EFD' }}>
+                      Create one now
+                    </Link>
+                  </p>
+                </motion.div>
+              </form>
+            </div>
+          </motion.div>
+        </motion.div>
+      </div>
+    </div>
   );
 }
