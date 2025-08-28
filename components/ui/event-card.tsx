@@ -122,7 +122,7 @@ export function EventCard({ event, className = "" }: EventCardProps) {
           transition={{ delay: 0.4, duration: 0.4 }}
         >
           <span className="text-2xl font-bold" style={{ color: '#CBF83E' }}>
-            ${event.price}
+            LKR {event.price}
           </span>
           <motion.div
             whileHover={{ scale: 1.05 }}
