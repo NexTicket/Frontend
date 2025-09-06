@@ -322,3 +322,51 @@ export async function deleteVenue(id: string) {
   if (!res.ok) throw new Error("Failed to delete venue");
   return res.json();
 }
+
+// ===== ORDER API FUNCTIONS =====
+
+export async function createPaymentIntent(amount: number, orderId: number) {
+  const response = await secureFetch(getApiUrl('/orders/create-payment-intent'), {
+    method: 'POST',
+    body: JSON.stringify({
+      amount: amount * 100, // Convert to cents
+      orderId
+    })
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to create payment intent');
+  }
+  
+  return response.json();
+}
+
+export async function completeOrder(orderId: number, paymentIntentId: string) {
+  const response = await secureFetch(getApiUrl(`/orders/${orderId}/complete`), {
+    method: 'POST',
+    body: JSON.stringify({
+      paymentIntentId
+    })
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to complete order');
+  }
+  
+  return response.json();
+}
+
+export async function updateOrderStatus(orderId: number, status: 'pending' | 'completed' | 'failed') {
+  const response = await secureFetch(getApiUrl(`/orders/${orderId}/status`), {
+    method: 'PATCH',
+    body: JSON.stringify({
+      status
+    })
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to update order status');
+  }
+  
+  return response.json();
+}

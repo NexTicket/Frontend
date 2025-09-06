@@ -16,6 +16,12 @@ import {
 } from 'lucide-react';
 import { mockEvents, mockSeats } from '@/lib/mock-data';
 import { motion } from 'framer-motion';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements } from '@stripe/react-stripe-js';
+import PaymentForm from '@/components/checkout/PaymentForm';
+
+// Initialize Stripe
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 // Animation variants for smooth transitions
 const containerVariants = {
@@ -44,23 +50,24 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState('card');
   const [processing, setProcessing] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
   
   // Mock selected seats and event (in a real app, this would come from state/context)
   const selectedSeats = mockSeats.filter(s => s.isSelected).slice(0, 2);
   const event = mockEvents[0];
+  const orderId = 1; // This should come from your order creation logic
   
   const subtotal = selectedSeats.reduce((sum, seat) => sum + seat.price, 0);
   const serviceFee = 5;
   const total = subtotal + serviceFee;
 
-  const handlePayment = async () => {
-    setProcessing(true);
-    
-    // Simulate payment processing
-    setTimeout(() => {
-      setProcessing(false);
-      setOrderComplete(true);
-    }, 2000);
+  const handlePaymentSuccess = () => {
+    setOrderComplete(true);
+    setPaymentError(null);
+  };
+
+  const handlePaymentError = (error: string) => {
+    setPaymentError(error);
   };
 
   if (orderComplete) {
@@ -400,34 +407,24 @@ export default function CheckoutPage() {
                   </div>
                 </div>
 
-                {/* Payment Button */}
-                <Button 
-                  onClick={handlePayment}
-                  className="w-full text-white hover:opacity-90 transition-opacity" 
-                  size="lg"
-                  disabled={processing}
-                  style={{ background: '#0D6EFD' }}
-                >
-                  {processing ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      
-                      Complete Purchase
-                    </>
-                  )}
-                </Button>
-
-                {/* Security Note */}
-                <div className="mt-4 p-3 rounded-lg" style={{ backgroundColor: '#39FD48' + '10' }}>
-                  <div className="flex items-center text-sm" style={{ color: '#ABA8A9' }}>
-                    <Lock className="h-4 w-4 mr-2" style={{ color: '#39FD48' }} />
-                    <span>Your payment information is secure and encrypted</span>
+                {/* Payment Error Display */}
+                {paymentError && (
+                  <div className="p-3 rounded-lg" style={{ backgroundColor: '#ef4444' + '20', borderColor: '#ef4444' + '50' }}>
+                    <p className="text-sm" style={{ color: '#ef4444' }}>
+                      {paymentError}
+                    </p>
                   </div>
-                </div>
+                )}
+
+                {/* Payment Form */}
+                <Elements stripe={stripePromise}>
+                  <PaymentForm 
+                    orderId={orderId}
+                    total={total}
+                    onPaymentSuccess={handlePaymentSuccess}
+                    onPaymentError={handlePaymentError}
+                  />
+                </Elements>
               </div>
             </motion.div>
           </div>
