@@ -7,25 +7,19 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Plus, 
   Calendar, 
-  Users, 
   MapPin,
   Search,
   Filter,
-  SortAsc,
-  SortDesc,
   Grid3X3,
   List,
   Eye,
   Edit,
-  Copy,
-  Archive,
   MoreVertical,
   Clock,
   DollarSign,
   Tag,
   Ticket,
   TrendingUp,
-  X,
   ArrowLeft
 } from 'lucide-react';
 import { mockEvents } from '@/lib/mock-data';
@@ -41,28 +35,21 @@ export default function OrganizerEventsPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<SortOption>('date-asc');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
-  const [showFilters, setShowFilters] = useState(false);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 500]);
   const [selectedVenue, setSelectedVenue] = useState<string>('all');
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   // Get today's date for comparison
   const today = new Date().toISOString().split('T')[0];
 
-  // Get unique categories and venues for filters
+  // Get unique categories for filters
   const categories = useMemo(() => {
     const cats = [...new Set(mockEvents.map(event => event.category))];
     return cats.sort();
   }, []);
 
-  const venues = useMemo(() => {
-    const venuesList = [...new Set(mockEvents.map(event => event.venue))];
-    return venuesList.sort();
-  }, []);
-
   // Filter and sort events
   const filteredAndSortedEvents = useMemo(() => {
-    let filtered = mockEvents.filter(event => {
+    const filtered = mockEvents.filter(event => {
       // Search filter
       const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -424,151 +411,88 @@ export default function OrganizerEventsPage() {
           </div>
         </div>
 
-        {/* Search and Filters */}
-        <div className="bg-card rounded-lg border p-6 mb-8 hover:shadow-lg hover:shadow-primary/5 dark:hover:shadow-primary/10 transition-all duration-300">
-          <div className="space-y-4">
-            {/* Search Bar */}
-            <div className="relative group">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors duration-200" />
-              <input
-                type="text"
-                placeholder="Search events by title, description, venue, or tags..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border rounded-lg bg-background hover:border-primary/30 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary dark:focus:ring-primary/30 transition-all duration-200"
-              />
-            </div>
-
-            {/* Quick Filters */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2">
-                  <label className="text-sm font-medium">Status:</label>
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value as EventStatus)}
-                    className="px-3 py-1 border rounded bg-background text-sm hover:border-primary/30 focus:border-primary focus:ring-1 focus:ring-primary/20 dark:focus:ring-primary/30 transition-all duration-200"
-                  >
-                    <option value="all">All Events</option>
-                    <option value="upcoming">Upcoming</option>
-                    <option value="today">Today</option>
-                    <option value="past">Past</option>
-                  </select>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <label className="text-sm font-medium">Category:</label>
-                  <select
-                    value={categoryFilter}
-                    onChange={(e) => setCategoryFilter(e.target.value)}
-                    className="px-3 py-1 border rounded bg-background text-sm hover:border-primary/30 focus:border-primary focus:ring-1 focus:ring-primary/20 dark:focus:ring-primary/30 transition-all duration-200"
-                  >
-                    <option value="all">All Categories</option>
-                    {categories.map(category => (
-                      <option key={category} value={category}>{category}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <label className="text-sm font-medium">Sort by:</label>
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as SortOption)}
-                    className="px-3 py-1 border rounded bg-background text-sm hover:border-primary/30 focus:border-primary focus:ring-1 focus:ring-primary/20 dark:focus:ring-primary/30 transition-all duration-200"
-                  >
-                    <option value="date-asc">Date (Earliest)</option>
-                    <option value="date-desc">Date (Latest)</option>
-                    <option value="title-asc">Title (A-Z)</option>
-                    <option value="title-desc">Title (Z-A)</option>
-                    <option value="price-asc">Price (Low-High)</option>
-                    <option value="price-desc">Price (High-Low)</option>
-                    <option value="capacity-asc">Capacity (Small-Large)</option>
-                    <option value="capacity-desc">Capacity (Large-Small)</option>
-                  </select>
-                </div>
+        {/* Horizontal Search Bar */}
+        <div className="mb-8">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex flex-col sm:flex-row gap-4 items-center" style={{ backgroundColor: '#191C24', padding: '1.5rem', borderRadius: '0.5rem', border: `1px solid #CBF83E50` }}>
+              {/* Search Input */}
+              <div className="relative flex-1 w-full sm:w-auto">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search events by title, description, venue, or tags..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-12 pr-4 py-3 border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  style={{ backgroundColor: '#191C24', borderColor: '#CBF83E50' }}
+                />
               </div>
 
-              <div className="flex items-center space-x-2">
+              {/* Filters Row */}
+              <div className="flex gap-3 w-full sm:w-auto">
+                {/* Status Filter */}
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as EventStatus)}
+                  className="px-4 py-3 border rounded-lg text-white bg-transparent focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent min-w-[130px]"
+                  style={{ backgroundColor: '#191C24', borderColor: '#CBF83E50' }}
+                >
+                  <option value="all" className="bg-gray-800">All Events</option>
+                  <option value="upcoming" className="bg-gray-800">Upcoming</option>
+                  <option value="today" className="bg-gray-800">Today</option>
+                  <option value="past" className="bg-gray-800">Past</option>
+                </select>
+
+                {/* Category Filter */}
+                <select
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  className="px-4 py-3 border rounded-lg text-white bg-transparent focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent min-w-[140px]"
+                  style={{ backgroundColor: '#191C24', borderColor: '#CBF83E50' }}
+                >
+                  <option value="all" className="bg-gray-800">All Categories</option>
+                  {categories.map(category => (
+                    <option key={category} value={category} className="bg-gray-800">{category}</option>
+                  ))}
+                </select>
+
+                {/* Sort Filter */}
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as SortOption)}
+                  className="px-4 py-3 border rounded-lg text-white bg-transparent focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent min-w-[150px]"
+                  style={{ backgroundColor: '#191C24', borderColor: '#CBF83E50' }}
+                >
+                  <option value="date-asc" className="bg-gray-800">Date (Earliest)</option>
+                  <option value="date-desc" className="bg-gray-800">Date (Latest)</option>
+                  <option value="title-asc" className="bg-gray-800">Title (A-Z)</option>
+                  <option value="title-desc" className="bg-gray-800">Title (Z-A)</option>
+                  <option value="price-asc" className="bg-gray-800">Price (Low-High)</option>
+                  <option value="price-desc" className="bg-gray-800">Price (High-Low)</option>
+                </select>
+
+                {/* Clear Filters Button */}
                 <Button
                   variant="outline"
-                  size="sm"
-                  onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                  className="hover:bg-primary/10 dark:hover:bg-primary/20 hover:border-primary/30 transition-all duration-200"
+                  onClick={clearFilters}
+                  className="px-6 py-3 text-white border hover:bg-green-500/10 transition-colors whitespace-nowrap"
+                  style={{ borderColor: '#CBF83E50' }}
                 >
                   <Filter className="mr-2 h-4 w-4" />
-                  Advanced Filters
+                  Clear
                 </Button>
+
+                {/* View Mode Toggle */}
                 <Button
                   variant="outline"
-                  size="sm"
                   onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
-                  className="hover:bg-primary/10 dark:hover:bg-primary/20 hover:border-primary/30 transition-all duration-200"
+                  className="px-6 py-3 text-white border hover:bg-green-500/10 transition-colors whitespace-nowrap"
+                  style={{ borderColor: '#CBF83E50' }}
                 >
                   {viewMode === 'grid' ? <List className="h-4 w-4" /> : <Grid3X3 className="h-4 w-4" />}
                 </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={clearFilters}
-                  className="hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-200 dark:hover:border-red-800 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200"
-                >
-                  <X className="mr-2 h-4 w-4" />
-                  Clear
-                </Button>
               </div>
             </div>
-
-            {/* Advanced Filters */}
-            <AnimatePresence>
-              {showAdvancedFilters && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="border-t pt-4"
-                >
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Venue:</label>
-                      <select
-                        value={selectedVenue}
-                        onChange={(e) => setSelectedVenue(e.target.value)}
-                        className="w-full px-3 py-2 border rounded bg-background hover:border-primary/30 focus:border-primary focus:ring-1 focus:ring-primary/20 dark:focus:ring-primary/30 transition-all duration-200"
-                      >
-                        <option value="all">All Venues</option>
-                        {venues.map(venue => (
-                          <option key={venue} value={venue}>{venue}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2">
-                        Price Range: ${priceRange[0]} - ${priceRange[1]}
-                      </label>
-                      <div className="flex items-center space-x-4">
-                        <input
-                          type="range"
-                          min="0"
-                          max="500"
-                          value={priceRange[0]}
-                          onChange={(e) => setPriceRange([parseInt(e.target.value), priceRange[1]])}
-                          className="flex-1 accent-primary hover:accent-primary/80 transition-colors duration-200"
-                        />
-                        <input
-                          type="range"
-                          min="0"
-                          max="500"
-                          value={priceRange[1]}
-                          onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value)])}
-                          className="flex-1 accent-primary hover:accent-primary/80 transition-colors duration-200"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
           </div>
         </div>
 
