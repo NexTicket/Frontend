@@ -188,7 +188,9 @@ export async function fetchEventsByVenueId(venueId: number | string) {
 }
 
 export async function fetchEventById(id: string) {
-  // First try with public fetch for general access
+
+  // Backend route currently exposes GET /api/events/geteventbyid/:id
+
   const res = await publicFetch(getApiUrl(`/events/geteventbyid/${id}`));
   if (!res.ok) throw new Error("Failed to fetch event");
   return res.json();

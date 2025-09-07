@@ -1,12 +1,14 @@
 "use client"
 
-import React,{ useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+
 import { Calendar, Filter, MapPin, Clock, Users, Star, Ticket } from 'lucide-react';
 import { fetchEvents } from '@/lib/api';
 import Image from 'next/image';
 import { useRef } from 'react';
+
 
 interface Event {
   id: number;
@@ -33,8 +35,12 @@ interface Event {
 }
 
 export default function EventsPage() {
+  const [events, setEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+
   const [sortBy, setSortBy] = useState('date');
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [activeTab, setActiveTab] = useState('all'); // Changed from 'movies' to 'all'
@@ -200,220 +206,114 @@ export default function EventsPage() {
                         <span className="text-xs text-gray-300">(2019)</span>
                         <span className="text-xs text-gray-300">{event.category}</span>
                         <span className="text-xs text-gray-300">{event.category}</span>
+
                       </div>
-                      <p className="text-gray-200 text-sm line-clamp-2 mb-2">{event.description}</p>
-                      <div className="flex gap-2">
-                        <Link href={`/events/${event.id}`}><Button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded">Buy a Ticket</Button></Link>
                       </div>
                     </div>
-                  )}
                 </div>
               );
-            })}
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="text-center py-12">
+            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-6 max-w-md mx-auto">
+              <h3 className="text-xl font-semibold text-destructive mb-2">Error Loading Events</h3>
+              <p className="text-muted-foreground mb-4">{error}</p>
+              <Button 
+                onClick={() => window.location.reload()} 
+                variant="outline"
+              >
+                Try Again
+              </Button>
+            </div>
           </div>
-          {/* Right Arrow */}
-          <button onClick={handleNext} className="absolute right-0 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 rounded-full p-3 z-30"><span className="text-3xl">&#8594;</span></button>
         </div>
       </div>
+    );
+  }
 
-      {/* Filter/Search Bar - Vertical Layout */}
-      <div className="max-w-6xl mx-auto mt-10 mb-8 flex gap-6">
-        {/* Sidebar Filters */}
-        <div className="w-80 bg-[#23232b] rounded-xl p-6 space-y-6 shadow-lg h-fit">
-          <div className="space-y-4">
+  return (
+    <div className="min-h-screen " style={{ backgroundColor: '#191C24' }}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl md:text-4xl text-white font-bold text-foreground mb-4">
+            Discover Events
+          </h1>
+          <p className="text-lg text-muted-foreground text-white">
+            Find amazing events happening near you
+          </p>
+      </div>
+
+        {/* Search and Filters */}
+        <div className="bg-card rounded-lg  p-6 mb-8" style={{ backgroundColor: '#191C24', borderColor: '#CBF83E'+'50' }}>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4" style={{ backgroundColor: '#191C24' }}>
+            {/* Search */}
+            <div className="relative" style={{ backgroundColor: '#191C24' }}>
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground"  />
             <input
               type="text"
-              placeholder={`Search ${activeTab === 'movies' ? 'movies' : 'events'}...`}
+                placeholder="Search events..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-4 py-2 rounded bg-[#18181c] border border-[#333] text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-10 pr-4 py-2 border rounded-md placeholder-white bg-background " style={{  backgroundColor: '#191C24' , borderColor: '#CBF83E'+'50' }}
             />
+            </div>
             
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-blue-400">
-                {activeTab === 'movies' ? 'Genre' : 'Event Type'}
-              </label>
+            {/* Category Filter */}
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full px-4 py-2 rounded bg-[#18181c] border border-[#333] text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-4 py-2 border rounded-md text-white bg-background" style={{ backgroundColor: '#191C24' , borderColor: '#CBF83E'+'50' }}
               >
-                <option value="all">
-                  {activeTab === 'movies' ? 'All Genres' : 'All Event Types'}
+              {categories.map((cat: string) => (
+                <option key={cat} value={cat}>
+                  {cat === 'all' ? 'All Categories' : cat}
                 </option>
-                {(activeTab === 'movies' ? movieCategories : categories.slice(1)).map(category => (
-                  <option key={category} value={category}>{category}</option>
                 ))}
               </select>
-            </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-blue-400">Sort By</label>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="w-full px-4 py-2 rounded bg-[#18181c] border border-[#333] text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="date">{activeTab === 'movies' ? 'Show Time' : 'Event Date'}</option>
-                <option value="price">{activeTab === 'movies' ? 'Ticket Price' : 'Price'}</option>
-              </select>
-            </div>
-
-            <div className="space-y-3">
-              <label className="text-sm font-medium text-blue-400">
-                {activeTab === 'movies' ? 'Show Times' : 'Event Dates'}
-              </label>
-              <div className="space-y-2">
-                <label className="flex items-center space-x-2">
-                  <input type="checkbox" className="rounded border-gray-300" />
-                  <span className="text-sm">Today</span>
-                </label>
-                <label className="flex items-center space-x-2">
-                  <input type="checkbox" className="rounded border-gray-300" />
-                  <span className="text-sm">Tomorrow</span>
-                </label>
-                <label className="flex items-center space-x-2">
-                  <input type="checkbox" className="rounded border-gray-300" />
-                  <span className="text-sm">Weekend</span>
-                </label>
-                {activeTab === 'movies' && (
-                  <>
-                    <label className="flex items-center space-x-2">
-                      <input type="checkbox" className="rounded border-gray-300" />
-                      <span className="text-sm">Matinee (Before 6 PM)</span>
-                    </label>
-                    <label className="flex items-center space-x-2">
-                      <input type="checkbox" className="rounded border-gray-300" />
-                      <span className="text-sm">Evening (After 6 PM)</span>
-                    </label>
-                  </>
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <label className="text-sm font-medium text-blue-400">
-                {activeTab === 'movies' ? 'Ticket Price' : 'Price Range'}
-              </label>
-              {activeTab === 'movies' ? (
-                <div className="space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    <button className="px-3 py-2 text-xs border border-gray-600 rounded hover:bg-blue-600 hover:border-blue-600 transition-colors">$10 - $15</button>
-                    <button className="px-3 py-2 text-xs border border-gray-600 rounded hover:bg-blue-600 hover:border-blue-600 transition-colors">$16 - $20</button>
-                  </div>
-                  <button className="px-3 py-2 text-xs border border-gray-600 rounded hover:bg-blue-600 hover:border-blue-600 transition-colors w-full">Premium ($21+)</button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    <button className="px-3 py-2 text-xs border border-gray-600 rounded hover:bg-blue-600 hover:border-blue-600 transition-colors">$0 - $50</button>
-                    <button className="px-3 py-2 text-xs border border-gray-600 rounded hover:bg-blue-600 hover:border-blue-600 transition-colors">$51 - $200</button>
-                  </div>
-                  <button className="px-3 py-2 text-xs border border-gray-600 rounded hover:bg-blue-600 hover:border-blue-600 transition-colors w-full">Premium ($201+)</button>
-                </div>
-              )}
-            </div>
-
-            {activeTab === 'movies' && (
-              <div className="space-y-3">
-                <label className="text-sm font-medium text-blue-400">Theater Features</label>
-                <div className="space-y-2">
-                  <label className="flex items-center space-x-2">
-                    <input type="checkbox" className="rounded border-gray-300" />
-                    <span className="text-sm">IMAX</span>
-                  </label>
-                  <label className="flex items-center space-x-2">
-                    <input type="checkbox" className="rounded border-gray-300" />
-                    <span className="text-sm">3D</span>
-                  </label>
-                  <label className="flex items-center space-x-2">
-                    <input type="checkbox" className="rounded border-gray-300" />
-                    <span className="text-sm">Dolby Atmos</span>
-                  </label>
-                  <label className="flex items-center space-x-2">
-                    <input type="checkbox" className="rounded border-gray-300" />
-                    <span className="text-sm">Reclining Seats</span>
-                  </label>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'events' && (
-              <div className="space-y-3">
-                <label className="text-sm font-medium text-blue-400">Event Features</label>
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <input type="checkbox" className="rounded border-gray-300" />
-                    <span className="text-sm">Outdoor Venue</span>
-                  </div>
-                  <label className="flex items-center space-x-2">
-                    <input type="checkbox" className="rounded border-gray-300" />
-                    <span className="text-sm">Food & Drinks</span>
-                  </label>
-                  <label className="flex items-center space-x-2">
-                    <input type="checkbox" className="rounded border-gray-300" />
-                    <span className="text-sm">VIP Access</span>
-                  </label>
-                  <label className="flex items-center space-x-2">
-                    <input type="checkbox" className="rounded border-gray-300" />
-                    <span className="text-sm">Meet & Greet</span>
-                  </label>
-                </div>
-              </div>
-            )}
-
-            <div className="flex gap-2">
+            {/* Clear Filters */}
               <Button
                 variant="outline"
+              style={{  backgroundColor: '#191C24' , borderColor: '#CBF83E'+'50' }}
+              className='text-white hover:text-white'
                 onClick={() => {
                   setSearchTerm('');
                   setSelectedCategory('all');
-                  setSortBy('date');
-                }}
-                className="flex-1 border-white text-white hover:bg-white/10"
-              >
-                <Filter className="mr-2 h-4 w-4" />Clear
+              }}
+            >
+              <Filter className="mr-2 h-4 w-4" />
+              Clear Filters
               </Button>
-              <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white">
-                {activeTab === 'movies' ? 'Movie Pass' : 'Event Pass'}
-              </Button>
-            </div>
           </div>
         </div>
 
-        {/* Main Content */}
-        <div className="flex-1">
-          {/* Tab Navigation */}
-          <div className="mb-8">
-            <div className="flex space-x-1 bg-[#23232b] rounded-lg p-1 w-fit">
-              <button
-                onClick={() => {
-                  setActiveTab('movies');
-                  setSelectedCategory('all'); // Reset category when switching tabs
-                }}
-                className={`px-6 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
-                  activeTab === 'movies'
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-gray-400 hover:text-white hover:bg-[#2a2a32]'
-                }`}
-              >
-                Movies
-              </button>
-              <button
-                onClick={() => {
-                  setActiveTab('events');
-                  setSelectedCategory('all'); // Reset category when switching tabs
-                }}
-                className={`px-6 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
-                  activeTab === 'events'
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-gray-400 hover:text-white hover:bg-[#2a2a32]'
-                }`}
-              >
-                Events
-              </button>
-            </div>
+        {/* Events Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" style={{ backgroundColor: '#191C24' }}>
+          {filteredEvents.map((event: any) => {
+            return (
+              <div key={event.id} className="bg-card rounded-lg border shadow-lg overflow-hidden hover:shadow-xl transition-shadow" style={{  backgroundColor: '#191C24' , borderColor: '#CBF83E'+'50' }}>
+                <div className="aspect-video bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center overflow-hidden">
+                  {event.image ? (
+                    <img 
+                      src={event.image} 
+                      alt={event.title || 'Event'} 
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                        (e.target as HTMLImageElement).nextElementSibling!.classList.remove('hidden');
+                      }}
+                    />
+                  ) : (
+                    <Calendar className="h-12 w-12 text-primary" />
+                  )}
+                  <Calendar className="h-12 w-12 text-primary hidden" />
           </div>
+
 
           {/* Featured Section */}
           <div className="mb-12">
@@ -439,12 +339,15 @@ export default function EventsPage() {
                           Buy a Ticket
                         </Button>
                       </Link>
+
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+
+                  <div className="flex items-center text-sm text-muted-foreground mb-4" style={{ color: '#198754' }}>
+                    <Calendar className="h-4 w-4  mr-1"  style={{ color: '#CBF83E' }} />
+                    {event.startDate ? new Date(event.startDate).toISOString().split('T')[0] : 'Date TBA'}
           </div>
+
 
           {/* All Events Section */}
           <div>
@@ -469,22 +372,54 @@ export default function EventsPage() {
                           Buy a Ticket
                         </Button>
                       </Link>
+
                     </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <Link href={`/events/${event.id || event._id || 'unknown'}`} className="flex-1">
+                      <Button className="w-full" style={{ backgroundColor: '#0D6EFD' }}>View Details</Button>
+                    </Link>
                   </div>
                 </div>
-              ))}
+              </div>
+            );
+          })}
             </div>
-            {filteredEvents.length === 0 && (
+
+        {/* No results */}
+        {!loading && events.length === 0 && !error && (
               <div className="text-center py-12">
                 <Calendar className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-xl font-semibold mb-2">No events found</h3>
-                <p className="text-muted-foreground">
-                  Try adjusting your search criteria or check back later.
-                </p>
+            <h3 className="text-xl font-semibold mb-2">No events in database</h3>
+            <p className="text-muted-foreground mb-4">
+              There are no events available in the database yet.
+            </p>
+            <Button onClick={() => window.location.reload()}>
+              Refresh Page
+            </Button>
               </div>
             )}
+        
+        {/* No filtered results */}
+        {!loading && events.length > 0 && filteredEvents.length === 0 && (
+          <div className="text-center py-12">
+            <Calendar className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-xl font-semibold mb-2">No events match your filters</h3>
+            <p className="text-muted-foreground mb-4">
+              Try adjusting your search criteria to find events.
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSearchTerm('');
+                setSelectedCategory('all');
+              }}
+            >
+              Clear All Filters
+            </Button>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
