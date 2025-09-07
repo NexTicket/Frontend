@@ -176,7 +176,7 @@ export async function uploadVenueImages(id: string, imageFiles: File[]) {
 }
 
 export async function fetchEvents() {
-  const res = await secureFetch(getApiUrl('/events/'));
+  const res = await publicFetch(getApiUrl('/events/'));
   if (!res.ok) throw new Error("Failed to fetch events");
   return res.json();
 }
@@ -188,7 +188,8 @@ export async function fetchEventsByVenueId(venueId: number | string) {
 }
 
 export async function fetchEventById(id: string) {
-  const res = await secureFetch(getApiUrl(`/events/${id}`));
+  // First try with public fetch for general access
+  const res = await publicFetch(getApiUrl(`/events/geteventbyid/${id}`));
   if (!res.ok) throw new Error("Failed to fetch event");
   return res.json();
 }

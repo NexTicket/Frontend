@@ -3,39 +3,93 @@
 import React,{ useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Calendar, Filter } from 'lucide-react';
-import { mockEvents } from '@/lib/mock-data';
+import { Calendar, Filter, MapPin, Clock, Users, Star, Ticket } from 'lucide-react';
+import { fetchEvents } from '@/lib/api';
 import Image from 'next/image';
 import { useRef } from 'react';
+
+interface Event {
+  id: number;
+  title: string;
+  description: string;
+  startDate: string;
+  endDate?: string;
+  startTime?: string;
+  endTime?: string;
+  category: string;
+  type: string;
+  status: string;
+  image?: string;
+  venueId?: number;
+  Tenant?: {
+    id: number;
+    name: string;
+  };
+  venue?: {
+    id: number;
+    name: string;
+    location?: string;
+  };
+}
 
 export default function EventsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState('date');
   const [carouselIndex, setCarouselIndex] = useState(0);
-  const [activeTab, setActiveTab] = useState('movies'); // New tab state
+  const [activeTab, setActiveTab] = useState('all'); // Changed from 'movies' to 'all'
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
 
-  const categories = ['all', 'Music', 'Technology', 'Theater', 'Food', 'Art'];
+  const categories = ['all', 'MUSIC', 'SPORTS', 'THEATER', 'COMEDY', 'CONFERENCE', 'FESTIVAL', 'WORKSHOP', 'OTHER'];
   const movieCategories = ['Action', 'Comedy', 'Drama', 'Horror', 'Sci-Fi', 'Romance'];
   
-  // Filter events based on active tab
-  const allEvents = mockEvents;
-  const movieEvents = allEvents.filter(event => 
-    event.tags.includes('movie')
-  );
-  const nonMovieEvents = allEvents.filter(event => !movieEvents.includes(event));
+  // Load events from API
+  useEffect(() => {
+    const loadEvents = async () => {
+      try {
+        setLoading(true);
+        console.log('🎯 Loading events from API...');
+        const response = await fetchEvents();
+        console.log('🎯 Events loaded:', response);
+        
+        if (response && response.data) {
+          setEvents(response.data);
+        } else {
+          setEvents([]);
+        }
+      } catch (err) {
+        console.error('❌ Failed to load events:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load events');
+        setEvents([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadEvents();
+  }, []);
   
-  const currentEvents = activeTab === 'movies' ? movieEvents : nonMovieEvents;
-  const featuredEvents = mockEvents.slice(0, 5); // Common hero shows all events
+  // Filter events based on active tab and type
+  const allEvents = events;
+  const movieEvents = allEvents.filter(event => 
+    event.type === 'MOVIE'
+  );
+  const nonMovieEvents = allEvents.filter(event => event.type !== 'MOVIE');
+  
+  const currentEvents = activeTab === 'movies' ? movieEvents : 
+                       activeTab === 'events' ? nonMovieEvents : allEvents;
+  const featuredEvents = allEvents.slice(0, 5); // Common hero shows all events
 
   // Carousel navigation
-  const handlePrev = () => setCarouselIndex((prev) => (prev === 0 ? featuredEvents.length - 1 : prev - 1));
-  const handleNext = () => setCarouselIndex((prev) => (prev === featuredEvents.length - 1 ? 0 : prev + 1));
+  const handlePrev = () => setCarouselIndex((prev) => (prev === 0 ? Math.max(0, featuredEvents.length - 1) : prev - 1));
+  const handleNext = () => setCarouselIndex((prev) => (prev === Math.max(0, featuredEvents.length - 1) ? 0 : prev + 1));
 
   // Scroll to center the selected poster
   useEffect(() => {
-    if (carouselRef.current) {
+    if (carouselRef.current && featuredEvents.length > 0) {
       const container = carouselRef.current;
       const child = container.children[carouselIndex] as HTMLElement;
       if (child) {
@@ -43,7 +97,7 @@ export default function EventsPage() {
         container.scrollTo({ left: offset, behavior: 'smooth' });
       }
     }
-  }, [carouselIndex]);
+  }, [carouselIndex, featuredEvents.length]);
 
   const filteredEvents = currentEvents
     .filter(event => 
@@ -53,19 +107,71 @@ export default function EventsPage() {
     .filter(event => selectedCategory === 'all' || event.category === selectedCategory)
     .sort((a, b) => {
       if (sortBy === 'date') {
-        return new Date(a.date).getTime() - new Date(b.date).getTime();
+        return new Date(a.startDate).getTime() - new Date(b.startDate).getTime();
       } else if (sortBy === 'price') {
-        return a.price - b.price;
+        // Since we don't have price in the API data, we'll use a default sorting
+        return a.title.localeCompare(b.title);
       }
       return 0;
     });
+
+  // Helper function to format date
+  const formatEventDate = (startDate: string, startTime?: string) => {
+    const date = new Date(startDate);
+    const dateStr = date.toLocaleDateString();
+    return startTime ? `${dateStr} at ${startTime}` : dateStr;
+  };
+
+  // Helper function to get placeholder image
+  const getEventImage = (event: Event) => {
+    return event.image || '/Images/event-placeholder.jpg';
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#18181c] text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <h2 className="text-2xl font-bold mb-2">Loading Events...</h2>
+          <p className="text-gray-400">Fetching the latest events for you</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-[#18181c] text-white flex items-center justify-center">
+        <div className="text-center">
+          <Calendar className="h-16 w-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold mb-2">Failed to Load Events</h2>
+          <p className="text-gray-400 mb-4">{error}</p>
+          <Button onClick={() => window.location.reload()} className="bg-blue-600 hover:bg-blue-700">
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (featuredEvents.length === 0) {
+    return (
+      <div className="min-h-screen bg-[#18181c] text-white flex items-center justify-center">
+        <div className="text-center">
+          <Calendar className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold mb-2">No Events Available</h2>
+          <p className="text-gray-400">Check back later for upcoming events</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#18181c] text-white">
       {/* Hero Section with Background */}
       <div className="relative w-full h-[500px] flex items-center justify-center overflow-hidden">
         {/* Background image (use first featured event as bg) */}
-        <Image src={featuredEvents[carouselIndex].image} alt="Hero Background" fill className="object-cover brightness-50" priority />
+        <Image src={getEventImage(featuredEvents[carouselIndex])} alt="Hero Background" fill className="object-cover brightness-50" priority />
         {/* Overlay */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/60 to-black/90 z-10" />
         {/* Carousel */}
@@ -84,7 +190,7 @@ export default function EventsPage() {
                   style={{width: isActive ? 260 : 180, height: isActive ? 390 : 270, scrollSnapAlign: 'center'}}
                   onClick={() => setCarouselIndex(idx)}
                 >
-                  <Image src={event.image} alt={event.title} fill className="object-cover rounded-xl shadow-2xl" />
+                  <Image src={getEventImage(event)} alt={event.title} fill className="object-cover rounded-xl shadow-2xl" />
                   {/* Overlay details only for active */}
                   {isActive && (
                     <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/90 via-black/60 to-transparent rounded-b-xl flex flex-col gap-3">
@@ -93,7 +199,7 @@ export default function EventsPage() {
                         <span className="text-yellow-400 font-bold">8.5</span>
                         <span className="text-xs text-gray-300">(2019)</span>
                         <span className="text-xs text-gray-300">{event.category}</span>
-                        <span className="text-xs text-gray-300">{event.tags.slice(0,2).join(', ')}</span>
+                        <span className="text-xs text-gray-300">{event.category}</span>
                       </div>
                       <p className="text-gray-200 text-sm line-clamp-2 mb-2">{event.description}</p>
                       <div className="flex gap-2">
@@ -316,7 +422,7 @@ export default function EventsPage() {
               {currentEvents.slice(0, 4).map(event => (
                 <div key={event.id} className="bg-[#23232b] rounded-xl overflow-hidden shadow-lg hover:scale-105 hover:shadow-2xl transition-all duration-300 ease-in-out relative group">
                   <div className="relative w-full h-64 overflow-hidden">
-                    <Image src={event.image} alt={event.title} fill className="object-cover group-hover:scale-110 transition-transform duration-500 ease-in-out" />
+                    <Image src={getEventImage(event)} alt={event.title} fill className="object-cover group-hover:scale-110 transition-transform duration-500 ease-in-out" />
                     <span className="absolute top-2 left-2 bg-blue-600 text-white text-xs px-2 py-1 rounded shadow-md">Featured</span>
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                     
@@ -347,7 +453,7 @@ export default function EventsPage() {
               {filteredEvents.map(event => (
                 <div key={event.id} className="bg-[#23232b] rounded-xl overflow-hidden shadow-lg hover:scale-105 hover:shadow-2xl transition-all duration-300 ease-in-out relative group">
                   <div className="relative w-full h-64 overflow-hidden">
-                    <Image src={event.image} alt={event.title} fill className="object-cover group-hover:scale-110 transition-transform duration-500 ease-in-out" />
+                    <Image src={getEventImage(event)} alt={event.title} fill className="object-cover group-hover:scale-110 transition-transform duration-500 ease-in-out" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                     
                     {/* Hover Content */}

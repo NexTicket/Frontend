@@ -1,6 +1,6 @@
 "use client"
 import React from 'react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
@@ -36,9 +36,9 @@ import { fetchVenueById, fetchVenueSeatMap, fetchEventsByVenueId } from '@/lib/a
 import { mockSeats } from '@/lib/mock-data';
 
 interface VenueDetailPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 // Animation variants
@@ -74,13 +74,16 @@ export default function VenueDetailPage({ params }: VenueDetailPageProps) {
   const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
 
+  // Unwrap params using React.use()
+  const { id } = use(params);
+
   useEffect(() => {
     const loadVenue = async () => {
       try {
         setLoading(true);
-        console.log('Loading venue with ID:', params.id);
+        console.log('Loading venue with ID:', id);
         
-        const venueData = await fetchVenueById(params.id);
+        const venueData = await fetchVenueById(id);
         console.log('Venue data received:', venueData);
         
         if (venueData && venueData.data) {
@@ -91,8 +94,8 @@ export default function VenueDetailPage({ params }: VenueDetailPageProps) {
 
           // Try to fetch seat map from database first
           try {
-            console.log('Fetching seat map for venue:', params.id);
-            const seatMapData = await fetchVenueSeatMap(params.id);
+            console.log('Fetching seat map for venue:', id);
+            const seatMapData = await fetchVenueSeatMap(id);
             console.log('Seat map data received:', seatMapData);
             
             if (seatMapData && seatMapData.seatMap) {
@@ -129,8 +132,8 @@ export default function VenueDetailPage({ params }: VenueDetailPageProps) {
           // Load events for this venue
           try {
             setEventsLoading(true);
-            console.log('Fetching events for venue:', params.id);
-            const eventsData = await fetchEventsByVenueId(params.id);
+            console.log('Fetching events for venue:', id);
+            const eventsData = await fetchEventsByVenueId(id);
             console.log('Events data received:', eventsData);
             
             if (eventsData && eventsData.data) {
@@ -152,7 +155,7 @@ export default function VenueDetailPage({ params }: VenueDetailPageProps) {
     };
 
     loadVenue();
-  }, [params.id]);
+  }, [id]);
 
   // Fallback seat generation if no real data is available
   const generateSeatingLayout = (venue: any) => {
