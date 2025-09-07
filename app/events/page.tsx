@@ -3,6 +3,7 @@
 import React,{ useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+
 import { Calendar, Filter, MapPin, Clock, Users, Star, Ticket } from 'lucide-react';
 import { fetchEvents } from '@/lib/api';
 import Image from 'next/image';
@@ -32,9 +33,12 @@ interface Event {
   };
 }
 
+
+
 export default function EventsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+
   const [sortBy, setSortBy] = useState('date');
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [activeTab, setActiveTab] = useState('all'); // Changed from 'movies' to 'all'
@@ -47,22 +51,29 @@ export default function EventsPage() {
   const movieCategories = ['Action', 'Comedy', 'Drama', 'Horror', 'Sci-Fi', 'Romance'];
   
   // Load events from API
+
   useEffect(() => {
     const loadEvents = async () => {
       try {
         setLoading(true);
-        console.log('🎯 Loading events from API...');
-        const response = await fetchEvents();
-        console.log('🎯 Events loaded:', response);
-        
-        if (response && response.data) {
-          setEvents(response.data);
-        } else {
-          setEvents([]);
+        setError(null);
+        const data = await fetchEvents();
+        let eventsArray: any[] = [];
+        if (Array.isArray(data)) {
+          eventsArray = data;
+        } else if (data && data.data && Array.isArray(data.data)) {
+          eventsArray = data.data;
+        } else if (data && data.events && Array.isArray(data.events)) {
+          eventsArray = data.events;
+        } else if (data && typeof data === 'object') {
+          eventsArray = [data];
         }
+        setEvents(eventsArray);
       } catch (err) {
-        console.error('❌ Failed to load events:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load events');
+        console.error('Error fetching events:', err);
+        let message = 'Failed to load events.';
+        if (err instanceof Error) message += ' ' + err.message;
+        setError(message);
         setEvents([]);
       } finally {
         setLoading(false);
@@ -71,119 +82,27 @@ export default function EventsPage() {
 
     loadEvents();
   }, []);
-  
-  // Filter events based on active tab and type
-  const allEvents = events;
-  const movieEvents = allEvents.filter(event => 
-    event.type === 'MOVIE'
-  );
-  const nonMovieEvents = allEvents.filter(event => event.type !== 'MOVIE');
-  
-  const currentEvents = activeTab === 'movies' ? movieEvents : 
-                       activeTab === 'events' ? nonMovieEvents : allEvents;
-  const featuredEvents = allEvents.slice(0, 5); // Common hero shows all events
 
-  // Carousel navigation
-  const handlePrev = () => setCarouselIndex((prev) => (prev === 0 ? Math.max(0, featuredEvents.length - 1) : prev - 1));
-  const handleNext = () => setCarouselIndex((prev) => (prev === Math.max(0, featuredEvents.length - 1) ? 0 : prev + 1));
+  const categories = useMemo(() => {
+    return ['all', ...new Set(events.map((e: any) => e.category).filter(Boolean))] as string[];
+  }, [events]);
 
-  // Scroll to center the selected poster
-  useEffect(() => {
-    if (carouselRef.current && featuredEvents.length > 0) {
-      const container = carouselRef.current;
-      const child = container.children[carouselIndex] as HTMLElement;
-      if (child) {
-        const offset = child.offsetLeft - (container.offsetWidth / 2) + (child.offsetWidth / 2);
-        container.scrollTo({ left: offset, behavior: 'smooth' });
-      }
-    }
-  }, [carouselIndex, featuredEvents.length]);
-
-  const filteredEvents = currentEvents
-    .filter(event => 
-      event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      event.description.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    .filter(event => selectedCategory === 'all' || event.category === selectedCategory)
-    .sort((a, b) => {
-      if (sortBy === 'date') {
-        return new Date(a.startDate).getTime() - new Date(b.startDate).getTime();
-      } else if (sortBy === 'price') {
-        // Since we don't have price in the API data, we'll use a default sorting
-        return a.title.localeCompare(b.title);
-      }
-      return 0;
-    });
-
-  // Helper function to format date
-  const formatEventDate = (startDate: string, startTime?: string) => {
-    const date = new Date(startDate);
-    const dateStr = date.toLocaleDateString();
-    return startTime ? `${dateStr} at ${startTime}` : dateStr;
-  };
-
-  // Helper function to get placeholder image
-  const getEventImage = (event: Event) => {
-    return event.image || '/Images/event-placeholder.jpg';
-  };
+  const filteredEvents = useMemo(() => {
+    return events
+      .filter((e: any) => {
+        const q = searchTerm.toLowerCase();
+  return (
+          e.title?.toLowerCase().includes(q) ||
+          e.description?.toLowerCase().includes(q) ||
+          e.venue?.name?.toLowerCase().includes(q)
+        );
+      })
+      .filter((e: any) => (selectedCategory === 'all' ? true : e.category === selectedCategory));
+  }, [events, searchTerm, selectedCategory]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[#18181c] text-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <h2 className="text-2xl font-bold mb-2">Loading Events...</h2>
-          <p className="text-gray-400">Fetching the latest events for you</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-[#18181c] text-white flex items-center justify-center">
-        <div className="text-center">
-          <Calendar className="h-16 w-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold mb-2">Failed to Load Events</h2>
-          <p className="text-gray-400 mb-4">{error}</p>
-          <Button onClick={() => window.location.reload()} className="bg-blue-600 hover:bg-blue-700">
-            Try Again
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  if (featuredEvents.length === 0) {
-    return (
-      <div className="min-h-screen bg-[#18181c] text-white flex items-center justify-center">
-        <div className="text-center">
-          <Calendar className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold mb-2">No Events Available</h2>
-          <p className="text-gray-400">Check back later for upcoming events</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-[#18181c] text-white">
-      {/* Hero Section with Background */}
-      <div className="relative w-full h-[500px] flex items-center justify-center overflow-hidden">
-        {/* Background image (use first featured event as bg) */}
-        <Image src={getEventImage(featuredEvents[carouselIndex])} alt="Hero Background" fill className="object-cover brightness-50" priority />
-        {/* Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/60 to-black/90 z-10" />
-        {/* Carousel */}
-        <div className="relative z-20 w-full max-w-5xl mx-auto flex items-center justify-center h-full">
-          {/* Left Arrow */}
-          <button onClick={handlePrev} className="absolute left-0 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 rounded-full p-3 z-30"><span className="text-3xl">&#8592;</span></button>
-          {/* Posters Row */}
-          <div ref={carouselRef} className="flex gap-6 overflow-hidden px-16 w-full items-center justify-center">
-            {featuredEvents.map((event, idx) => {
-              // Center poster is large, sides are smaller and faded
-              const isActive = idx === carouselIndex;
               return (
+
                 <div
                   key={event.id}
                   className={`relative flex-shrink-0 transition-all duration-500 ${isActive ? 'scale-110 z-20' : 'scale-90 opacity-60 z-10'} cursor-pointer`}
@@ -200,6 +119,7 @@ export default function EventsPage() {
                         <span className="text-xs text-gray-300">(2019)</span>
                         <span className="text-xs text-gray-300">{event.category}</span>
                         <span className="text-xs text-gray-300">{event.category}</span>
+
                       </div>
                       <p className="text-gray-200 text-sm line-clamp-2 mb-2">{event.description}</p>
                       <div className="flex gap-2">
@@ -415,6 +335,7 @@ export default function EventsPage() {
             </div>
           </div>
 
+
           {/* Featured Section */}
           <div className="mb-12">
             <h2 className="text-2xl font-bold mb-6">Featured {activeTab === 'movies' ? 'Movies' : 'Events'}</h2>
@@ -439,12 +360,14 @@ export default function EventsPage() {
                           Buy a Ticket
                         </Button>
                       </Link>
+
                     </div>
                   </div>
                 </div>
               ))}
             </div>
           </div>
+
 
           {/* All Events Section */}
           <div>
@@ -469,6 +392,7 @@ export default function EventsPage() {
                           Buy a Ticket
                         </Button>
                       </Link>
+
                     </div>
                   </div>
                 </div>
