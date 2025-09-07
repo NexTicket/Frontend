@@ -19,11 +19,11 @@ import {
 import {
   fetchEvents,
   deleteEvent,
-  Event,
   fetchVenues,
   createEvent,
   createVenue,
 } from "@/lib/api";
+import { Event } from "@/lib/mock-data";
 import { AnimatePresence } from "framer-motion";
 import axios from "axios";
 
@@ -36,7 +36,7 @@ const containerVariants = {
       staggerChildren: 0.12,
       delayChildren: 0.1,
       duration: 0.5,
-      ease: "easeOut",
+      ease: [0.4, 0, 0.2, 1] as const,
     },
   },
 };
@@ -46,7 +46,7 @@ const itemVariants = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.4, ease: "easeOut" },
+    transition: { duration: 0.4, ease: [0.4, 0, 0.2, 1] as const },
   },
 };
 
@@ -82,9 +82,9 @@ export default function OrganizerDashboard() {
       try {
         setEventsLoading(true);
         // Fetch events for this organizer from event_and_venue_service backend
-        if (userProfile?.id) {
+        if (userProfile?.uid) {
           const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_EVENT_VENUE_SERVICE_URL}/api/events?organizerId=${userProfile.id}`
+            `${process.env.NEXT_PUBLIC_API_URL}/api/events?organizerId=${userProfile.uid}`
           );
           setEvents(Array.isArray(response.data) ? response.data : []);
         } else {
@@ -807,7 +807,18 @@ export default function OrganizerDashboard() {
                       >
                         <div
                           className={`h-1 rounded-full ${stat.color}`}
-                          style={{ width: `${(stat.value / 100) * 100}%` }}
+                          style={{ 
+                            width: `${(() => {
+                              const numValue = typeof stat.value === 'number' ? stat.value : 
+                                             parseFloat(String(stat.value).replace(/[^0-9.]/g, '')) || 0;
+                              // For ratings, convert to percentage (4.7/5 = 94%)
+                              if (stat.title === "Average Rating") {
+                                return (numValue / 5) * 100;
+                              }
+                              // For other values, use a logarithmic scale to show relative progress
+                              return Math.min(100, (numValue > 0 ? Math.log10(numValue + 1) * 20 : 0));
+                            })()}%`
+                          }}
                         />
                       </div>
                     </div>
@@ -843,7 +854,7 @@ export default function OrganizerDashboard() {
                   onClose={() => setShowVenueModal(false)}
                   onCreated={() => {
                     setShowVenueModal(false);
-                    router.reload();
+                    router.refresh();
                   }}
                 />
               </div>
