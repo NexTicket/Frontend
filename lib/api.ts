@@ -62,6 +62,13 @@ export const fetchVenueById = async (id: number | string) => {
   return res.json();
 };
 
+export const fetchVenueSeatMap = async (id: number | string) => {
+  const url = getApiUrl(`/venues/${id}/seats`);
+  const res = await publicFetch(url);
+  if (!res.ok) throw new Error("Failed to fetch venue seat map");
+  return res.json();
+};
+
 export async function createVenue(venueData: any) {
   const url = getApiUrl('/venues/');
   const res = await secureFetch(url, {
@@ -171,6 +178,12 @@ export async function uploadVenueImages(id: string, imageFiles: File[]) {
 export async function fetchEvents() {
   const res = await secureFetch(getApiUrl('/events/'));
   if (!res.ok) throw new Error("Failed to fetch events");
+  return res.json();
+}
+
+export async function fetchEventsByVenueId(venueId: number | string) {
+  const res = await publicFetch(getApiUrl(`/events/venue/${venueId}`));
+  if (!res.ok) throw new Error("Failed to fetch events for venue");
   return res.json();
 }
 

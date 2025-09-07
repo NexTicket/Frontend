@@ -32,7 +32,7 @@ import {
   RefreshCw,
   Activity
 } from 'lucide-react';
-import { fetchVenueById } from '@/lib/api';
+import { fetchVenueById, fetchVenueSeatMap, fetchEventsByVenueId } from '@/lib/api';
 import { mockSeats } from '@/lib/mock-data';
 
 interface VenueDetailPageProps {
@@ -71,22 +71,81 @@ export default function VenueDetailPage({ params }: VenueDetailPageProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [seatingLayout, setSeatingLayout] = useState<any[]>([]);
-  
+  const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(false);
+
   useEffect(() => {
     const loadVenue = async () => {
       try {
         setLoading(true);
+        console.log('Loading venue with ID:', params.id);
+        
         const venueData = await fetchVenueById(params.id);
+        console.log('Venue data received:', venueData);
+        
         if (venueData && venueData.data) {
           setVenue(venueData.data);
-          // Generate mock seating layout for the venue
-          generateSeatingLayout(venueData.data.capacity || 500);
-        } else {
-          setError('Venue not found');
+          
+          // Log the seatMap structure for debugging
+          console.log('Venue seatMap:', venueData.data.seatMap);
+
+          // Try to fetch seat map from database first
+          try {
+            console.log('Fetching seat map for venue:', params.id);
+            const seatMapData = await fetchVenueSeatMap(params.id);
+            console.log('Seat map data received:', seatMapData);
+            
+            if (seatMapData && seatMapData.seatMap) {
+              // Process seat map from database
+              const processedSeats = Array.isArray(seatMapData.seatMap) 
+                ? seatMapData.seatMap 
+                : Object.values(seatMapData.seatMap || {}).flat();
+              
+              console.log('Processed seats:', processedSeats);
+              setSeatingLayout(processedSeats);
+            } else {
+              console.log('No separate seat map found, checking venue.seatMap');
+              // Check if venue itself has seatMap structure
+              if (venueData.data.seatMap) {
+                console.log('Using venue.seatMap data');
+                // For the new seatMap structure, we don't need to process into individual seats
+                // The visualization will be handled directly in the render
+                setSeatingLayout([]);
+              } else {
+                console.log('No seat map found, generating fallback seating');
+                // Fallback to generated seating
+                const generatedSeats = generateSeatingLayout(venueData.data);
+                setSeatingLayout(generatedSeats);
+              }
+            }
+          } catch (seatMapError) {
+            console.error('Failed to load seat map:', seatMapError);
+            console.log('Using fallback seating generation');
+            // Fallback to generated seating
+            const generatedSeats = generateSeatingLayout(venueData.data);
+            setSeatingLayout(generatedSeats);
+          }
+
+          // Load events for this venue
+          try {
+            setEventsLoading(true);
+            console.log('Fetching events for venue:', params.id);
+            const eventsData = await fetchEventsByVenueId(params.id);
+            console.log('Events data received:', eventsData);
+            
+            if (eventsData && eventsData.data) {
+              setUpcomingEvents(eventsData.data);
+            }
+          } catch (eventsError) {
+            console.error('Failed to load events for venue:', eventsError);
+            setUpcomingEvents([]);
+          } finally {
+            setEventsLoading(false);
+          }
         }
       } catch (err) {
-        console.error('Error fetching venue:', err);
-        setError('Failed to load venue details');
+        console.error('Error loading venue:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load venue');
       } finally {
         setLoading(false);
       }
@@ -95,7 +154,9 @@ export default function VenueDetailPage({ params }: VenueDetailPageProps) {
     loadVenue();
   }, [params.id]);
 
-  const generateSeatingLayout = (capacity: number) => {
+  // Fallback seat generation if no real data is available
+  const generateSeatingLayout = (venue: any) => {
+    const capacity = venue?.capacity || 200;
     const sections = ['Orchestra', 'Balcony', 'Mezzanine'];
     const rows = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
     const seatsPerRow = Math.ceil(capacity / (sections.length * 8));
@@ -126,7 +187,7 @@ export default function VenueDetailPage({ params }: VenueDetailPageProps) {
       }
     });
     
-    setSeatingLayout(layout);
+    return layout;
   };
 
   if (loading) {
@@ -186,9 +247,6 @@ export default function VenueDetailPage({ params }: VenueDetailPageProps) {
     );
   }
 
-  // Mock upcoming events data for now (can be replaced with real API later)
-  const upcomingEvents: any[] = [];
-
   const tabs = [
     { id: 'overview', label: 'Overview' },
     { id: 'seating', label: 'Seating Layout' },
@@ -197,15 +255,31 @@ export default function VenueDetailPage({ params }: VenueDetailPageProps) {
     { id: 'contact', label: 'Contact' }
   ];
 
-  // Group seating layout by section
+  // Group seating layout by section with robust data handling
   const groupedSeats = seatingLayout.reduce((acc: any, seat) => {
-    if (!acc[seat.section]) {
-      acc[seat.section] = {};
+    // Ensure seat has required properties with fallbacks
+    const sectionName = seat.section || seat.sectionName || 'General';
+    const rowName = seat.row || seat.rowName || seat.rowId || 'A';
+    
+    if (!acc[sectionName]) {
+      acc[sectionName] = {};
     }
-    if (!acc[seat.section][seat.row]) {
-      acc[seat.section][seat.row] = [];
+    if (!acc[sectionName][rowName]) {
+      acc[sectionName][rowName] = [];
     }
-    acc[seat.section][seat.row].push(seat);
+    
+    // Normalize seat data structure
+    const normalizedSeat = {
+      id: seat.id || seat.seatId || `seat-${seat.number || Math.random()}`,
+      section: sectionName,
+      row: rowName,
+      number: seat.number || seat.seatNumber || 1,
+      isAvailable: seat.isAvailable !== undefined ? seat.isAvailable : seat.available !== undefined ? seat.available : true,
+      price: seat.price || seat.ticketPrice || 50,
+      type: seat.type || seat.seatType || 'standard'
+    };
+    
+    acc[sectionName][rowName].push(normalizedSeat);
     return acc;
   }, {});
 
@@ -472,70 +546,153 @@ export default function VenueDetailPage({ params }: VenueDetailPageProps) {
                       <div className="flex items-center justify-between mb-6">
                         <h3 className="text-2xl font-bold" style={{ color: '#fff' }}>Seating Layout</h3>
                         <div className="flex items-center space-x-4">
-                          <div className="flex items-center space-x-2">
-                            <div className="w-4 h-4 rounded border-2" style={{ backgroundColor: '#39FD48', borderColor: '#39FD48' }}></div>
-                            <span className="text-sm" style={{ color: '#ABA8A9' }}>Available</span>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <div className="w-4 h-4 rounded border-2" style={{ backgroundColor: '#666', borderColor: '#666' }}></div>
-                            <span className="text-sm" style={{ color: '#ABA8A9' }}>Occupied</span>
-                          </div>
+                          <span className="text-sm" style={{ color: '#ABA8A9' }}>Section Layout Overview</span>
                         </div>
+                      </div>
+
+                      {/* Debug Info */}
+                      <div className="mb-4 p-4 rounded-lg border" style={{ backgroundColor: '#0D6EFD' + '10', borderColor: '#0D6EFD' + '30' }}>
+                        <p style={{ color: '#ABA8A9', fontSize: '12px' }}>
+                          Debug: {seatingLayout.length > 0 ? `Found ${seatingLayout.length} seats` : 'No seating data found'}
+                        </p>
                       </div>
 
                       {/* Stage */}
                       <div className="rounded-xl p-6 mb-8 text-center" style={{ background: 'linear-gradient(135deg, #0D6EFD, #39FD48)' }}>
-                        <h4 className="text-xl font-bold text-white">STAGE</h4>
+                        <h4 className="text-xl font-bold text-white">🎭 STAGE</h4>
                       </div>
 
-                      {/* Seating Sections */}
-                      <div className="space-y-8">
-                        {Object.entries(groupedSeats).map(([section, rows]: [string, any]) => (
-                          <div key={section} className="backdrop-blur-xl border rounded-xl p-6"
-                            style={{ backgroundColor: '#0D6EFD' + '10', borderColor: '#0D6EFD' + '30' }}>
-                            <h4 className="text-lg font-bold mb-4 text-center" style={{ color: '#fff' }}>{section}</h4>
-                            <div className="space-y-2">
-                              {Object.entries(rows).map(([row, seats]: [string, any]) => (
-                                <div key={row} className="flex items-center justify-center space-x-1">
-                                  <span className="w-8 text-sm font-medium text-center" style={{ color: '#ABA8A9' }}>{row}</span>
-                                  <div className="flex space-x-1">
-                                    {seats.map((seat: any) => (
-                                      <div
-                                        key={seat.id}
-                                        className="w-6 h-6 rounded border flex items-center justify-center text-xs font-medium cursor-pointer hover:scale-110 transition-transform"
-                                        style={{
-                                          backgroundColor: seat.isAvailable ? '#39FD48' : '#666',
-                                          borderColor: seat.isAvailable ? '#39FD48' : '#666',
-                                          color: seat.isAvailable ? '#000' : '#fff'
-                                        }}
-                                        title={`Seat ${seat.number} - $${seat.price}`}
-                                      >
-                                        {seat.number}
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                            <div className="text-center mt-4">
-                              <span className="text-sm font-medium px-3 py-1 rounded-full border"
-                                style={{ 
-                                  backgroundColor: '#39FD48' + '20', 
-                                  borderColor: '#39FD48',
-                                  color: '#39FD48'
-                                }}>
-                                Starting from ${Math.min(...Object.values(rows).flat().map((s: any) => s.price))}
-                              </span>
+                      {/* Render SeatMap based on database structure */}
+                      {venue?.seatMap && (
+                        <div className="space-y-6">
+                          {/* Sections Legend */}
+                          <div className="flex flex-wrap gap-4 justify-center">
+                            {venue.seatMap.sections?.map((section: any) => (
+                              <div key={section.id} className="flex items-center space-x-2 px-3 py-2 rounded-lg border"
+                                style={{ backgroundColor: section.color + '20', borderColor: section.color + '50' }}>
+                                <div className="w-4 h-4 rounded" style={{ backgroundColor: section.color }}></div>
+                                <span className="text-sm font-medium" style={{ color: '#fff' }}>
+                                  {section.name} (×{section.price_multiplier})
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Seat Grid Visualization */}
+                          <div className="flex justify-center">
+                            <div className="inline-block p-6 rounded-xl border" 
+                              style={{ backgroundColor: '#0D6EFD' + '10', borderColor: '#0D6EFD' + '30' }}>
+                              <div 
+                                className="grid gap-1"
+                                style={{
+                                  gridTemplateColumns: `repeat(${venue.seatMap.columns || 10}, 1fr)`
+                                }}
+                              >
+                                {Array.from({ length: venue.seatMap.rows * venue.seatMap.columns }).map((_, index) => {
+                                  const row = Math.floor(index / venue.seatMap.columns);
+                                  const col = index % venue.seatMap.columns;
+                                  
+                                  // Find which section this seat belongs to
+                                  const section = venue.seatMap.sections?.find((s: any) => 
+                                    row >= s.startRow && row < s.startRow + s.rows &&
+                                    col >= s.startCol && col < s.startCol + s.columns
+                                  );
+
+                                  const isAisle = venue.seatMap.aisles?.includes(row);
+                                  // const isWheelchairAccessible = venue.seatMap.wheelchair_accessible?.includes(row);
+
+                                  return (
+                                    <div
+                                      key={`${row}-${col}`}
+                                      className={`w-6 h-6 rounded-sm transition-all duration-200 cursor-pointer hover:scale-110 flex items-center justify-center text-xs font-bold ${
+                                        isAisle ? 'opacity-50' : ''
+                                      }`}
+                                      style={{
+                                        backgroundColor: section ? section.color : '#39FD48',
+                                        opacity: section ? 1 : 0.3,
+                                        // border: isWheelchairAccessible ? '2px solid #FFF' : 'none'
+                                      }}
+                                      title={`Row ${row + 1}, Seat ${col + 1}${section ? ` - ${section.name}` : ''}`}
+                                    >
+                                      {/* {isWheelchairAccessible ? '♿' : col + 1} */}
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             </div>
                           </div>
-                        ))}
-                      </div>
 
-                      {seatingLayout.length === 0 && (
+                          {/* Seating Stats */}
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="text-center p-4 rounded-xl border"
+                              style={{ backgroundColor: '#39FD48' + '10', borderColor: '#39FD48' + '30' }}>
+                              <div className="text-2xl font-bold" style={{ color: '#39FD48' }}>
+                                {venue.seatMap.rows * venue.seatMap.columns}
+                              </div>
+                              <div className="text-sm" style={{ color: '#ABA8A9' }}>Total Seats</div>
+                            </div>
+                            <div className="text-center p-4 rounded-xl border"
+                              style={{ backgroundColor: '#0D6EFD' + '10', borderColor: '#0D6EFD' + '30' }}>
+                              <div className="text-2xl font-bold" style={{ color: '#0D6EFD' }}>
+                                {venue.seatMap.sections?.length || 0}
+                              </div>
+                              <div className="text-sm" style={{ color: '#ABA8A9' }}>Sections</div>
+                            </div>
+                            <div className="text-center p-4 rounded-xl border"
+                              style={{ backgroundColor: '#39FD48' + '10', borderColor: '#39FD48' + '30' }}>
+                              <div className="text-2xl font-bold" style={{ color: '#39FD48' }}>
+                                {venue.seatMap.wheelchair_accessible?.length || 0}
+                              </div>
+                              <div className="text-sm" style={{ color: '#ABA8A9' }}>♿ Accessible</div>
+                            </div>
+                          </div>
+
+                          {/* Special Features */}
+                          {venue.seatMap.special_features && venue.seatMap.special_features.length > 0 && (
+                            <div className="p-4 rounded-xl border" style={{ backgroundColor: '#0D6EFD' + '10', borderColor: '#0D6EFD' + '30' }}>
+                              <h4 className="text-lg font-bold mb-3" style={{ color: '#fff' }}>Special Features</h4>
+                              <div className="flex flex-wrap gap-2">
+                                {venue.seatMap.special_features.map((feature: string, index: number) => (
+                                  <span key={index} className="px-3 py-1 rounded-full text-sm border"
+                                    style={{ backgroundColor: '#39FD48' + '20', borderColor: '#39FD48', color: '#39FD48' }}>
+                                    {feature.replace('_', ' ')}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Fallback for old seating data or no seatMap */}
+                      {!venue?.seatMap && seatingLayout.length > 0 && (
+                        <div className="space-y-4">
+                          <h4 className="text-lg font-bold text-center" style={{ color: '#fff' }}>Legacy Seating Layout</h4>
+                          <div className="grid grid-cols-10 gap-2 max-w-4xl mx-auto">
+                            {seatingLayout.slice(0, 100).map((seat, index) => (
+                              <div
+                                key={seat.id || index}
+                                className="w-8 h-8 rounded border flex items-center justify-center text-xs font-medium cursor-pointer"
+                                style={{
+                                  backgroundColor: '#39FD48',
+                                  borderColor: '#39FD48',
+                                  color: '#000'
+                                }}
+                                title={`Seat ${seat.number || index + 1} - Section: ${seat.section || 'N/A'} - Row: ${seat.row || 'N/A'}`}
+                              >
+                                {seat.number || index + 1}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* No seating data available */}
+                      {!venue?.seatMap && seatingLayout.length === 0 && (
                         <div className="text-center py-12">
                           <Grid3X3 className="h-16 w-16 mx-auto mb-4" style={{ color: '#ABA8A9' }} />
-                          <h4 className="text-xl font-bold mb-2" style={{ color: '#fff' }}>Seating Chart Loading</h4>
-                          <p style={{ color: '#ABA8A9' }}>Generating venue layout...</p>
+                          <h4 className="text-xl font-bold mb-2" style={{ color: '#fff' }}>No Seating Data</h4>
+                          <p style={{ color: '#ABA8A9' }}>No seating layout found for this venue</p>
                         </div>
                       )}
                     </div>
@@ -545,47 +702,110 @@ export default function VenueDetailPage({ params }: VenueDetailPageProps) {
                 {activeTab === 'events' && (
                   <div className="backdrop-blur-xl border rounded-2xl p-8 shadow-xl" 
                     style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '50', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}>
-                    <h3 className="text-2xl font-bold mb-6" style={{ color: '#fff' }}>Upcoming Events</h3>
-                    {upcomingEvents.length > 0 ? (
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-2xl font-bold" style={{ color: '#fff' }}>Upcoming Events</h3>
+                      {eventsLoading && (
+                        <div className="flex items-center text-sm" style={{ color: '#ABA8A9' }}>
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          Loading events...
+                        </div>
+                      )}
+                    </div>
+                    
+                    {!eventsLoading && upcomingEvents.length > 0 ? (
                       <div className="space-y-6">
                         {upcomingEvents.map(event => (
                           <div key={event.id} className="border rounded-xl p-6 hover:shadow-lg transition-all duration-300" 
                             style={{ borderColor: '#0D6EFD' + '30', backgroundColor: '#0D6EFD' + '10' }}>
                             <div className="flex items-start justify-between">
                               <div className="flex-1">
-                                <h4 className="text-xl font-bold mb-3" style={{ color: '#fff' }}>{event.title}</h4>
+                                <div className="flex items-center mb-2">
+                                  <h4 className="text-xl font-bold mr-3" style={{ color: '#fff' }}>{event.title}</h4>
+                                  <span className="px-2 py-1 text-xs rounded-full border"
+                                    style={{ 
+                                      backgroundColor: event.status === 'APPROVED' ? '#39FD48' + '20' : '#0D6EFD' + '20',
+                                      borderColor: event.status === 'APPROVED' ? '#39FD48' : '#0D6EFD',
+                                      color: event.status === 'APPROVED' ? '#39FD48' : '#0D6EFD'
+                                    }}>
+                                    {event.status}
+                                  </span>
+                                </div>
+                                
                                 <p className="mb-4" style={{ color: '#ABA8A9' }}>{event.description}</p>
-                                <div className="flex items-center space-x-6 text-sm" style={{ color: '#ABA8A9' }}>
-                                  <div className="flex items-center">
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                  <div className="flex items-center text-sm" style={{ color: '#ABA8A9' }}>
                                     <Calendar className="h-4 w-4 mr-2" style={{ color: '#39FD48' }} />
-                                    {new Date(event.date).toLocaleDateString()}
+                                    <div>
+                                      <div className="font-medium">Start: {new Date(event.startDate).toLocaleDateString()} {event.startTime && `at ${event.startTime}`}</div>
+                                      {event.endDate && (
+                                        <div>End: {new Date(event.endDate).toLocaleDateString()} {event.endTime && `at ${event.endTime}`}</div>
+                                      )}
+                                    </div>
                                   </div>
-                                  <div className="flex items-center">
-                                    <Clock className="h-4 w-4 mr-2" style={{ color: '#0D6EFD' }} />
-                                    {event.time}
-                                  </div>
-                                  <div className="flex items-center">
-                                    <Ticket className="h-4 w-4 mr-2" style={{ color: '#39FD48' }} />
-                                    ${event.price}
+                                  
+                                  <div className="flex items-center text-sm" style={{ color: '#ABA8A9' }}>
+                                    <div className="mr-4">
+                                      <span className="px-2 py-1 rounded text-xs border"
+                                        style={{ backgroundColor: '#0D6EFD' + '20', borderColor: '#0D6EFD', color: '#0D6EFD' }}>
+                                        {event.category}
+                                      </span>
+                                    </div>
+                                    <div>
+                                      <span className="px-2 py-1 rounded text-xs border"
+                                        style={{ backgroundColor: '#39FD48' + '20', borderColor: '#39FD48', color: '#39FD48' }}>
+                                        {event.type}
+                                      </span>
+                                    </div>
                                   </div>
                                 </div>
+
+                                {event.Tenant && (
+                                  <div className="flex items-center text-sm mb-4" style={{ color: '#ABA8A9' }}>
+                                    <Users className="h-4 w-4 mr-2" style={{ color: '#0D6EFD' }} />
+                                    Organized by: <span className="font-medium ml-1" style={{ color: '#fff' }}>{event.Tenant.name}</span>
+                                  </div>
+                                )}
                               </div>
-                              <Link href={`/events/${event.id}`}>
-                                <Button className="text-white font-semibold px-6 py-3 rounded-xl hover:opacity-90 transition-opacity"
-                                  style={{ background: 'linear-gradient(135deg, #39FD48, #0D6EFD)' }}>
-                                  <Eye className="h-4 w-4 mr-2" />
-                                  View Event
-                                </Button>
-                              </Link>
+                              
+                              <div className="flex flex-col items-end space-y-2">
+                                {event.image && (
+                                  <div className="w-24 h-24 rounded-lg overflow-hidden border"
+                                    style={{ borderColor: '#39FD48' + '30' }}>
+                                    <img 
+                                      src={event.image} 
+                                      alt={event.title} 
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        (e.target as HTMLImageElement).style.display = 'none';
+                                      }}
+                                    />
+                                  </div>
+                                )}
+                                
+                                <Link href={`/events/${event.id}`}>
+                                  <Button className="text-white font-semibold px-4 py-2 rounded-xl hover:opacity-90 transition-opacity"
+                                    style={{ background: 'linear-gradient(135deg, #39FD48, #0D6EFD)' }}>
+                                    <Eye className="h-4 w-4 mr-2" />
+                                    View Event
+                                  </Button>
+                                </Link>
+                              </div>
                             </div>
                           </div>
                         ))}
                       </div>
-                    ) : (
+                    ) : !eventsLoading ? (
                       <div className="text-center py-12">
                         <Calendar className="h-16 w-16 mx-auto mb-6" style={{ color: '#ABA8A9' }} />
                         <h4 className="text-xl font-bold mb-2" style={{ color: '#fff' }}>No Events Scheduled</h4>
                         <p style={{ color: '#ABA8A9' }}>Check back soon for upcoming events at this venue</p>
+                      </div>
+                    ) : (
+                      <div className="text-center py-12">
+                        <div className="w-16 h-16 border-4 border-[#0D6EFD] border-t-[#39FD48] rounded-full mx-auto animate-spin mb-6"></div>
+                        <h4 className="text-xl font-bold mb-2" style={{ color: '#fff' }}>Loading Events...</h4>
+                        <p style={{ color: '#ABA8A9' }}>Fetching events for this venue</p>
                       </div>
                     )}
                   </div>
