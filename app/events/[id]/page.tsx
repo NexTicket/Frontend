@@ -1,8 +1,6 @@
 "use client"
 
-
-import React, { useState, use, useEffect } from 'react';
-
+import { useState, use, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -15,43 +13,13 @@ import {
   Heart,
   Star,
   ArrowLeft,
-  Ticket
+  Ticket,
+  Play,
+  Facebook,
+  Twitter
 } from 'lucide-react';
-
-import { fetchEventById, fetchVenueById } from '@/lib/api';
-
-// Event interface to match API
-interface Event {
-  id: string;
-  title: string;
-  description: string;
-  startDate: string;
-  startTime?: string;
-  endDate?: string;
-  endTime?: string;
-  category: string;
-  type: string;
-  status: string;
-  capacity: number;
-  image?: string;
-  venueId: string;
-  tenantId: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface Venue {
-  id: string;
-  name: string;
-  address: string;
-  city: string;
-  state: string;
-  postalCode: string;
-  country: string;
-  capacity: number;
-  image?: string;
-}
-
+import { mockEvents, mockVenues } from '@/lib/mock-data';
+import { fetchEventById } from '@/lib/api';
 
 interface EventDetailPageProps {
   params: Promise<{
@@ -61,11 +29,9 @@ interface EventDetailPageProps {
 
 export default function EventDetailPage({ params }: EventDetailPageProps) {
   const [isLiked, setIsLiked] = useState(false);
-
-  const [selectedTicketType, setSelectedTicketType] = useState('general');
-  const [event, setEvent] = useState<Event | null>(null);
-  const [venue, setVenue] = useState<Venue | null>(null);
-
+  const [selectedTicketType, setSelectedTicketType] = useState('standard');
+  const [activeTab, setActiveTab] = useState('summary');
+  const [loadedEvent, setLoadedEvent] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -92,97 +58,55 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
     if (id) load();
   }, [id]);
   
+  // Fallback to mock if API fails
+  const event = loadedEvent || mockEvents.find(e => String(e.id) === String(id));
+  const venue = event ? (event.venue || mockVenues.find((v: any) => String(v.id) === String(event.venueId))) : null;
 
-  // Load event and venue data
-  useEffect(() => {
-    const loadEventData = async () => {
-      try {
-        setLoading(true);
-        console.log('🎯 Loading event details for ID:', id);
-        
-        const eventResponse = await fetchEventById(id);
-        console.log('🎯 Event loaded:', eventResponse);
-        
-        if (eventResponse && eventResponse.data) {
-          setEvent(eventResponse.data);
-          
-          // Load venue data if venueId exists
-          if (eventResponse.data.venueId) {
-            try {
-              const venueResponse = await fetchVenueById(eventResponse.data.venueId);
-              console.log('🎯 Venue loaded:', venueResponse);
-              if (venueResponse && venueResponse.data) {
-                setVenue(venueResponse.data);
-              }
-            } catch (venueErr) {
-              console.error('❌ Failed to load venue:', venueErr);
-              // Don't set error for venue failure, just continue without venue data
-            }
-          }
-        } else {
-          setError('Event not found');
-        }
-      } catch (err) {
-        console.error('❌ Failed to load event:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load event');
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Check if this is a movie
+  const isMovie = event && Array.isArray(event.tags) && event.tags.includes('movie');
 
-    loadEventData();
-  }, [id]);
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center text-muted-foreground">Loading event...</div>
+      </div>
+    );
+  }
 
-  // Helper functions
-  const getEventImage = (event: Event) => {
-    return event.image || '/Images/event-placeholder.jpg';
-  };
-
-  const formatEventDate = (startDate: string, startTime?: string) => {
-    const date = new Date(startDate);
-    const dateStr = date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-    return startTime ? `${dateStr} at ${startTime}` : dateStr;
-  };
-
-  const formatEventTime = (startTime?: string, endTime?: string) => {
-    if (startTime && endTime) {
-      return `${startTime} - ${endTime}`;
-    } else if (startTime) {
-      return `Starting at ${startTime}`;
-    } else {
-      return 'Time TBA';
-    }
-  };
-
+  if (!event) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Event Not Found</h1>
+          <p className="text-muted-foreground mb-4">
+            The event you are looking for does not exist or has been removed.
+          </p>
+          <Link href="/events">
+            <Button>Browse Events</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const ticketTypes = [
     {
       id: 'general',
       name: 'General Admission',
-
       price: (event.price ? event.price : 100) * 300, // Convert to LKR (approx 1 USD = 300 LKR)
       description: 'Standard entry to the event',
       available: event.availableTickets ?? 0
-
     },
     {
       id: 'vip',
       name: 'VIP Pass',
-
       price: (event.price ? event.price : 100) * 300 * 2,
       description: 'Premium access with exclusive perks',
       available: Math.floor((event.availableTickets ?? 0) * 0.1)
-
     },
     {
       id: 'student',
       name: 'Student Discount',
-
       price: Math.floor((event.price ? event.price : 100) * 300 * 0.8),
       description: 'Special pricing for students with valid ID',
       available: Math.floor((event.availableTickets ?? 0) * 0.3)
@@ -264,78 +188,90 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                     </div>
                   </div>
 
-
-  return (
-    <div className="min-h-screen bg-[#18181c] text-white">
-      {/* Header */}
-      <div className="container mx-auto px-4 py-8">
-        <Link href="/events" className="inline-flex items-center text-gray-400 hover:text-white mb-6 transition-colors">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Events
-        </Link>
-
-        {/* Event Hero Section */}
-        <div className="grid lg:grid-cols-3 gap-8 mb-12">
-          {/* Event Image */}
-          <div className="lg:col-span-2">
-            <div className="relative aspect-video rounded-xl overflow-hidden">
-              <Image
-                src={getEventImage(event)}
-                alt={event.title}
-                fill
-                className="object-cover"
-                priority
-              />
-              <div className="absolute top-4 right-4">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsLiked(!isLiked)}
-                  className={`bg-black/50 backdrop-blur-sm hover:bg-black/70 ${
-                    isLiked ? 'text-red-500' : 'text-white'
-                  }`}
-                >
-                  <Heart className={`h-4 w-4 ${isLiked ? 'fill-red-500' : ''}`} />
-                </Button>
+                  {/* Social Share */}
+                  <div className="flex gap-4">
+                    <button className="w-10 h-10 bg-blue-600 hover:bg-blue-700 rounded-full flex items-center justify-center transition-colors">
+                      <Facebook className="h-5 w-5 text-white" />
+                    </button>
+                    <button className="w-10 h-10 bg-sky-500 hover:bg-sky-600 rounded-full flex items-center justify-center transition-colors">
+                      <Twitter className="h-5 w-5 text-white" />
+                    </button>
+                    <button className="w-10 h-10 bg-red-600 hover:bg-red-700 rounded-full flex items-center justify-center transition-colors">
+                      <Share2 className="h-4 w-4 text-white" />
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Event Info Card */}
-          <div className="bg-[#23232b] rounded-xl p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <span className="bg-blue-600 text-white text-xs px-3 py-1 rounded-full font-medium">
-                {event.category}
-              </span>
-              <span className="bg-green-600 text-white text-xs px-3 py-1 rounded-full font-medium">
-                {event.type}
-              </span>
-              <span className={`text-xs px-3 py-1 rounded-full font-medium ${
-                event.status === 'APPROVED' ? 'bg-green-600 text-white' : 
-                event.status === 'PENDING' ? 'bg-yellow-600 text-white' : 
-                'bg-red-600 text-white'
-              }`}>
-                {event.status}
-              </span>
+          {/* Tabs and Content Section */}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+            {/* Content Tabs */}
+            <div className="flex gap-8 mb-8 border-b border-gray-700 relative">
+              <button 
+                className={`pb-4 px-2 transition-all duration-300 ease-out relative ${
+                  activeTab === 'summary' 
+                    ? 'text-blue-400 transform scale-105' 
+                    : 'text-gray-400 hover:text-gray-300 hover:scale-102'
+                }`}
+                onClick={() => setActiveTab('summary')}
+              >
+                Summary
+                {activeTab === 'summary' && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 to-blue-400 animate-pulse" />
+                )}
+              </button>
+              <button 
+                className={`pb-4 px-2 transition-all duration-300 ease-out relative ${
+                  activeTab === 'reviews' 
+                    ? 'text-blue-400 transform scale-105' 
+                    : 'text-gray-400 hover:text-gray-300 hover:scale-102'
+                }`}
+                onClick={() => setActiveTab('reviews')}
+              >
+                User Reviews
+                {activeTab === 'reviews' && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 to-blue-400 animate-pulse" />
+                )}
+              </button>
+              <button 
+                className={`pb-4 px-2 transition-all duration-300 ease-out relative ${
+                  activeTab === 'critic' 
+                    ? 'text-blue-400 transform scale-105' 
+                    : 'text-gray-400 hover:text-gray-300 hover:scale-102'
+                }`}
+                onClick={() => setActiveTab('critic')}
+              >
+                Critic Reviews
+                {activeTab === 'critic' && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 to-blue-400 animate-pulse" />
+                )}
+              </button>
             </div>
 
-            <h1 className="text-2xl font-bold mb-4">{event.title}</h1>
-
-
-            {/* Event Details */}
-            <div className="space-y-4 mb-6">
-              <div className="flex items-center text-gray-300">
-                <Calendar className="h-5 w-5 text-blue-400 mr-3" />
-                <div>
-                  <p className="font-medium">{formatEventDate(event.startDate, event.startTime)}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center text-gray-300">
-                <Clock className="h-5 w-5 text-blue-400 mr-3" />
-                <div>
-                  <p className="font-medium">{formatEventTime(event.startTime, event.endTime)}</p>
-                </div>
+            {/* Movie Booking Section */}
+            <div className="mb-12">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Tab Content Area */}
+                <div className="lg:col-span-2 relative overflow-hidden">
+                  <div className="relative min-h-[600px]">
+                    {/* Summary Tab */}
+                    <div 
+                      className={`absolute inset-0 transition-all duration-500 ease-in-out transform ${
+                        activeTab === 'summary' 
+                          ? 'opacity-100 translate-x-0 z-10' 
+                          : 'opacity-0 translate-x-8 z-0 pointer-events-none'
+                      }`}
+                    >
+                      <div className="space-y-12">
+                        {/* Synopsis */}
+                        <div className={`transform transition-all duration-700 ${activeTab === 'summary' ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`} style={{ transitionDelay: '100ms' }}>
+                          <h3 className="text-2xl font-bold mb-6 bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+                            SYNOPSIS
+                          </h3>
+                          <p className="text-gray-300 text-lg leading-relaxed">{event.description}</p>
+                        </div>
 
                         {/* Cast Section */}
                         <div className={`transform transition-all duration-700 ${activeTab === 'summary' ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`} style={{ transitionDelay: '200ms' }}>
@@ -783,127 +719,79 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                     </Link>
                   </div>
                 )}
-
               </div>
 
+              {/* Venue Info */}
               {venue && (
-
-                <div className="flex items-center text-gray-300">
-                  <MapPin className="h-5 w-5 text-blue-400 mr-3" />
-                  <div>
-                    <p className="font-medium">{venue.name}</p>
-                    <p className="text-sm text-gray-400">{venue.address}, {venue.city}</p>
-                  </div>
-
                 <div className="bg-[#23232b] rounded-lg border border-gray-700 p-6 animate-slideInFromRight transition-all duration-500 hover:border-blue-500/30" style={{ animationDelay: '1.3s' }}>
                   <h3 className="text-xl font-semibold mb-4">About the Venue</h3>
                   <p className="text-gray-400 mb-4">{venue.description || 'No description provided.'}</p>
-
                 </div>
               )}
+            </div>
 
-              <div className="flex items-center text-gray-300">
-                <Users className="h-5 w-5 text-blue-400 mr-3" />
-                <div>
-                  <p className="font-medium">Capacity: {event.capacity?.toLocaleString() || 'N/A'}</p>
+            {/* Booking Sidebar */}
+            <div className="lg:col-span-1">
+              <div className="bg-[#23232b] rounded-lg border border-gray-700 p-6 sticky top-8 animate-slideInFromRight transition-all duration-500 hover:border-blue-500/30" style={{ animationDelay: '0.4s' }}>
+                <h3 className="text-xl font-semibold mb-6">Book Your Tickets</h3>
+                
+                {/* Ticket Types */}
+                <div className="space-y-4 mb-6">
+                  {ticketTypes.map((ticket, index) => (
+                    <div
+                      key={ticket.id}
+                      className={`p-4 border rounded-lg cursor-pointer transition-all duration-300 hover:scale-105 animate-slideInFromBottom ${
+                        selectedTicketType === ticket.id
+                          ? 'border-blue-500 bg-blue-500/10 shadow-lg shadow-blue-500/20'
+                          : 'border-gray-600 hover:border-blue-500/50'
+                      }`}
+                      onClick={() => setSelectedTicketType(ticket.id)}
+                      style={{ animationDelay: `${0.5 + index * 0.1}s` }}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-medium">{ticket.name}</h4>
+                        <span className="font-bold text-blue-400">LKR {ticket.price.toLocaleString()}</span>
+                      </div>
+                      <p className="text-sm text-gray-400 mb-2">
+                        {ticket.description}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {ticket.available} available
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Booking Actions */}
+                <div className="space-y-4 animate-slideInFromBottom" style={{ animationDelay: '0.8s' }}>
+                  <Link href={`/events/${event.id}/seating`}>
+                    <Button className="w-full bg-blue-600 hover:bg-blue-700 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-blue-500/25" size="lg">
+                      <Ticket className="mr-2 h-5 w-5" />
+                      Select Seats
+                    </Button>
+                  </Link>
+                  
+                  <Button variant="outline" className="w-full border-gray-600 text-gray-300 hover:bg-gray-700 transition-all duration-300 hover:scale-105">
+                    Add to Watchlist
+                  </Button>
+                </div>
+
+                {/* Price Summary */}
+                <div className="mt-6 pt-6 border-t border-gray-600 animate-fadeIn" style={{ animationDelay: '0.9s' }}>
+                  <div className="flex items-center justify-between text-sm text-gray-400 mb-2">
+                    <span>Service fee</span>
+                    <span>LKR 1,500</span>
+                  </div>
+                  <div className="flex items-center justify-between font-medium">
+                    <span>Total</span>
+                    <span>LKR {((ticketTypes.find(t => t.id === selectedTicketType)?.price || 0) + 1500).toLocaleString()}</span>
+                  </div>
                 </div>
               </div>
             </div>
-
-            {/* Ticket Selection */}
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold mb-3">Select Ticket Type</h3>
-              <div className="space-y-2">
-                {ticketTypes.map((ticket) => (
-                  <label
-                    key={ticket.id}
-                    className={`block p-3 rounded-lg border cursor-pointer transition-colors ${
-                      selectedTicketType === ticket.id
-                        ? 'border-blue-500 bg-blue-500/10'
-                        : 'border-gray-600 hover:border-gray-500'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="ticketType"
-                      value={ticket.id}
-                      checked={selectedTicketType === ticket.id}
-                      onChange={(e) => setSelectedTicketType(e.target.value)}
-                      className="sr-only"
-                    />
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">{ticket.name}</p>
-                        <p className="text-sm text-gray-400">{ticket.description}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold">LKR {ticket.price.toLocaleString()}</p>
-                        <p className="text-sm text-gray-400">{ticket.available} available</p>
-                      </div>
-                    </div>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="space-y-3">
-              <Link href={`/events/${event.id}/seating`}>
-                <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 text-base font-medium">
-                  <Ticket className="mr-2 h-5 w-5" />
-                  Book Tickets - LKR {selectedTicket.price.toLocaleString()}
-                </Button>
-              </Link>
-              <Button
-                variant="outline"
-                className="w-full border-gray-600 text-gray-300 hover:bg-gray-700 py-3"
-              >
-                <Share2 className="mr-2 h-4 w-4" />
-                Share Event
-              </Button>
-            </div>
           </div>
         </div>
-
-        {/* Event Description */}
-        <div className="bg-[#23232b] rounded-xl p-6 mb-8">
-          <h2 className="text-xl font-bold mb-4">About This Event</h2>
-          <p className="text-gray-300 leading-relaxed">{event.description}</p>
-          
-          {venue && (
-            <div className="mt-6 pt-6 border-t border-gray-700">
-              <h3 className="text-lg font-semibold mb-3">Venue Information</h3>
-              <div className="text-gray-300">
-                <p className="font-medium">{venue.name}</p>
-                <p>{venue.address}</p>
-                <p>{venue.city}, {venue.state} {venue.postalCode}</p>
-                <p>{venue.country}</p>
-                <p className="mt-2">Capacity: {venue.capacity.toLocaleString()} people</p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Rating Section (placeholder) */}
-        <div className="bg-[#23232b] rounded-xl p-6">
-          <h2 className="text-xl font-bold mb-4">Event Rating</h2>
-          <div className="flex items-center gap-4 mb-4">
-            <div className="flex items-center">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <Star
-                  key={star}
-                  className="h-5 w-5 fill-yellow-400 text-yellow-400"
-                />
-              ))}
-            </div>
-            <span className="text-lg font-semibold">4.8</span>
-            <span className="text-gray-400">(125 reviews)</span>
-          </div>
-          <p className="text-gray-300">
-            This event has received excellent reviews from attendees. Book now to experience it yourself!
-          </p>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

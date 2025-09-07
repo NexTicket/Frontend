@@ -27,14 +27,12 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
         const fetchOrganizerEvents = async () => {
           setEventsLoading(true);
           try {
-            // Use the new /events/organizer/:organizerId endpoint
+            // Adjust the endpoint to match your event_and_venue_service controller/routes
+            // Example: /api/events/organizer/:organizerId
             const response = await axios.get(
-              `${process.env.NEXT_PUBLIC_API_URL}/events/organizer/${userProfile.uid}`
+              `${process.env.NEXT_PUBLIC_EVENT_VENUE_SERVICE_URL}/api/events/organizer/${userProfile.id}`
             );
-            
-            // The response should have data in response.data.data format
-            const events = Array.isArray(response.data?.data) ? response.data.data : [];
-            setEvents(events);
+            setEvents(Array.isArray(response.data) ? response.data : []);
           } catch (error) {
             setEvents([]);
             console.error('Failed to fetch organizer events:', error);
