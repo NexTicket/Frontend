@@ -126,6 +126,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         
         await setDoc(userDocRef, profileData);
         setUserProfile(profileData);
+        
+        // Ensure tenant creation for roles that need it
+        if (['organizer', 'venue_owner', 'event_admin', 'checkin_officer'].includes(role)) {
+          try {
+            const { ensureUserTenant } = await import('@/lib/api');
+            await ensureUserTenant();
+            console.log('✅ Tenant ensured for new user role:', role);
+          } catch (error) {
+            console.warn('⚠️ Failed to ensure tenant for new user:', error);
+            // Don't fail the auth flow if tenant creation fails
+          }
+        }
       } else {
         // Update existing profile
         const existingData = userDoc.data() as UserProfile;
@@ -227,6 +239,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (docSnap.exists()) {
         const profile = docSnap.data() as UserProfile;
         setUserProfile(profile);
+        
+        // Ensure tenant creation for roles that need it
+        if (['organizer', 'venue_owner', 'event_admin', 'checkin_officer'].includes(profile.role)) {
+          try {
+            const { ensureUserTenant } = await import('@/lib/api');
+            await ensureUserTenant();
+            console.log('✅ Tenant ensured for user role:', profile.role);
+          } catch (error) {
+            console.warn('⚠️ Failed to ensure tenant for user:', error);
+            // Don't fail the auth flow if tenant creation fails
+          }
+        }
 
         // Only redirect if user is on a "neutral" page, not if they're already in their role area
         const currentPath = window.location.pathname;

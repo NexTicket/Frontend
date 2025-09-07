@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/components/auth/auth-provider';
 import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
 import { 
   QrCode,
   Users, 
@@ -17,9 +18,13 @@ import {
   Download,
   Scan,
   User,
-  Clock4
+  Clock4,
+  ArrowLeft,
+  Settings
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { fetchMyCheckinEvents } from '@/lib/api';
+import RouteGuard from '@/components/auth/routeGuard';
 
 // Theme to match admin dashboard
 const darkBg = "#181A20";
@@ -27,6 +32,29 @@ const blueHeader = "#1877F2";
 const cardBg = "#23262F";
 const greenBorder = "#CBF83E" + '50';
 const cardShadow = "0 2px 16px 0 rgba(57,253,72,0.08)";
+
+// Animation variants
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      delayChildren: 0.2,
+      staggerChildren: 0.1
+    }
+  }
+};
+
+const itemVariants = {
+  hidden: { y: 20, opacity: 0 },
+  visible: {
+    y: 0,
+    opacity: 1,
+    transition: {
+      duration: 0.5
+    }
+  }
+};
 
 interface AssignedEvent {
   id: string;
@@ -167,13 +195,90 @@ export default function CheckinOfficerDashboard() {
   const { userProfile, firebaseUser, isLoading } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'overview' | 'events' | 'checkin' | 'attendees'>('overview');
-  const [selectedEvent, setSelectedEvent] = useState<string>('2'); // Default to active event
+  const [selectedEvent, setSelectedEvent] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [scannerActive, setScannerActive] = useState(false);
   const [scannerModalOpen, setScannerModalOpen] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [assignedEvents, setAssignedEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch assigned events for checkin officer
+  useEffect(() => {
+    const loadAssignedEvents = async () => {
+      if (!userProfile || userProfile.role !== 'checkin_officer') return;
+      
+      setLoading(true);
+      try {
+        console.log('🎯 Fetching assigned events for checkin officer:', userProfile.uid);
+        const response = await fetchMyCheckinEvents();
+        const events = response?.data || response || [];
+        setAssignedEvents(events);
+        console.log('📊 Loaded assigned events:', events);
+        
+        // Set default selected event to the first active event
+        const activeEvent = events.find((e: any) => {
+          const eventDate = new Date(e.startDate);
+          const now = new Date();
+          return eventDate.toDateString() === now.toDateString();
+        });
+        if (activeEvent) {
+          setSelectedEvent(activeEvent.id.toString());
+        } else if (events.length > 0) {
+          setSelectedEvent(events[0].id.toString());
+        }
+      } catch (error) {
+        console.error('❌ Failed to load assigned events:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadAssignedEvents();
+  }, [userProfile]);
+
+  // Calculate stats from real data
+  const totalEvents = assignedEvents.length;
+  const activeEvents = assignedEvents.filter(e => {
+    const eventDate = new Date(e.startDate);
+    const now = new Date();
+    return eventDate.toDateString() === now.toDateString();
+  }).length;
+  const completedEvents = assignedEvents.filter(e => {
+    const eventDate = new Date(e.startDate);
+    const now = new Date();
+    return eventDate < now;
+  }).length;
+
+  // Get event status
+  const getEventStatus = (event: any) => {
+    const eventDate = new Date(event.startDate);
+    const now = new Date();
+    
+    if (eventDate.toDateString() === now.toDateString()) {
+      return 'active';
+    } else if (eventDate > now) {
+      return 'pending';
+    } else {
+      return 'completed';
+    }
+  };
+
+  // Format date and time
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const formatTime = (timeString: string) => {
+    if (!timeString) return 'Time TBD';
+    return timeString;
+  };
 
   // Helper to open the scanner modal
   const openScannerModal = () => {
@@ -248,16 +353,12 @@ export default function CheckinOfficerDashboard() {
     }
   };
 
-  // Redirect if not authenticated or not checkin officer
+  // Redirect if not authenticated
   useEffect(() => {
     if (!isLoading && !firebaseUser) {
       router.push('/auth/signin');
     }
-    // Add role check here when authentication is implemented
-    // if (userProfile && userProfile.role !== 'checkin_officer') {
-    //   router.push('/dashboard');
-    // }
-  }, [isLoading, firebaseUser, userProfile, router]);
+  }, [isLoading, firebaseUser, router]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -277,8 +378,8 @@ export default function CheckinOfficerDashboard() {
     }
   };
 
-  const selectedEventData = mockAssignedEvents.find(e => e.id === selectedEvent);
-  
+  const selectedEventData = assignedEvents.find(e => e.id.toString() === selectedEvent);
+
   const filteredAttendees = mockAttendees.filter(attendee => {
     const matchesSearch = attendee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          attendee.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -296,6 +397,18 @@ export default function CheckinOfficerDashboard() {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: darkBg }}>
         <div className="text-lg" style={{ color: '#fff' }}>Loading...</div>
+      </div>
+    );
+  }
+
+  // Check if user is authorized
+  if (!userProfile || userProfile.role !== 'checkin_officer') {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: darkBg }}>
+        <div className="text-center">
+          <div className="text-lg mb-4" style={{ color: '#fff' }}>Access Denied</div>
+          <p style={{ color: '#ABA8A9' }}>You don't have permission to access this page.</p>
+        </div>
       </div>
     );
   }
@@ -375,7 +488,7 @@ export default function CheckinOfficerDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm mb-1" style={{ color: '#fff' }}>Assigned Events</p>
-                <p className="text-3xl font-bold" style={{ color: '#CBF83E' }}>{mockAssignedEvents.length}</p>
+                <p className="text-3xl font-bold" style={{ color: '#CBF83E' }}>{totalEvents}</p>
               </div>
               <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: '#D8DFEE' + '40' }}>
                 <Calendar className="w-6 h-6" style={{ color: '#CBF83E' }} />
@@ -388,7 +501,7 @@ export default function CheckinOfficerDashboard() {
               <div>
                 <p className="text-sm mb-1" style={{ color: '#fff' }}>Active Events</p>
                 <p className="text-3xl font-bold" style={{ color: '#CBF83E' }}>
-                  {mockAssignedEvents.filter(e => e.status === 'active').length}
+                  {activeEvents}
                 </p>
               </div>
               <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: '#D8DFEE' + '40' }}>
@@ -460,7 +573,7 @@ export default function CheckinOfficerDashboard() {
                   className="appearance-none rounded-lg px-4 py-2 pr-8"
                   style={{ backgroundColor: darkBg, border: `1px solid ${greenBorder}`, color: '#fff' }}
                 >
-                  {mockAssignedEvents.map(event => (
+                  {assignedEvents.map(event => (
                     <option key={event.id} value={event.id}>{event.title}</option>
                   ))}
                 </select>
@@ -572,87 +685,99 @@ export default function CheckinOfficerDashboard() {
 
         {activeTab === 'events' && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {mockAssignedEvents.map((event) => (
-              <div key={event.id} className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl transition-all duration-300" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h3 className="text-lg font-medium mb-1" style={{ color: '#fff' }}>{event.title}</h3>
-                    <p className="text-sm" style={{ color: '#ABA8A9' }}>{event.organizer}</p>
-                  </div>
-                  <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(event.status)}`}>
-                    {event.status}
-                  </span>
-                </div>
-
-                <div className="space-y-3 mb-6">
-                  <div className="flex items-center space-x-2 text-sm" style={{ color: '#ABA8A9' }}>
-                    <Calendar className="w-4 h-4" style={{ color: '#fff' }} />
-                    <span>{new Date(event.date).toLocaleDateString()} at {event.time}</span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-sm" style={{ color: '#ABA8A9' }}>
-                    <MapPin className="w-4 h-4" style={{ color: '#fff' }} />
-                    <span>{event.venue}</span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-sm" style={{ color: '#ABA8A9' }}>
-                    <Users className="w-4 h-4" style={{ color: '#fff' }} />
-                    <span>{event.checkedIn} / {event.totalTickets} checked in</span>
-                  </div>
-                </div>
-
-                <div className="mb-4">
-                  <div className="flex justify-between text-sm mb-1" style={{ color: '#ABA8A9' }}>
-                    <span>Check-in Progress</span>
-                    <span>{Math.round((event.checkedIn / event.totalTickets) * 100)}%</span>
-                  </div>
-                  <div className="w-full rounded-full h-2" style={{ backgroundColor: '#1f222a' }}>
-                    <div 
-                      className="h-2 rounded-full" 
-                      style={{ backgroundColor: '#0D6EFD', width: `${(event.checkedIn / event.totalTickets) * 100}%` }}
-                    ></div>
-                  </div>
-                </div>
-
-                <div className="mb-4 p-3 rounded-lg" style={{ backgroundColor: '#1f222a' }}>
-                  <div className="text-sm" style={{ color: '#ABA8A9' }}>My Check-ins</div>
-                  <div className="text-2xl font-bold" style={{ color: '#CBF83E' }}>{event.myCheckins}</div>
-                </div>
-
-                <div className="flex space-x-2">
-                  {event.status === 'active' ? (
-                    <button
-                      type="button"
-                      onClick={openScannerModal}
-                      className="flex-1 flex items-center justify-center h-10 px-4 py-2 rounded-md font-medium text-white shadow-md transition-all duration-200"
-                      style={{ background: '#0D6EFD' }}
-                    >
-                      <Scan className="w-4 h-4 mr-1" />
-                      Check-in
-                    </button>
-                  ) : (
-                    <button
-                      className="flex-1 flex items-center justify-center h-10 px-4 py-2 rounded-md font-medium text-white shadow-md opacity-50 cursor-not-allowed"
-                      style={{ background: '#0D6EFD' }}
-                      disabled
-                    >
-                      <Scan className="w-4 h-4 mr-1" />
-                      Check-in
-                    </button>
-                  )}
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    className="transition-all duration-200 hover:shadow-md"
-                    style={{ borderColor: greenBorder, color: '#fff', backgroundColor: 'transparent' }}
-                    onClick={() => {
-                      setSelectedEvent(event.id);
-                      setActiveTab('attendees');
-                    }}
-                  >
-                    <Eye className="w-4 h-4" />
-                  </Button>
-                </div>
+            {loading ? (
+              <div className="col-span-full text-center py-8">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+                <p style={{ color: '#ABA8A9' }}>Loading your assigned events...</p>
               </div>
-            ))}
+            ) : assignedEvents.length === 0 ? (
+              <div className="col-span-full text-center py-8">
+                <Calendar className="w-16 h-16 mx-auto mb-4" style={{ color: '#ABA8A9' }} />
+                <p style={{ color: '#ABA8A9' }}>No assigned events found.</p>
+              </div>
+            ) : (
+              assignedEvents.map((event) => (
+                <div key={event.id} className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl transition-all duration-300" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <h3 className="text-lg font-medium mb-1" style={{ color: '#fff' }}>{event.name}</h3>
+                      <p className="text-sm" style={{ color: '#ABA8A9' }}>{event.organizer?.name || 'Unknown Organizer'}</p>
+                    </div>
+                    <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(getEventStatus(event))}`}>
+                      {getEventStatus(event)}
+                    </span>
+                  </div>
+
+                  <div className="space-y-3 mb-6">
+                    <div className="flex items-center space-x-2 text-sm" style={{ color: '#ABA8A9' }}>
+                      <Calendar className="w-4 h-4" style={{ color: '#fff' }} />
+                      <span>{formatDate(event.startDate)} at {formatTime(event.startTime)}</span>
+                    </div>
+                    <div className="flex items-center space-x-2 text-sm" style={{ color: '#ABA8A9' }}>
+                      <MapPin className="w-4 h-4" style={{ color: '#fff' }} />
+                      <span>{event.venue?.name || 'Venue TBD'}</span>
+                    </div>
+                    <div className="flex items-center space-x-2 text-sm" style={{ color: '#ABA8A9' }}>
+                      <Users className="w-4 h-4" style={{ color: '#fff' }} />
+                      <span>0 / {event.capacity} checked in</span>
+                    </div>
+                  </div>
+
+                  <div className="mb-4">
+                    <div className="flex justify-between text-sm mb-1" style={{ color: '#ABA8A9' }}>
+                      <span>Check-in Progress</span>
+                      <span>0%</span>
+                    </div>
+                    <div className="w-full rounded-full h-2" style={{ backgroundColor: '#1f222a' }}>
+                      <div 
+                        className="h-2 rounded-full" 
+                        style={{ backgroundColor: '#0D6EFD', width: '0%' }}
+                      ></div>
+                    </div>
+                  </div>
+
+                  <div className="mb-4 p-3 rounded-lg" style={{ backgroundColor: '#1f222a' }}>
+                    <div className="text-sm" style={{ color: '#ABA8A9' }}>My Check-ins</div>
+                    <div className="text-2xl font-bold" style={{ color: '#CBF83E' }}>0</div>
+                  </div>
+
+                  <div className="flex space-x-2">
+                    {getEventStatus(event) === 'active' ? (
+                      <button
+                        type="button"
+                        onClick={openScannerModal}
+                        className="flex-1 flex items-center justify-center h-10 px-4 py-2 rounded-md font-medium text-white shadow-md transition-all duration-200"
+                        style={{ background: '#0D6EFD' }}
+                      >
+                        <Scan className="w-4 h-4 mr-1" />
+                        Check-in
+                      </button>
+                    ) : (
+                      <button
+                        className="flex-1 flex items-center justify-center h-10 px-4 py-2 rounded-md font-medium text-white shadow-md opacity-50 cursor-not-allowed"
+                        style={{ background: '#0D6EFD' }}
+                        disabled
+                      >
+                        <Scan className="w-4 h-4 mr-1" />
+                        Check-in
+                      </button>
+                    )}
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      className="transition-all duration-200 hover:shadow-md"
+                      style={{ borderColor: greenBorder, color: '#fff', backgroundColor: 'transparent' }}
+                      onClick={() => {
+                        setSelectedEvent(event.id.toString());
+                        setActiveTab('attendees');
+                      }}
+                    >
+                      <Eye className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         )}
 
@@ -662,25 +787,25 @@ export default function CheckinOfficerDashboard() {
             <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="text-lg font-semibold" style={{ color: '#fff' }}>{selectedEventData.title}</h3>
-                  <p className="text-sm" style={{ color: '#ABA8A9' }}>{selectedEventData.venue}</p>
+                  <h3 className="text-lg font-semibold" style={{ color: '#fff' }}>{selectedEventData.name}</h3>
+                  <p className="text-sm" style={{ color: '#ABA8A9' }}>{selectedEventData.venue?.name || 'Venue TBD'}</p>
                 </div>
-                <span className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(selectedEventData.status)}`}>
-                  {selectedEventData.status}
+                <span className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(getEventStatus(selectedEventData))}`}>
+                  {getEventStatus(selectedEventData)}
                 </span>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <div className="text-center p-3 rounded-lg" style={{ backgroundColor: '#1f222a' }}>
-                  <div className="text-2xl font-bold" style={{ color: '#fff' }}>{selectedEventData.totalTickets}</div>
-                  <div className="text-sm" style={{ color: '#ABA8A9' }}>Total Tickets</div>
+                  <div className="text-2xl font-bold" style={{ color: '#fff' }}>{selectedEventData.capacity}</div>
+                  <div className="text-sm" style={{ color: '#ABA8A9' }}>Total Capacity</div>
                 </div>
                 <div className="text-center p-3 rounded-lg" style={{ backgroundColor: '#1f222a' }}>
-                  <div className="text-2xl font-bold" style={{ color: '#CBF83E' }}>{selectedEventData.checkedIn}</div>
+                  <div className="text-2xl font-bold" style={{ color: '#CBF83E' }}>0</div>
                   <div className="text-sm" style={{ color: '#ABA8A9' }}>Checked In</div>
                 </div>
                 <div className="text-center p-3 rounded-lg" style={{ backgroundColor: '#1f222a' }}>
-                  <div className="text-2xl font-bold" style={{ color: '#CBF83E' }}>{selectedEventData.myCheckins}</div>
+                  <div className="text-2xl font-bold" style={{ color: '#CBF83E' }}>0</div>
                   <div className="text-sm" style={{ color: '#ABA8A9' }}>My Check-ins</div>
                 </div>
               </div>

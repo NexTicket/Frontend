@@ -186,10 +186,9 @@ export default function AdminDashboard() {
     const loadPendingEvents = async () => {
       setLoadingEvents(true);
       try {
-        const response = await fetchEvents();
+        const response = await fetchEvents('PENDING');
         const events = response?.data || response || [];
-        const pending = events.filter((event: any) => event.status === 'PENDING');
-        setPendingEvents(pending);
+        setPendingEvents(events);
       } catch (error) {
         console.error('Failed to load pending events:', error);
       } finally {
@@ -206,10 +205,9 @@ export default function AdminDashboard() {
     try {
       await approveEvent(eventId);
       // Refresh pending events
-      const response = await fetchEvents();
+      const response = await fetchEvents('PENDING');
       const events = response?.data || response || [];
-      const pending = events.filter((event: any) => event.status === 'PENDING');
-      setPendingEvents(pending);
+      setPendingEvents(events);
     } catch (error) {
       console.error('Failed to approve event:', error);
     }
@@ -219,10 +217,9 @@ export default function AdminDashboard() {
     try {
       await rejectEvent(eventId);
       // Refresh pending events
-      const response = await fetchEvents();
+      const response = await fetchEvents('PENDING');
       const events = response?.data || response || [];
-      const pending = events.filter((event: any) => event.status === 'PENDING');
-      setPendingEvents(pending);
+      setPendingEvents(events);
     } catch (error) {
       console.error('Failed to reject event:', error);
     }
