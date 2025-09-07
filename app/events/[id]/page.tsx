@@ -1,6 +1,8 @@
 "use client"
 
-import { useState, use, useEffect } from 'react';
+
+import React, { useState, use, useEffect } from 'react';
+
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -18,8 +20,41 @@ import {
   Facebook,
   Twitter
 } from 'lucide-react';
-import { mockEvents, mockVenues } from '@/lib/mock-data';
-import { fetchEventById } from '@/lib/api';
+
+import { fetchEventById, fetchVenueById } from '@/lib/api';
+
+// Event interface to match API
+interface Event {
+  id: string;
+  title: string;
+  description: string;
+  startDate: string;
+  startTime?: string;
+  endDate?: string;
+  endTime?: string;
+  category: string;
+  type: string;
+  status: string;
+  capacity: number;
+  image?: string;
+  venueId: string;
+  tenantId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface Venue {
+  id: string;
+  name: string;
+  address: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+  capacity: number;
+  image?: string;
+}
+
 
 interface EventDetailPageProps {
   params: Promise<{
@@ -29,164 +64,182 @@ interface EventDetailPageProps {
 
 export default function EventDetailPage({ params }: EventDetailPageProps) {
   const [isLiked, setIsLiked] = useState(false);
+
+  const [selectedTicketType, setSelectedTicketType] = useState('general');
+  const [event, setEvent] = useState<Event | null>(null);
+  const [venue, setVenue] = useState<Venue | null>(null);
+
   const [selectedTicketType, setSelectedTicketType] = useState('standard');
   const [activeTab, setActiveTab] = useState('summary');
   const [loadedEvent, setLoadedEvent] = useState<any | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
   // Unwrap params using React.use()
   const { id } = use(params);
+  
 
+  // Load event and venue data
   useEffect(() => {
-    const load = async () => {
+    const loadEventData = async () => {
       try {
         setLoading(true);
-        setError(null);
-        const data = await fetchEventById(id);
-        // Accept several possible shapes
-        const evt = (data?.data) || data;
-        setLoadedEvent(evt);
-      } catch (e: any) {
-        console.error('Failed to fetch event by id', e);
-        setError(e?.message || 'Failed to load event');
-        setLoadedEvent(null);
+        console.log('🎯 Loading event details for ID:', id);
+        
+        const eventResponse = await fetchEventById(id);
+        console.log('🎯 Event loaded:', eventResponse);
+        
+        if (eventResponse && eventResponse.data) {
+          setEvent(eventResponse.data);
+          
+          // Load venue data if venueId exists
+          if (eventResponse.data.venueId) {
+            try {
+              const venueResponse = await fetchVenueById(eventResponse.data.venueId);
+              console.log('🎯 Venue loaded:', venueResponse);
+              if (venueResponse && venueResponse.data) {
+                setVenue(venueResponse.data);
+              }
+            } catch (venueErr) {
+              console.error('❌ Failed to load venue:', venueErr);
+              // Don't set error for venue failure, just continue without venue data
+            }
+          }
+        } else {
+          setError('Event not found');
+        }
+      } catch (err) {
+        console.error('❌ Failed to load event:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load event');
       } finally {
         setLoading(false);
       }
     };
-    if (id) load();
-  }, [id]);
-  
-  // Fallback to mock if API fails
-  const event = loadedEvent || mockEvents.find(e => String(e.id) === String(id));
-  const venue = event ? (event.venue || mockVenues.find((v: any) => String(v.id) === String(event.venueId))) : null;
 
-  // Check if this is a movie
-  const isMovie = event && Array.isArray(event.tags) && event.tags.includes('movie');
+    loadEventData();
+  }, [id]);
+
+  // Helper functions
+  const getEventImage = (event: Event) => {
+    return event.image || '/Images/event-placeholder.jpg';
+  };
+
+  const formatEventDate = (startDate: string, startTime?: string) => {
+    const date = new Date(startDate);
+    const dateStr = date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    return startTime ? `${dateStr} at ${startTime}` : dateStr;
+  };
+
+  const formatEventTime = (startTime?: string, endTime?: string) => {
+    if (startTime && endTime) {
+      return `${startTime} - ${endTime}`;
+    } else if (startTime) {
+      return `Starting at ${startTime}`;
+    } else {
+      return 'Time TBA';
+    }
+  };
+
+
+  const ticketTypes = [
+    {
+      id: 'general',
+      name: 'General Admission',
+
+      price: (event.price ? event.price : 100) * 300, // Convert to LKR (approx 1 USD = 300 LKR)
+      description: 'Standard entry to the event',
+      available: event.availableTickets ?? 0
+
+    },
+    {
+      id: 'vip',
+      name: 'VIP Pass',
+
+      price: (event.price ? event.price : 100) * 300 * 2,
+      description: 'Premium access with exclusive perks',
+      available: Math.floor((event.availableTickets ?? 0) * 0.1)
+
+    },
+    {
+      id: 'student',
+      name: 'Student Discount',
+
+      price: Math.floor((event.price ? event.price : 100) * 300 * 0.8),
+
+      description: 'Special pricing for students with valid ID',
+      available: event?.capacity ? Math.floor(event.capacity * 0.3) : 30
+    }
+  ];
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center text-muted-foreground">Loading event...</div>
+      <div className="min-h-screen bg-[#18181c] text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <h2 className="text-2xl font-bold mb-2">Loading Event...</h2>
+          <p className="text-gray-400">Fetching event details for you</p>
+        </div>
       </div>
     );
   }
 
-  if (!event) {
+  if (error || !event) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-[#18181c] text-white flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-4">Event Not Found</h1>
-          <p className="text-muted-foreground mb-4">
-            The event you are looking for does not exist or has been removed.
+          <p className="text-gray-400 mb-4">
+            {error || 'The event you are looking for does not exist or has been removed.'}
           </p>
           <Link href="/events">
-            <Button>Browse Events</Button>
+            <Button className="bg-blue-600 hover:bg-blue-700">Browse Events</Button>
           </Link>
         </div>
       </div>
     );
   }
 
-  const ticketTypes = [
-    {
-      id: 'general',
-      name: 'General Admission',
-      price: (event.price ? event.price : 100) * 300, // Convert to LKR (approx 1 USD = 300 LKR)
-      description: 'Standard entry to the event',
-      available: event.availableTickets ?? 0
-    },
-    {
-      id: 'vip',
-      name: 'VIP Pass',
-      price: (event.price ? event.price : 100) * 300 * 2,
-      description: 'Premium access with exclusive perks',
-      available: Math.floor((event.availableTickets ?? 0) * 0.1)
-    },
-    {
-      id: 'student',
-      name: 'Student Discount',
-      price: Math.floor((event.price ? event.price : 100) * 300 * 0.8),
-      description: 'Special pricing for students with valid ID',
-      available: Math.floor((event.availableTickets ?? 0) * 0.3)
-    }
-  ];
+
+  const selectedTicket = ticketTypes.find(t => t.id === selectedTicketType) || ticketTypes[0];
 
   return (
     <div className="min-h-screen bg-[#18181c] text-white">
-      {isMovie ? (
-        // Movie Layout
-        <>
-          {/* Movie Hero Section */}
-          <div className="relative w-full h-screen overflow-hidden">
-            {/* Background Movie Poster */}
-            <div 
-              className="absolute inset-0 bg-cover bg-center"
-              style={{ backgroundImage: `url(${event.image})` }}
-            />
-            {/* Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/70 to-black/30" />
-            
-            {/* Content */}
-            <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center">
-              <div className="flex gap-8 items-start w-full">
-                {/* Movie Poster */}
-                <div className="flex-shrink-0">
-                  <Image 
-                    src={event.image || '/placeholder.png'} 
-                    alt={event.title}
-                    width={320}
-                    height={480}
-                    className="w-80 h-[480px] object-cover rounded-xl shadow-2xl"
-                  />
-                  <div className="mt-4 text-center">
-                    <span className="bg-gray-700 text-white text-sm px-3 py-1 rounded">2D</span>
-                  </div>
-                </div>
+      {/* Header */}
+      <div className="container mx-auto px-4 py-8">
+        <Link href="/events" className="inline-flex items-center text-gray-400 hover:text-white mb-6 transition-colors">
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Events
+        </Link>
 
-                {/* Movie Details */}
-                <div className="flex-1 max-w-2xl">
-                  {/* Title and Language aligned with top of poster */}
-                  <h1 className="text-5xl font-bold mb-2 uppercase">{event.title}</h1>
-                  <p className="text-xl text-gray-300 mb-8 uppercase tracking-wide">
-                    {String(event.title || '').includes('Sinhala') || String(event.title || '').includes('සිංහල') ? 'SINHALA' : 'ENGLISH'}
-                  </p>
-                  
-                  {/* Play Button */}
-                  <div className="mb-8">
-                    <button className="w-20 h-20 bg-white/25 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white/35 transition-all duration-300 hover:scale-110 shadow-2xl border-2 border-white/30">
-                      <Play className="h-7 w-7 text-white ml-1" fill="white" />
-                    </button>
-                  </div>
-
-                  {/* Genre Tags */}
-                  <div className="flex gap-2 mb-6">
-                    <span className="px-3 py-1 border border-gray-600 rounded text-sm uppercase">
-                      {event.category}
-                    </span>
-                    {Array.isArray(event.tags) && event.tags
-                      .filter((tag: string) => tag !== 'movie')
-                      .slice(0, 2)
-                      .map((tag: string) => (
-                        <span key={tag} className="px-3 py-1 border border-gray-600 rounded text-sm uppercase">
-                          {tag}
-                        </span>
-                      ))
-                    }
-                  </div>
-
-                  {/* Movie Info */}
-                  <div className="flex items-center gap-6 mb-6 text-gray-300">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-5 w-5" />
-                      <span>{new Date(event.startDate || event.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-5 w-5" />
-                      <span>{event.startTime || event.time}</span>
-                    </div>
-                  </div>
+        {/* Event Hero Section */}
+        <div className="grid lg:grid-cols-3 gap-8 mb-12">
+          {/* Event Image */}
+          <div className="lg:col-span-2">
+            <div className="relative aspect-video rounded-xl overflow-hidden">
+              <Image
+                src={getEventImage(event)}
+                alt={event.title}
+                fill
+                className="object-cover"
+                priority
+              />
+              <div className="absolute top-4 right-4">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsLiked(!isLiked)}
+                  className={`bg-black/50 backdrop-blur-sm hover:bg-black/70 ${
+                    isLiked ? 'text-red-500' : 'text-white'
+                  }`}
+                >
+                  <Heart className={`h-4 w-4 ${isLiked ? 'fill-red-500' : ''}`} />
+                </Button>
 
                   {/* Social Share */}
                   <div className="flex gap-4">
@@ -201,6 +254,7 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                     </button>
                   </div>
                 </div>
+
               </div>
             </div>
           </div>
@@ -249,6 +303,24 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                 )}
               </button>
             </div>
+
+
+            <h1 className="text-2xl font-bold mb-4">{event.title}</h1>
+
+            {/* Event Details */}
+            <div className="space-y-4 mb-6">
+              <div className="flex items-center text-gray-300">
+                <Calendar className="h-5 w-5 text-blue-400 mr-3" />
+                <div>
+                  <p className="font-medium">{formatEventDate(event.startDate, event.startTime)}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center text-gray-300">
+                <Clock className="h-5 w-5 text-blue-400 mr-3" />
+                <div>
+                  <p className="font-medium">{formatEventTime(event.startTime, event.endTime)}</p>
+                </div>
 
             {/* Movie Booking Section */}
             <div className="mb-12">
@@ -719,13 +791,23 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                     </Link>
                   </div>
                 )}
+
               </div>
 
               {/* Venue Info */}
               {venue && (
+
+                <div className="flex items-center text-gray-300">
+                  <MapPin className="h-5 w-5 text-blue-400 mr-3" />
+                  <div>
+                    <p className="font-medium">{venue.name}</p>
+                    <p className="text-sm text-gray-400">{venue.address}, {venue.city}</p>
+                  </div>
+
                 <div className="bg-[#23232b] rounded-lg border border-gray-700 p-6 animate-slideInFromRight transition-all duration-500 hover:border-blue-500/30" style={{ animationDelay: '1.3s' }}>
                   <h3 className="text-xl font-semibold mb-4">About the Venue</h3>
                   <p className="text-gray-400 mb-4">{venue.description || 'No description provided.'}</p>
+
                 </div>
               )}
             </div>
@@ -795,3 +877,4 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
     </div>
   );
 }
+
