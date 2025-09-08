@@ -55,10 +55,10 @@ export default function CheckoutPage() {
   // Mock selected seats and event (in a real app, this would come from state/context)
   const selectedSeats = mockSeats.filter(s => s.isSelected).slice(0, 2);
   const event = mockEvents[0];
-  const orderId = 1; // This should come from your order creation logic
+  const orderId = 4; // This should come from your order creation logic
   
   const subtotal = selectedSeats.reduce((sum, seat) => sum + seat.price, 0);
-  const serviceFee = 5;
+  const serviceFee = 250;
   const total = subtotal + serviceFee;
 
   const handlePaymentSuccess = () => {

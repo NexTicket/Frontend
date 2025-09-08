@@ -266,7 +266,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               break;
             case 'customer':
               console.log('Redirecting centrally to customers dashboard');
-              router.push('/dashboard');
+              router.push('/events');
               break;
             default:
               router.push('/dashboard');

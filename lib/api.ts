@@ -21,9 +21,14 @@ function getVenueServiceUrl(endpoint: string): string {
   const trimmed = rawBase.replace(/\/$/, '');
   
   // For venue service, we assume the endpoint already includes the correct path
+  // If the base URL already ends with /api, use it as is
+  // If not, add /api to the base (to match backend API structure)
+  const base = trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
+  
+  // Ensure endpoint starts with /
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   
-  return `${trimmed}${cleanEndpoint}`;
+  return `${base}${cleanEndpoint}`;
 }
 
 // Public fetch function for endpoints that don't require authentication
@@ -49,21 +54,21 @@ export async function publicFetch(url: string, options: RequestInit = {}) {
 
 export async function fetchVenues() {
   // Use publicFetch since venues should be accessible to everyone
-  const url = getApiUrl('/venues');
+  const url = getVenueServiceUrl('/venues');
   const res = await publicFetch(url);
   if (!res.ok) throw new Error("Failed to fetch venues");
   return res.json();
 }
 
 export const fetchVenueById = async (id: number | string) => {
-  const url = getApiUrl(`/venues/getvenuebyid/${id}`);
+  const url = getVenueServiceUrl(`/venues/getvenuebyid/${id}`);
   const res = await publicFetch(url);
   if (!res.ok) throw new Error("Failed to fetch venue");
   return res.json();
 };
 
 export async function createVenue(venueData: any) {
-  const url = getApiUrl('/venues/');
+  const url = getVenueServiceUrl('/venues/');
   const res = await secureFetch(url, {
     method: 'POST',
     body: JSON.stringify(venueData)
@@ -73,7 +78,7 @@ export async function createVenue(venueData: any) {
 }
 
 export async function updateVenue(id: string, venueData: any) {
-  const url = getApiUrl(`/venues/${id}`);
+  const url = getVenueServiceUrl(`/venues/${id}`);
   const res = await secureFetch(url, {
     method: 'PUT',
     body: JSON.stringify(venueData)
@@ -96,7 +101,7 @@ export async function uploadVenueImage(id: string, imageFile: File) {
   console.log('📤 API: FormData created with field name "image"');
   console.log('📤 API: FormData instanceof FormData:', formData instanceof FormData);
   console.log('📤 API: typeof formData:', typeof formData);
-  const url = getApiUrl(`/venues/${id}/image`);
+  const url = getVenueServiceUrl(`/venues/${id}/image`);
   
   console.log('📤 API: Making request to:', url);
   
@@ -147,9 +152,9 @@ export async function uploadVenueImages(id: string, imageFiles: File[]) {
   formData.append('images', firstImage); // Use 'images' to match the route
   
   console.log('📤 FormData created with image field name: images');
-  console.log('📤 Uploading to URL:', getApiUrl(`/venues/${id}/images`));
+  console.log('📤 Uploading to URL:', getVenueServiceUrl(`/venues/${id}/images`));
   
-  const res = await secureFetch(getApiUrl(`/venues/${id}/images`), {
+  const res = await secureFetch(getVenueServiceUrl(`/venues/${id}/images`), {
     method: 'POST',
     body: formData
     // No headers - let secureFetch and browser handle Content-Type
@@ -169,20 +174,20 @@ export async function uploadVenueImages(id: string, imageFiles: File[]) {
 }
 
 export async function fetchEvents() {
-  const res = await secureFetch(getApiUrl('/events/'));
+  const res = await secureFetch(getVenueServiceUrl('/events/'));
   if (!res.ok) throw new Error("Failed to fetch events");
   return res.json();
 }
 
 export async function fetchEventById(id: string) {
-  const res = await secureFetch(getApiUrl(`/events/${id}`));
+  const res = await secureFetch(getVenueServiceUrl(`/events/${id}`));
   if (!res.ok) throw new Error("Failed to fetch event");
   return res.json();
 }
 
 //approveEvent and rejectEvent functions
 export async function approveEvent(id: string) {
-  const res = await secureFetch(getApiUrl(`/events/${id}/approve`), {
+  const res = await secureFetch(getVenueServiceUrl(`/events/${id}/approve`), {
     method: 'POST'
   });
   if (!res.ok) throw new Error("Failed to approve event");
@@ -190,7 +195,7 @@ export async function approveEvent(id: string) {
 }
 
 export async function rejectEvent(id: string) {
-  const res = await secureFetch(getApiUrl(`/events/${id}/reject`), {
+  const res = await secureFetch(getVenueServiceUrl(`/events/${id}/reject`), {
     method: 'POST'
   });
   if (!res.ok) throw new Error("Failed to reject event");
@@ -223,7 +228,7 @@ export async function createEvent(eventData: {
     image: eventData.image ?? undefined
   };
 
-  const res = await secureFetch(getApiUrl('/events'), {
+  const res = await secureFetch(getVenueServiceUrl('/events'), {
     method: 'POST',
     body: JSON.stringify(body)
   });
@@ -239,7 +244,7 @@ export async function createEvent(eventData: {
 // Delete event by id
 export async function deleteEvent(id: string) {
   // Backend route expects /api/events/delete-event/:id
-  const res = await secureFetch(getApiUrl(`/events/delete-event/${id}`), {
+  const res = await secureFetch(getVenueServiceUrl(`/events/delete-event/${id}`), {
     method: 'DELETE'
   });
   if (!res.ok) {
@@ -259,7 +264,7 @@ export async function fetchmyVenues() {
 export async function uploadEventImage(eventId: string | number, file: File) {
   const formData = new FormData();
   formData.append('image', file);
-  const url = getApiUrl(`/events/${eventId}/image`);
+  const url = getVenueServiceUrl(`/events/${eventId}/image`);
   const res = await secureFetch(url, {
     method: 'POST',
     body: formData
@@ -316,7 +321,7 @@ export async function bootstrapAdmin(firebaseUid: string, email: string) {
 }
 
 export async function deleteVenue(id: string) {
-  const res = await secureFetch(getApiUrl(`/venues/deletevenue/${id}`), {
+  const res = await secureFetch(getVenueServiceUrl(`/venues/deletevenue/${id}`), {
     method: 'DELETE'
   });
   if (!res.ok) throw new Error("Failed to delete venue");

@@ -61,7 +61,7 @@ export default function PaymentForm({ orderId, total, onPaymentSuccess, onPaymen
         payment_method: {
           card: cardElement,
           billing_details: {
-            // You can add billing details here from form data
+            // Billing details here from form data
           },
         },
       });
