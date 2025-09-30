@@ -38,8 +38,8 @@ export function Navbar() {
     switch (userProfile.role) {
       case 'organizer':
         return [
-          { href: '/organizer/dashboard', label: 'Dashboard', icon: Crown },
-          { href: '/organizer/events', label: 'My Events', icon: Calendar }
+          { href: '/organizer/dashboard', label: 'Dashboard', icon: Crown }
+          // { href: '/organizer/events', label: 'My Events', icon: Calendar }
         ];
       case 'venue_owner':
         return [

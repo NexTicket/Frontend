@@ -214,6 +214,14 @@ export async function fetchEvents(status?: string) {
   return res.json();
 }
 
+// Fetch events by organizer (using firebaseUid)
+export async function fetchEventsByOrganizer(organizerId: string) {
+  const url = getApiUrl(`/events/organizer/${organizerId}`);
+  const res = await secureFetch(url);
+  if (!res.ok) throw new Error("Failed to fetch organizer events");
+  return res.json();
+}
+
 export async function fetchEventsByVenueId(venueId: number | string) {
   const res = await publicFetch(getApiUrl(`/events/venue/${venueId}`));
   if (!res.ok) throw new Error("Failed to fetch events for venue");

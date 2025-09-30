@@ -43,11 +43,36 @@ function NewEventPageInner() {
     images?: string[];
     image?: string;
     featuredImage?: string;
-    seatMap?: unknown;
+    seatMap?: Record<string, unknown>;
+    description?: string;
+    tenant?: {
+      name: string;
+    };
   };
+
+  type SeatMapSection = {
+    id: string;
+    name: string;
+    color: string;
+    price_multiplier: number;
+    startRow: number;
+    startCol: number;
+    rows: number;
+    columns: number;
+  };
+
+  type SeatMapData = {
+    rows?: number;
+    columns?: number;
+    sections?: SeatMapSection[];
+    aisles?: number[];
+    wheelchair_accessible?: number[];
+    special_features?: string[];
+  };
+
   const [venues, setVenues] = useState<VenueCard[]>([]);
-  const [seatMapData, setSeatMapData] = useState<Record<string, unknown> | null>(null);
-  const [selectedVenueDetails, setSelectedVenueDetails] = useState<any>(null);
+  const [seatMapData, setSeatMapData] = useState<SeatMapData | null>(null);
+  const [selectedVenueDetails, setSelectedVenueDetails] = useState<VenueCard | null>(null);
   const [showVenueModal, setShowVenueModal] = useState(false);
   const [loadingVenues, setLoadingVenues] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -245,101 +270,211 @@ function NewEventPageInner() {
   };
 
   const StepBar = () => (
-    <div className="mb-6">
-      <div className="flex items-center justify-between mb-1">
+    <div className="mb-8">
+      <div className="flex items-center justify-between mb-4">
         {Array.from({ length: totalSteps }, (_, i) => (
           <div key={i} className="flex items-center w-full">
             <div
               className={`w-12 h-12 rounded-full flex items-center justify-center font-semibold transition-all duration-300 ${
                 currentStep > i + 1
-                  ? 'bg-green-500 text-white'
+                  ? 'text-white shadow-lg'
                   : currentStep === i + 1
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-[#2a2d34] text-gray-400'
+                    ? 'text-white shadow-lg'
+                    : 'text-gray-400'
               }`}
+              style={{
+                backgroundColor: currentStep > i + 1 ? '#39FD48' : currentStep === i + 1 ? blueHeader : cardBg,
+                border: `2px solid ${currentStep >= i + 1 ? greenBorder : '#2a2d34'}`
+              }}
             >
               {currentStep > i + 1 ? '✓' : i + 1}
             </div>
             {i < totalSteps - 1 && (
               <div
-                className={`flex-1 h-1 mx-4 rounded-full transition-all duration-300 ${
-                  currentStep > i + 1 ? 'bg-green-500' : 'bg-[#2a2d34]'
-                }`}
+                className={`flex-1 h-1 mx-4 rounded-full transition-all duration-300`}
+                style={{ backgroundColor: currentStep > i + 1 ? '#39FD48' : '#2a2d34' }}
               />
             )}
           </div>
         ))}
       </div>
-      <div className="flex justify-center"><span className="text-sm text-muted-foreground">Step {currentStep} of {totalSteps}</span></div>
+      <div className="flex justify-center">
+        <span className="text-sm font-medium" style={{ color: '#fff' }}>
+          Step {currentStep} of {totalSteps}
+        </span>
+      </div>
     </div>
   );
+
+  // Theme colors matching admin dashboard
+  const darkBg = "#181A20";
+  const blueHeader = "#1877F2";
+  const cardBg = "#23262F";
+  const greenBorder = "#39FD48" + '50';
+  const cardShadow = "0 2px 16px 0 rgba(57,253,72,0.08)";
 
   if (!mounted) return null;
 
   return (
-    <div className="p-8 bg-gradient-to-br from-background via-muted/10 to-primary/5 min-h-screen">
-      <div className="max-w-3xl mx-auto">
-        <h2 className="text-3xl font-bold mb-2" style={{ color: '#fff' }}>Create New Event</h2>
-        <p className="text-muted-foreground mb-6">Set up your event in a few guided steps</p>
+    <div className="min-h-screen" style={{ background: darkBg }}>
+      {/* Simple Background Elements */}
+      <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-20" style={{ backgroundColor: '#ABA8A9' }}></div>
+      <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-15" style={{ backgroundColor: '#D8DFEE' }}></div>
+      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl opacity-10" style={{ backgroundColor: '#ABA8A9' }}></div>
+      
+      {/* Content Container */}
+      <div className="relative z-10 pt-8 px-8">
+        <div className="max-w-4xl mx-auto">
+          {/* Header */}
+          <div className="rounded-2xl p-6 shadow-lg mb-8" style={{ backgroundColor: blueHeader, borderColor: greenBorder, boxShadow: cardShadow }}>
+            <h2 className="text-3xl font-bold mb-2" style={{ color: '#fff' }}>Create New Event</h2>
+            <p className="text-lg font-normal" style={{ color: '#fff' }}>Set up your event in a few guided steps</p>
+          </div>
 
-        <StepBar />
+          <StepBar />
 
-        <div className="bg-card/50 backdrop-blur-sm rounded-xl border p-8" style={{ borderColor: 'rgb(57 253 72 / 50%)' }}>
+          <div className="backdrop-blur-xl border rounded-2xl p-8 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
         {currentStep === 1 && (
             <div className="space-y-6">
-              <h3 className="text-2xl font-semibold text-white">Basic Information</h3>
+              <h3 className="text-2xl font-semibold" style={{ color: '#fff' }}>Basic Information</h3>
               <div>
-                <label className="block text-sm text-foreground mb-2">Title *</label>
-                <input value={form.title} onChange={e => onChange("title", e.target.value)} className="w-full px-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all" />
+                <label className="block text-sm font-medium mb-2" style={{ color: '#fff' }}>Title *</label>
+                <input 
+                  value={form.title} 
+                  onChange={e => onChange("title", e.target.value)} 
+                  className="w-full px-4 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2"
+                  style={{ 
+                    backgroundColor: '#191C24', 
+                    borderColor: greenBorder, 
+                    color: '#fff',
+                    focusRingColor: greenBorder + '50'
+                  }}
+                  placeholder="Enter event title"
+                />
               </div>
               <div>
-                <label className="block text-sm text-foreground mb-2">Category *</label>
-                <select value={form.category} onChange={e => onChange("category", e.target.value)} className="w-full px-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all">
-                  <option value="">Select category</option>
-                  <option value="Concert">Concert</option>
-                  <option value="Conference">Conference</option>
-                  <option value="Comedy">Comedy</option>
-                  <option value="Workshop">Workshop</option>
-                  <option value="Sports">Sports</option>
-                  <option value="Festival">Festival</option>
-                  <option value="Theater">Theater</option>
-                  <option value="Meetup">Meetup</option>
+                <label className="block text-sm font-medium mb-2" style={{ color: '#fff' }}>Category *</label>
+                <select 
+                  value={form.category} 
+                  onChange={e => onChange("category", e.target.value)} 
+                  className="w-full px-4 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2"
+                  style={{ 
+                    backgroundColor: '#191C24', 
+                    borderColor: greenBorder, 
+                    color: '#fff'
+                  }}
+                >
+                  <option value="" style={{ backgroundColor: '#191C24', color: '#fff' }}>Select category</option>
+                  <option value="Concert" style={{ backgroundColor: '#191C24', color: '#fff' }}>Concert</option>
+                  <option value="Conference" style={{ backgroundColor: '#191C24', color: '#fff' }}>Conference</option>
+                  <option value="Comedy" style={{ backgroundColor: '#191C24', color: '#fff' }}>Comedy</option>
+                  <option value="Workshop" style={{ backgroundColor: '#191C24', color: '#fff' }}>Workshop</option>
+                  <option value="Sports" style={{ backgroundColor: '#191C24', color: '#fff' }}>Sports</option>
+                  <option value="Festival" style={{ backgroundColor: '#191C24', color: '#fff' }}>Festival</option>
+                  <option value="Theater" style={{ backgroundColor: '#191C24', color: '#fff' }}>Theater</option>
+                  <option value="Meetup" style={{ backgroundColor: '#191C24', color: '#fff' }}>Meetup</option>
                 </select>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm text-foreground mb-2">Start Date *</label>
-                  <input type="date" value={form.startDateDate} onChange={e => onChange("startDateDate", e.target.value)} className="w-full px-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all" />
+                  <label className="block text-sm font-medium mb-2" style={{ color: '#fff' }}>Start Date *</label>
+                  <input 
+                    type="date" 
+                    value={form.startDateDate} 
+                    onChange={e => onChange("startDateDate", e.target.value)} 
+                    min={new Date().toISOString().split('T')[0]} // Prevent selecting past dates
+                    className="w-full px-4 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2"
+                    style={{ 
+                      backgroundColor: '#191C24', 
+                      borderColor: greenBorder, 
+                      color: '#fff'
+                    }}
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm text-foreground mb-2">Start Time *</label>
+                  <label className="block text-sm font-medium mb-2" style={{ color: '#fff' }}>Start Time *</label>
                   <div className="flex gap-2">
-                    <select value={form.startHour} onChange={e => onChange("startHour", e.target.value)} className="px-3 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all w-24">
-                      <option value="">HH</option>
-                      {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map(h => <option key={h} value={h}>{h}</option>)}
+                    <select 
+                      value={form.startHour} 
+                      onChange={e => onChange("startHour", e.target.value)} 
+                      className="px-3 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 w-24"
+                      style={{ 
+                        backgroundColor: '#191C24', 
+                        borderColor: greenBorder, 
+                        color: '#fff'
+                      }}
+                    >
+                      <option value="" style={{ backgroundColor: '#191C24', color: '#fff' }}>HH</option>
+                      {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map(h => 
+                        <option key={h} value={h} style={{ backgroundColor: '#191C24', color: '#fff' }}>{h}</option>
+                      )}
                     </select>
-                    <select value={form.startMinute} onChange={e => onChange("startMinute", e.target.value)} className="px-3 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all w-24">
-                      <option value="">MM</option>
-                      {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m => <option key={m} value={m}>{m}</option>)}
+                    <select 
+                      value={form.startMinute} 
+                      onChange={e => onChange("startMinute", e.target.value)} 
+                      className="px-3 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 w-24"
+                      style={{ 
+                        backgroundColor: '#191C24', 
+                        borderColor: greenBorder, 
+                        color: '#fff'
+                      }}
+                    >
+                      <option value="" style={{ backgroundColor: '#191C24', color: '#fff' }}>MM</option>
+                      {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m => 
+                        <option key={m} value={m} style={{ backgroundColor: '#191C24', color: '#fff' }}>{m}</option>
+                      )}
                     </select>
                   </div>
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm text-foreground mb-2">End Date (optional)</label>
-                  <input type="date" value={form.endDateDate} onChange={e => onChange("endDateDate", e.target.value)} className="w-full px-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all" />
-            </div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: '#fff' }}>End Date (optional)</label>
+                  <input 
+                    type="date" 
+                    value={form.endDateDate} 
+                    onChange={e => onChange("endDateDate", e.target.value)} 
+                    min={form.startDateDate || new Date().toISOString().split('T')[0]} // End date must be at least the start date
+                    className="w-full px-4 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2"
+                    style={{ 
+                      backgroundColor: '#191C24', 
+                      borderColor: greenBorder, 
+                      color: '#fff'
+                    }}
+                  />
+                </div>
             <div>
-                  <label className="block text-sm text-foreground mb-2">End Time (optional)</label>
+                  <label className="block text-sm font-medium mb-2" style={{ color: '#fff' }}>End Time (optional)</label>
                   <div className="flex gap-2">
-                    <select value={form.endHour} onChange={e => onChange("endHour", e.target.value)} className="px-3 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all w-24">
-                      <option value="">HH</option>
-                      {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map(h => <option key={h} value={h}>{h}</option>)}
+                    <select 
+                      value={form.endHour} 
+                      onChange={e => onChange("endHour", e.target.value)} 
+                      className="px-3 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 w-24"
+                      style={{ 
+                        backgroundColor: '#191C24', 
+                        borderColor: greenBorder, 
+                        color: '#fff'
+                      }}
+                    >
+                      <option value="" style={{ backgroundColor: '#191C24', color: '#fff' }}>HH</option>
+                      {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map(h => 
+                        <option key={h} value={h} style={{ backgroundColor: '#191C24', color: '#fff' }}>{h}</option>
+                      )}
                     </select>
-                    <select value={form.endMinute} onChange={e => onChange("endMinute", e.target.value)} className="px-3 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all w-24">
-                      <option value="">MM</option>
-                      {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m => <option key={m} value={m}>{m}</option>)}
+                    <select 
+                      value={form.endMinute} 
+                      onChange={e => onChange("endMinute", e.target.value)} 
+                      className="px-3 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 w-24"
+                      style={{ 
+                        backgroundColor: '#191C24', 
+                        borderColor: greenBorder, 
+                        color: '#fff'
+                      }}
+                    >
+                      <option value="" style={{ backgroundColor: '#191C24', color: '#fff' }}>MM</option>
+                      {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m => 
+                        <option key={m} value={m} style={{ backgroundColor: '#191C24', color: '#fff' }}>{m}</option>
+                      )}
               </select>
             </div>
           </div>
@@ -351,46 +486,75 @@ function NewEventPageInner() {
                   const s = new Date(`${form.startDateDate}T${form.startHour}:${form.startMinute}`).getTime();
                   const e = new Date(`${form.endDateDate}T${form.endHour}:${form.endMinute}`).getTime();
                   if (s > e) {
-                    return <div className="text-red-400 text-sm">Warning: Start date/time is after End date/time.</div>;
+                    return <div className="text-red-400 text-sm font-medium">Warning: Start date/time is after End date/time.</div>;
                   }
                   return null;
                 })()
               )}
               <div>
-                <label className="block text-sm text-foreground mb-2">Description</label>
-                <textarea value={form.description} onChange={e => onChange("description", e.target.value)} rows={4} className="w-full px-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all" />
+                <label className="block text-sm font-medium mb-2" style={{ color: '#fff' }}>Description</label>
+                <textarea 
+                  value={form.description} 
+                  onChange={e => onChange("description", e.target.value)} 
+                  rows={4} 
+                  className="w-full px-4 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 resize-none"
+                  style={{ 
+                    backgroundColor: '#191C24', 
+                    borderColor: greenBorder, 
+                    color: '#fff'
+                  }}
+                  placeholder="Describe your event..."
+                />
               </div>
           </div>
         )}
 
           {currentStep === 2 && (
             <div className="space-y-6">
-              <h3 className="text-2xl font-semibold text-white">Venue</h3>
+              <h3 className="text-2xl font-semibold" style={{ color: '#fff' }}>Venue Selection</h3>
               {/* Venue cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {loadingVenues ? (
-                  <div className="text-muted-foreground">Loading venues...</div>
+                  <div className="text-center py-8" style={{ color: '#fff' }}>Loading venues...</div>
                 ) : (
-                  venues.map((v: any) => {
+                  venues.map((v: VenueCard) => {
                     const selected = String(form.venueId) === String(v.id);
                     const img = v.featuredImage || v.image || (Array.isArray(v.images) ? v.images[0] : '');
                     return (
-                      <div key={v.id} className={`rounded-xl border p-4 cursor-pointer transition ${selected ? 'ring-2 ring-green-500' : ''}`} style={{ borderColor: 'rgb(57 253 72 / 40%)' }} onClick={() => {
-                        console.log('🎯 Venue card clicked:', { venueId: v.id, venueIdType: typeof v.id });
-                        onChange('venueId', String(v.id));
-                      }}>
-                        <div className="w-full h-32 overflow-hidden rounded-lg border border-border bg-background/50 mb-3 flex items-center justify-center">
-                          {img ? <img src={img} alt="Venue" className="w-full h-full object-cover" /> : <div className="text-muted-foreground text-sm">No image</div>}
+                      <div 
+                        key={v.id} 
+                        className={`rounded-xl border p-4 cursor-pointer transition-all duration-200 hover:scale-105 ${selected ? 'ring-2' : ''}`} 
+                        style={{ 
+                          backgroundColor: cardBg, 
+                          borderColor: selected ? '#39FD48' : greenBorder,
+                          ringColor: '#39FD48'
+                        }} 
+                        onClick={() => {
+                          console.log('🎯 Venue card clicked:', { venueId: v.id, venueIdType: typeof v.id });
+                          onChange('venueId', String(v.id));
+                        }}
+                      >
+                        <div className="w-full h-32 overflow-hidden rounded-lg border mb-3 flex items-center justify-center" style={{ backgroundColor: '#191C24', borderColor: greenBorder }}>
+                          {img ? <img src={img} alt="Venue" className="w-full h-full object-cover" /> : <div className="text-sm" style={{ color: '#ABA8A9' }}>No image</div>}
                         </div>
-                        <div className="text-white font-semibold">{v.name}</div>
-                        <div className="text-muted-foreground text-sm">{v.location || '—'}</div>
-                        <div className="text-muted-foreground text-sm">Capacity: {v.capacity ?? '—'}</div>
+                        <div className="font-semibold" style={{ color: '#fff' }}>{v.name}</div>
+                        <div className="text-sm" style={{ color: '#ABA8A9' }}>{v.location || '—'}</div>
+                        <div className="text-sm" style={{ color: '#ABA8A9' }}>Capacity: {v.capacity ?? '—'}</div>
                         <div className="mt-2">
-                          <Button type="button" variant="outline" onClick={async (e) => { 
-                            e.stopPropagation(); 
-                            await loadVenueDetails(v.id); 
-                            setShowVenueModal(true);
-                          }}>
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            onClick={async (e) => { 
+                              e.stopPropagation(); 
+                              await loadVenueDetails(v.id); 
+                              setShowVenueModal(true);
+                            }}
+                            style={{ 
+                              backgroundColor: 'transparent', 
+                              borderColor: greenBorder, 
+                              color: '#fff' 
+                            }}
+                          >
                             <Eye className="h-4 w-4 mr-2" />
                             View Details
                           </Button>
@@ -405,8 +569,8 @@ function NewEventPageInner() {
               {form.venueId && (
                 <div className="rounded-xl border p-4 grid grid-cols-1 md:grid-cols-3 gap-4 bg-background/30" style={{ borderColor: 'rgb(57 253 72 / 40%)' }}>
                   {(() => {
-                    const v: any = venues.find((vv: any) => String(vv.id) === String(form.venueId));
-                    const img = (v as any)?.featuredImage || (v as any)?.image || ((v as any)?.images?.[0] ?? '');
+                    const v: VenueCard | undefined = venues.find((vv: VenueCard) => String(vv.id) === String(form.venueId));
+                    const img = v?.featuredImage || v?.image || (v?.images?.[0] ?? '');
                     return (
                       <>
                         <div className="md:col-span-1">
@@ -416,10 +580,10 @@ function NewEventPageInner() {
         </div>
                         <div className="md:col-span-2 flex items-center">
                           <div>
-                            <div className="text-white font-semibold text-lg">{(v as any)?.name}</div>
-                            <div className="text-muted-foreground text-sm">{(v as any)?.location}</div>
-                            <div className="text-muted-foreground text-sm">Capacity: {(v as any)?.capacity ?? '—'}</div>
-                            <div className="text-muted-foreground text-sm">Seat map: {((v as any)?.seatMap ? 'Available' : '—')}</div>
+                            <div className="text-white font-semibold text-lg">{v?.name}</div>
+                            <div className="text-muted-foreground text-sm">{v?.location}</div>
+                            <div className="text-muted-foreground text-sm">Capacity: {v?.capacity ?? '—'}</div>
+                            <div className="text-muted-foreground text-sm">Seat map: {(v?.seatMap ? 'Available' : '—')}</div>
       </div>
     </div>
                       </>
@@ -496,7 +660,7 @@ function NewEventPageInner() {
                               {/* Sections Legend */}
                               {seatMapData.sections && Array.isArray(seatMapData.sections) && seatMapData.sections.length > 0 ? (
                                 <div className="flex flex-wrap gap-2">
-                                  {(seatMapData.sections as any[]).map((section: any) => (
+                                  {seatMapData.sections.map((section: SeatMapSection) => (
                                     <div key={section.id} className="flex items-center space-x-2 px-3 py-1 rounded-lg border text-sm"
                                       style={{ backgroundColor: section.color + '20', borderColor: section.color + '50' }}>
                                       <div className="w-3 h-3 rounded" style={{ backgroundColor: section.color }}></div>
@@ -532,12 +696,10 @@ function NewEventPageInner() {
                                       const col = index % columns;
                                       
                                       // Find which section this seat belongs to
-                                      const section = Array.isArray(seatMapData.sections) ? seatMapData.sections.find((s: any) => 
+                                      const section = Array.isArray(seatMapData.sections) ? seatMapData.sections.find((s: SeatMapSection) =>
                                         row >= s.startRow && row < s.startRow + s.rows &&
                                         col >= s.startCol && col < s.startCol + s.columns
-                                      ) : null;
-
-                                      const isAisle = Array.isArray(seatMapData.aisles) ? seatMapData.aisles.includes(row) : false;
+                                      ) : null;                                      const isAisle = Array.isArray(seatMapData.aisles) ? seatMapData.aisles.includes(row) : false;
                                       const isWheelchairAccessible = Array.isArray(seatMapData.wheelchair_accessible) ? 
                                         seatMapData.wheelchair_accessible.includes(row) : false;
 
@@ -747,25 +909,50 @@ function NewEventPageInner() {
             </div>
           )}
 
-          {error && <div className="text-red-400 mt-4">{error}</div>}
+          {error && <div className="text-red-400 mt-4 text-center font-medium p-3 rounded-lg" style={{ backgroundColor: '#FF5722' + '20', borderColor: '#FF5722' + '50', border: '1px solid' }}>{error}</div>}
 
-          <div className="flex items-center justify-between mt-6">
-            <Button variant="outline" onClick={prevStep} disabled={currentStep === 1} className="flex items-center">
+          <div className="flex items-center justify-between mt-8">
+            <Button 
+              variant="outline" 
+              onClick={prevStep} 
+              disabled={currentStep === 1} 
+              className="flex items-center transition-all duration-200"
+              style={{ 
+                backgroundColor: 'transparent', 
+                borderColor: greenBorder, 
+                color: '#fff',
+                opacity: currentStep === 1 ? 0.5 : 1
+              }}
+            >
               <ArrowLeft className="h-4 w-4 mr-2" /> Previous
             </Button>
             {currentStep < totalSteps ? (
-              <Button onClick={nextStep} className="flex items-center bg-gradient-to-r from-primary to-purple-600">
+              <Button 
+                onClick={nextStep} 
+                className="flex items-center transition-all duration-200 shadow-lg"
+                style={{ background: 'linear-gradient(135deg, #0D6EFD, #1565C0)', color: '#fff' }}
+              >
                 Next <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             ) : (
-              <Button onClick={handleSubmit} disabled={submitting} className="flex items-center bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700">
+              <Button 
+                onClick={handleSubmit} 
+                disabled={submitting} 
+                className="flex items-center transition-all duration-200 shadow-lg"
+                style={{ 
+                  background: submitting ? '#39FD48' + '50' : 'linear-gradient(135deg, #39FD48, #2DD4BF)', 
+                  color: '#000',
+                  opacity: submitting ? 0.7 : 1
+                }}
+              >
                 {submitting ? 'Creating...' : 'Create Event'}
               </Button>
             )}
           </div>
-        </div>
-        <div className="flex justify-end mt-4">
-          <Button variant="ghost" onClick={() => router.push('/organizer/dashboard')}>Cancel</Button>
+          </div>
+          <div className="flex justify-end mt-4">
+            <Button variant="ghost" onClick={() => router.push('/organizer/dashboard')} style={{ color: '#fff' }}>Cancel</Button>
+          </div>
         </div>
       </div>
     </div>
