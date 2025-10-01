@@ -37,6 +37,17 @@ function getUserServiceUrl(endpoint: string): string {
   return `${trimmed}${cleanEndpoint}`;
 }
 
+// Utility function to construct ticket service URLs
+function getTicketServiceUrl(endpoint: string): string {
+  const rawBase = process.env.NEXT_PUBLIC_TICKET_SERVICE_URL || 'http://localhost:8000';
+  const trimmed = rawBase.replace(/\/$/, '');
+  
+  // For ticket service, we assume the endpoint already includes the correct path
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  
+  return `${trimmed}${cleanEndpoint}`;
+}
+
 // Public fetch function for endpoints that don't require authentication
 export async function publicFetch(url: string, options: RequestInit = {}) {
   const headers: Record<string, string> = {};
@@ -422,5 +433,408 @@ export async function ensureUserTenant() {
     method: 'POST'
   });
   if (!res.ok) throw new Error("Failed to ensure user tenant");
+  return res.json();
+}
+
+// ==================== TICKET SERVICE API FUNCTIONS ====================
+
+// Ticket Management Functions
+export async function fetchUserTickets(userId: number) {
+  const url = getTicketServiceUrl(`/api/tickets/user/${userId}/tickets`);
+  const res = await secureFetch(url);
+  if (!res.ok) throw new Error("Failed to fetch user tickets");
+  return res.json();
+}
+
+export async function fetchTicketDetails(ticketId: number) {
+  const url = getTicketServiceUrl(`/api/tickets/user-ticket/${ticketId}`);
+  const res = await secureFetch(url);
+  if (!res.ok) throw new Error("Failed to fetch ticket details");
+  return res.json();
+}
+
+export async function fetchTicketQRData(ticketId: number) {
+  const url = getTicketServiceUrl(`/api/tickets/user-ticket/${ticketId}/qr-data`);
+  const res = await secureFetch(url);
+  if (!res.ok) throw new Error("Failed to fetch ticket QR data");
+  return res.json();
+}
+
+export async function fetchBulkTicketAvailableSeats(bulkTicketId: number) {
+  const url = getTicketServiceUrl(`/api/tickets/bulk-ticket/${bulkTicketId}/available-seats`);
+  const res = await publicFetch(url);
+  if (!res.ok) throw new Error("Failed to fetch available seats");
+  return res.json();
+}
+
+// Venue & Event Management (from Ticket Service)
+export async function createTicketServiceVenue(venueData: {
+  name: string;
+  address: string;
+  city: string;
+  capacity: number;
+  description?: string;
+}) {
+  const params = new URLSearchParams();
+  params.append('name', venueData.name);
+  params.append('address', venueData.address);
+  params.append('city', venueData.city);
+  params.append('capacity', venueData.capacity.toString());
+  if (venueData.description) {
+    params.append('description', venueData.description);
+  }
+
+  const url = getTicketServiceUrl(`/api/venues-events/venues/?${params}`);
+  const res = await secureFetch(url, { method: 'POST' });
+  if (!res.ok) throw new Error("Failed to create venue in ticket service");
+  return res.json();
+}
+
+export async function fetchTicketServiceVenues(skip = 0, limit = 100) {
+  const url = getTicketServiceUrl(`/api/venues-events/venues/?skip=${skip}&limit=${limit}`);
+  const res = await publicFetch(url);
+  if (!res.ok) throw new Error("Failed to fetch venues from ticket service");
+  return res.json();
+}
+
+export async function fetchTicketServiceVenueById(venueId: number) {
+  const url = getTicketServiceUrl(`/api/venues-events/venues/${venueId}`);
+  const res = await publicFetch(url);
+  if (!res.ok) throw new Error("Failed to fetch venue from ticket service");
+  return res.json();
+}
+
+export async function fetchVenueEventsFromTicketService(venueId: number) {
+  const url = getTicketServiceUrl(`/api/venues-events/venues/${venueId}/events`);
+  const res = await publicFetch(url);
+  if (!res.ok) throw new Error("Failed to fetch venue events from ticket service");
+  return res.json();
+}
+
+export async function createTicketServiceEvent(eventData: {
+  name: string;
+  venue_id: number;
+  event_date: string;
+  description?: string;
+}) {
+  const params = new URLSearchParams();
+  params.append('name', eventData.name);
+  params.append('venue_id', eventData.venue_id.toString());
+  params.append('event_date', eventData.event_date);
+  if (eventData.description) {
+    params.append('description', eventData.description);
+  }
+
+  const url = getTicketServiceUrl(`/api/venues-events/events/?${params}`);
+  const res = await secureFetch(url, { method: 'POST' });
+  if (!res.ok) throw new Error("Failed to create event in ticket service");
+  return res.json();
+}
+
+export async function fetchTicketServiceEvents(skip = 0, limit = 100) {
+  const url = getTicketServiceUrl(`/api/venues-events/events/?skip=${skip}&limit=${limit}`);
+  const res = await publicFetch(url);
+  if (!res.ok) throw new Error("Failed to fetch events from ticket service");
+  return res.json();
+}
+
+export async function fetchTicketServiceEventById(eventId: number) {
+  const url = getTicketServiceUrl(`/api/venues-events/events/${eventId}`);
+  const res = await publicFetch(url);
+  if (!res.ok) throw new Error("Failed to fetch event from ticket service");
+  return res.json();
+}
+
+export async function fetchEventBulkTickets(eventId: number) {
+  const url = getTicketServiceUrl(`/api/venues-events/events/${eventId}/bulk-tickets`);
+  const res = await publicFetch(url);
+  if (!res.ok) throw new Error("Failed to fetch event bulk tickets");
+  return res.json();
+}
+
+// Bulk Ticket Management
+export async function createBulkTickets(bulkTicketData: {
+  event_id: number;
+  venue_id: number;
+  seat_type: 'VIP' | 'REGULAR';
+  price: number;
+  total_seats: number;
+  available_seats: number;
+  seat_prefix: string;
+}) {
+  const url = getTicketServiceUrl('/api/venues-events/bulk-tickets/');
+  const res = await secureFetch(url, {
+    method: 'POST',
+    body: JSON.stringify(bulkTicketData)
+  });
+  if (!res.ok) throw new Error("Failed to create bulk tickets");
+  return res.json();
+}
+
+export async function fetchBulkTicketById(bulkTicketId: number) {
+  const url = getTicketServiceUrl(`/api/venues-events/bulk-tickets/${bulkTicketId}`);
+  const res = await publicFetch(url);
+  if (!res.ok) throw new Error("Failed to fetch bulk ticket");
+  return res.json();
+}
+
+export async function createBulkTicketsForEvent(eventId: number, bulkTicketData: {
+  venue_id: number;
+  seat_type: 'VIP' | 'REGULAR';
+  price: number;
+  total_seats: number;
+  seat_prefix: string;
+}) {
+  const params = new URLSearchParams();
+  params.append('venue_id', bulkTicketData.venue_id.toString());
+  params.append('seat_type', bulkTicketData.seat_type);
+  params.append('price', bulkTicketData.price.toString());
+  params.append('total_seats', bulkTicketData.total_seats.toString());
+  params.append('seat_prefix', bulkTicketData.seat_prefix);
+
+  const url = getTicketServiceUrl(`/api/venues-events/events/${eventId}/create-bulk-tickets?${params}`);
+  const res = await secureFetch(url, { method: 'POST' });
+  if (!res.ok) throw new Error("Failed to create bulk tickets for event");
+  return res.json();
+}
+
+// Cart Management Functions
+export async function addToCart(cartItemData: {
+  user_id: number;
+  bulk_ticket_id: number;
+  preferred_seat_ids: string; // JSON string
+  quantity: number;
+}) {
+  const url = getTicketServiceUrl('/api/cart/');
+  const res = await secureFetch(url, {
+    method: 'POST',
+    body: JSON.stringify(cartItemData)
+  });
+  if (!res.ok) throw new Error("Failed to add item to cart");
+  return res.json();
+}
+
+export async function fetchUserCart(userId: number) {
+  const url = getTicketServiceUrl(`/api/cart/user/${userId}`);
+  const res = await secureFetch(url);
+  if (!res.ok) throw new Error("Failed to fetch user cart");
+  return res.json();
+}
+
+export async function fetchCartSummary(userId: number) {
+  const url = getTicketServiceUrl(`/api/cart/user/${userId}/summary`);
+  const res = await secureFetch(url);
+  if (!res.ok) throw new Error("Failed to fetch cart summary");
+  return res.json();
+}
+
+export async function updateCartItem(cartItemId: number, updateData: {
+  quantity?: number;
+  preferred_seat_ids?: string;
+}) {
+  const url = getTicketServiceUrl(`/api/cart/${cartItemId}`);
+  const res = await secureFetch(url, {
+    method: 'PUT',
+    body: JSON.stringify(updateData)
+  });
+  if (!res.ok) throw new Error("Failed to update cart item");
+  return res.json();
+}
+
+export async function removeFromCart(cartItemId: number) {
+  const url = getTicketServiceUrl(`/api/cart/${cartItemId}`);
+  const res = await secureFetch(url, { method: 'DELETE' });
+  if (!res.ok) throw new Error("Failed to remove item from cart");
+  return res.ok;
+}
+
+export async function clearUserCart(userId: number) {
+  const url = getTicketServiceUrl(`/api/cart/user/${userId}/clear`);
+  const res = await secureFetch(url, { method: 'DELETE' });
+  if (!res.ok) throw new Error("Failed to clear user cart");
+  return res.ok;
+}
+
+// Order Management Functions
+export async function createOrderFromCart(userId: number, paymentMethod: string) {
+  const url = getTicketServiceUrl(`/api/orders/create-from-cart/${userId}`);
+  const params = new URLSearchParams();
+  params.append('payment_method', paymentMethod);
+  
+  const res = await secureFetch(`${url}?${params}`, { method: 'POST' });
+  if (!res.ok) throw new Error("Failed to create order from cart");
+  return res.json();
+}
+
+export async function completeOrder(orderId: number, paymentIntentId: string) {
+  const url = getTicketServiceUrl(`/api/orders/${orderId}/complete`);
+  const res = await secureFetch(url, {
+    method: 'POST',
+    body: JSON.stringify({ paymentIntentId })
+  });
+  if (!res.ok) throw new Error("Failed to complete order");
+  return res.json();
+}
+
+export async function cancelOrder(orderId: number) {
+  const url = getTicketServiceUrl(`/api/orders/${orderId}/cancel`);
+  const res = await secureFetch(url, { method: 'POST' });
+  if (!res.ok) throw new Error("Failed to cancel order");
+  return res.json();
+}
+
+export async function fetchOrderById(orderId: number) {
+  const url = getTicketServiceUrl(`/api/orders/${orderId}`);
+  const res = await secureFetch(url);
+  if (!res.ok) throw new Error("Failed to fetch order");
+  return res.json();
+}
+
+export async function fetchUserOrders(userId: number) {
+  const url = getTicketServiceUrl(`/api/orders/user/${userId}`);
+  const res = await secureFetch(url);
+  if (!res.ok) throw new Error("Failed to fetch user orders");
+  return res.json();
+}
+
+export async function fetchOrderTickets(orderId: number) {
+  const url = getTicketServiceUrl(`/api/orders/${orderId}/tickets`);
+  const res = await secureFetch(url);
+  if (!res.ok) throw new Error("Failed to fetch order tickets");
+  return res.json();
+}
+
+export async function fetchOrderWithDetails(orderId: number) {
+  const url = getTicketServiceUrl(`/api/orders/${orderId}/details`);
+  const res = await secureFetch(url);
+  if (!res.ok) throw new Error("Failed to fetch order details");
+  return res.json();
+}
+
+export async function createPaymentIntent(orderId: number, amount: number) {
+  const url = getTicketServiceUrl('/api/orders/create-payment-intent');
+  const res = await secureFetch(url, {
+    method: 'POST',
+    body: JSON.stringify({ orderId, amount })
+  });
+  if (!res.ok) throw new Error("Failed to create payment intent");
+  return res.json();
+}
+
+// User Management Functions (in Ticket Service)
+export async function createTicketServiceUser(userData: {
+  username: string;
+  email: string;
+  full_name: string;
+  phone_number?: string;
+}) {
+  const url = getTicketServiceUrl('/api/users/');
+  const res = await secureFetch(url, {
+    method: 'POST',
+    body: JSON.stringify(userData)
+  });
+  if (!res.ok) throw new Error("Failed to create user in ticket service");
+  return res.json();
+}
+
+export async function fetchTicketServiceUsers(skip = 0, limit = 100) {
+  const url = getTicketServiceUrl(`/api/users/?skip=${skip}&limit=${limit}`);
+  const res = await secureFetch(url);
+  if (!res.ok) throw new Error("Failed to fetch users from ticket service");
+  return res.json();
+}
+
+export async function fetchTicketServiceUserById(userId: number) {
+  const url = getTicketServiceUrl(`/api/users/${userId}`);
+  const res = await secureFetch(url);
+  if (!res.ok) throw new Error("Failed to fetch user from ticket service");
+  return res.json();
+}
+
+export async function fetchTicketServiceUserByUsername(username: string) {
+  const url = getTicketServiceUrl(`/api/users/username/${username}`);
+  const res = await secureFetch(url);
+  if (!res.ok) throw new Error("Failed to fetch user by username from ticket service");
+  return res.json();
+}
+
+export async function updateTicketServiceUser(userId: number, userData: {
+  username?: string;
+  email?: string;
+  full_name?: string;
+  phone_number?: string;
+  is_active?: boolean;
+}) {
+  const url = getTicketServiceUrl(`/api/users/${userId}`);
+  const res = await secureFetch(url, {
+    method: 'PUT',
+    body: JSON.stringify(userData)
+  });
+  if (!res.ok) throw new Error("Failed to update user in ticket service");
+  return res.json();
+}
+
+export async function deleteTicketServiceUser(userId: number) {
+  const url = getTicketServiceUrl(`/api/users/${userId}`);
+  const res = await secureFetch(url, { method: 'DELETE' });
+  if (!res.ok) throw new Error("Failed to delete user from ticket service");
+  return res.ok;
+}
+
+// Transaction Management Functions
+export async function fetchTransactions(skip = 0, limit = 100) {
+  const url = getTicketServiceUrl(`/api/transactions/?skip=${skip}&limit=${limit}`);
+  const res = await secureFetch(url);
+  if (!res.ok) throw new Error("Failed to fetch transactions");
+  return res.json();
+}
+
+export async function fetchTransactionById(transactionId: number) {
+  const url = getTicketServiceUrl(`/api/transactions/${transactionId}`);
+  const res = await secureFetch(url);
+  if (!res.ok) throw new Error("Failed to fetch transaction");
+  return res.json();
+}
+
+export async function fetchOrderTransactions(orderId: number) {
+  const url = getTicketServiceUrl(`/api/transactions/order/${orderId}`);
+  const res = await secureFetch(url);
+  if (!res.ok) throw new Error("Failed to fetch order transactions");
+  return res.json();
+}
+
+// Analytics Functions
+export async function fetchDashboardAnalytics() {
+  const url = getTicketServiceUrl('/api/analytics/dashboard');
+  const res = await secureFetch(url);
+  if (!res.ok) throw new Error("Failed to fetch dashboard analytics");
+  return res.json();
+}
+
+export async function fetchSalesAnalytics() {
+  const url = getTicketServiceUrl('/api/analytics/sales');
+  const res = await secureFetch(url);
+  if (!res.ok) throw new Error("Failed to fetch sales analytics");
+  return res.json();
+}
+
+export async function fetchRevenueAnalytics() {
+  const url = getTicketServiceUrl('/api/analytics/revenue');
+  const res = await secureFetch(url);
+  if (!res.ok) throw new Error("Failed to fetch revenue analytics");
+  return res.json();
+}
+
+export async function fetchUserAnalytics() {
+  const url = getTicketServiceUrl('/api/analytics/users');
+  const res = await secureFetch(url);
+  if (!res.ok) throw new Error("Failed to fetch user analytics");
+  return res.json();
+}
+
+export async function fetchTicketAnalytics() {
+  const url = getTicketServiceUrl('/api/analytics/tickets');
+  const res = await secureFetch(url);
+  if (!res.ok) throw new Error("Failed to fetch ticket analytics");
   return res.json();
 }

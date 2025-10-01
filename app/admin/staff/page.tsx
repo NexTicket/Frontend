@@ -21,6 +21,7 @@ import {
   X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { fetchFirebaseUsers } from '@/lib/api';
 
 interface StaffMember {
   id: string;
@@ -54,6 +55,8 @@ export default function AdminStaff() {
 
   // Fetch staff data from Firebase
   const fetchStaff = async () => {
+
+    
     try {
       const usersSnapshot = await getDocs(collection(db, 'users'));
       const staffUsers: StaffMember[] = [];

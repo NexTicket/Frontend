@@ -173,10 +173,10 @@ export default function VenuesPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl text-white font-bold text-foreground mb-4">
+          <h1 className="text-3xl md:text-4xl text-white font-bold mb-4">
             Discover Venues
           </h1>
-          <p className="text-lg text-muted-foreground text-white">
+          <p className="text-lg text-white">
             Find amazing venues for your next event
           </p>
         </div>

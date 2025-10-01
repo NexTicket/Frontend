@@ -1,7 +1,8 @@
 "use client"
 
+import React from 'react';
 import { Button } from '@/components/ui/button';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { 
   Users, 
   X,
@@ -49,6 +50,7 @@ export function BookingSummary({
   checkoutUrl = "/checkout",
   className = ""
 }: BookingSummaryProps) {
+  const router = useRouter();
   return (
     <motion.div 
       variants={itemVariants} 
@@ -127,16 +129,15 @@ export function BookingSummary({
             </div>
 
             {/* Checkout Button */}
-            <Link href={checkoutUrl}>
-              <Button 
-                className="w-full text-white hover:opacity-90 transition-opacity" 
-                size="lg"
-                style={{ background: '#0D6EFD' }}
-              >
-                <ShoppingCart className="mr-2 h-5 w-5" />
-                Proceed to Checkout
-              </Button>
-            </Link>
+            <Button 
+              onClick={() => router.push(checkoutUrl)}
+              className="w-full text-white hover:opacity-90 transition-opacity" 
+              size="lg"
+              style={{ background: '#0D6EFD' }}
+            >
+              <ShoppingCart className="mr-2 h-5 w-5" />
+              Proceed to Checkout
+            </Button>
           </div>
         ) : (
           /* Empty State */

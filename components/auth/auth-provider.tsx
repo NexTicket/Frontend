@@ -375,8 +375,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const { signInWithEmailAndPassword } = await import('firebase/auth');
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       
-      // The onAuthStateChanged listener will handle profile loading
-      // But we can also ensure it loads immediately
+      
       if (userCredential.user) {
         await loadUserProfile(userCredential.user);
       }
@@ -384,7 +383,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       throw error;
     }
     auth.currentUser?.getIdToken().then((token) => {
-  console.log("ID token:", token);
+  console.log("ID token:", token); //for debugging....
 });
   };
 

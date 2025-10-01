@@ -14,7 +14,12 @@ import {
   Settings,
   Crown,
   QrCode,
-  Sparkles
+  Sparkles,
+  Ticket,
+  ShoppingCart,
+  Receipt,
+  CreditCard,
+  BarChart3
 } from 'lucide-react';
 import { useState,useEffect } from 'react';
 import { useAuth } from '@/components/auth/auth-provider';
@@ -39,7 +44,8 @@ export function Navbar() {
       case 'organizer':
         return [
           { href: '/organizer/dashboard', label: 'Dashboard', icon: Crown },
-          { href: '/organizer/events', label: 'My Events', icon: Calendar }
+          { href: '/organizer/events', label: 'My Events', icon: Calendar },
+          { href: '/tickets/analytics', label: 'Analytics', icon: BarChart3 }
         ];
       case 'venue_owner':
         return [
@@ -87,6 +93,28 @@ export function Navbar() {
               <MapPin className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
               Venues
             </Link>
+            <Link href="/tickets" className="group flex items-center px-4 py-2 rounded-lg text-white hover:text-primary hover:bg-primary/5 transition-all duration-200">
+              <Ticket className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
+              Book Tickets
+            </Link>
+            
+            {/* Authenticated User Ticket Links */}
+            {userProfile && (
+              <>
+                <Link href="/tickets/cart" className="group flex items-center px-4 py-2 rounded-lg text-white hover:text-primary hover:bg-primary/5 transition-all duration-200">
+                  <ShoppingCart className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
+                  Cart
+                </Link>
+                <Link href="/tickets/my-tickets" className="group flex items-center px-4 py-2 rounded-lg text-white hover:text-primary hover:bg-primary/5 transition-all duration-200">
+                  <Receipt className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
+                  My Tickets
+                </Link>
+                <Link href="/tickets/orders" className="group flex items-center px-4 py-2 rounded-lg text-white hover:text-primary hover:bg-primary/5 transition-all duration-200">
+                  <CreditCard className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
+                  Orders
+                </Link>
+              </>
+            )}
             
             {/* Role-specific Navigation */}
             {roleLinks.map((link) => {
@@ -150,6 +178,44 @@ export function Navbar() {
                 <MapPin className="w-5 h-5 mr-3 group-hover:scale-110 transition-transform text-white" />
                 Venues
               </Link>
+              <Link
+                href="/tickets"
+                className="group flex items-center px-3 py-3 rounded-lg text-white hover:text-primary hover:bg-primary/5 transition-all duration-200"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <Ticket className="w-5 h-5 mr-3 group-hover:scale-110 transition-transform text-white" />
+                Book Tickets
+              </Link>
+
+              {/* Authenticated User Ticket Links */}
+              {userProfile && (
+                <>
+                  <Link
+                    href="/tickets/cart"
+                    className="group flex items-center px-3 py-3 rounded-lg text-white hover:text-primary hover:bg-primary/5 transition-all duration-200"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <ShoppingCart className="w-5 h-5 mr-3 group-hover:scale-110 transition-transform text-white" />
+                    Cart
+                  </Link>
+                  <Link
+                    href="/tickets/my-tickets"
+                    className="group flex items-center px-3 py-3 rounded-lg text-white hover:text-primary hover:bg-primary/5 transition-all duration-200"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <Receipt className="w-5 h-5 mr-3 group-hover:scale-110 transition-transform text-white" />
+                    My Tickets
+                  </Link>
+                  <Link
+                    href="/tickets/orders"
+                    className="group flex items-center px-3 py-3 rounded-lg text-white hover:text-primary hover:bg-primary/5 transition-all duration-200"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <CreditCard className="w-5 h-5 mr-3 group-hover:scale-110 transition-transform text-white" />
+                    Orders
+                  </Link>
+                </>
+              )}
               {/* Role-specific Navigation */}
               {roleLinks.length > 0 && (
                 <>
