@@ -187,11 +187,27 @@ export default function CreateVenue() {
 
   const totalSteps = 5;
 
-  // Calculate total capacity based on seat map
+  // Calculate total capacity based on seat map (avoiding double-counting overlaps)
   useEffect(() => {
-    const capacity = formData.seatMap.sections.reduce((total, section) => {
-      return total + (section.rows * section.columns);
-    }, 0);
+    const { rows, columns, sections } = formData.seatMap;
+    
+    // Create a grid to track occupied seats and avoid double counting
+    const occupiedSeats = new Set<string>();
+    
+    sections.forEach(section => {
+      const actualRows = Math.min(section.rows, rows - section.startRow);
+      const actualCols = Math.min(section.columns, columns - section.startCol);
+      
+      for (let row = section.startRow; row < section.startRow + actualRows; row++) {
+        for (let col = section.startCol; col < section.startCol + actualCols; col++) {
+          if (row >= 0 && col >= 0 && row < rows && col < columns) {
+            occupiedSeats.add(`${row}-${col}`);
+          }
+        }
+      }
+    });
+    
+    const capacity = occupiedSeats.size;
     setFormData(prev => ({ ...prev, capacity }));
   }, [formData.seatMap]);
 
@@ -240,15 +256,56 @@ export default function CreateVenue() {
   };
 
   const addSection = () => {
+    // Calculate the next available position for the new section
+    const existingSections = formData.seatMap.sections;
+    let newStartRow = 0;
+    let newStartCol = 0;
+
+    if (existingSections.length > 0) {
+      // Find the bottom-most occupied row
+      let maxEndRow = 0;
+      existingSections.forEach(section => {
+        const sectionEndRow = section.startRow + section.rows;
+        if (sectionEndRow > maxEndRow) {
+          maxEndRow = sectionEndRow;
+        }
+      });
+      
+      // If there's space below existing sections within the venue bounds
+      if (maxEndRow + 5 <= formData.seatMap.rows) {
+        newStartRow = maxEndRow;
+        newStartCol = 0;
+      } else {
+        // Find space to the right of existing sections
+        let maxEndCol = 0;
+        existingSections.forEach(section => {
+          const sectionEndCol = section.startCol + section.columns;
+          if (sectionEndCol > maxEndCol) {
+            maxEndCol = sectionEndCol;
+          }
+        });
+        
+        // Place to the right if there's space
+        if (maxEndCol + 5 <= formData.seatMap.columns) {
+          newStartRow = 0;
+          newStartCol = maxEndCol;
+        } else {
+          // If no space, expand the venue or overlap (fallback)
+          newStartRow = Math.min(maxEndRow, formData.seatMap.rows - 5);
+          newStartCol = 0;
+        }
+      }
+    }
+
     const newSection: SeatSection = {
       id: `section_${Date.now()}`,
       name: `Section ${formData.seatMap.sections.length + 1}`,
-      rows: 5,
-      columns: 5,
+      rows: Math.min(5, formData.seatMap.rows - newStartRow),
+      columns: Math.min(5, formData.seatMap.columns - newStartCol),
       price_multiplier: 1.0,
       color: sectionColors[formData.seatMap.sections.length % sectionColors.length],
-      startRow: 0,
-      startCol: 0
+      startRow: newStartRow,
+      startCol: newStartCol
     };
 
     handleSeatMapChange({
@@ -258,9 +315,32 @@ export default function CreateVenue() {
   };
 
   const updateSection = (sectionId: string, updates: Partial<SeatSection>) => {
-    const newSections = formData.seatMap.sections.map(section =>
-      section.id === sectionId ? { ...section, ...updates } : section
-    );
+    const newSections = formData.seatMap.sections.map(section => {
+      if (section.id === sectionId) {
+        const updatedSection = { ...section, ...updates };
+        
+        // Validate that the section doesn't exceed venue bounds
+        if (updatedSection.startRow + updatedSection.rows > formData.seatMap.rows) {
+          updatedSection.rows = Math.max(1, formData.seatMap.rows - updatedSection.startRow);
+        }
+        
+        if (updatedSection.startCol + updatedSection.columns > formData.seatMap.columns) {
+          updatedSection.columns = Math.max(1, formData.seatMap.columns - updatedSection.startCol);
+        }
+        
+        // Ensure startRow and startCol are within bounds
+        if (updatedSection.startRow >= formData.seatMap.rows) {
+          updatedSection.startRow = Math.max(0, formData.seatMap.rows - updatedSection.rows);
+        }
+        
+        if (updatedSection.startCol >= formData.seatMap.columns) {
+          updatedSection.startCol = Math.max(0, formData.seatMap.columns - updatedSection.columns);
+        }
+        
+        return updatedSection;
+      }
+      return section;
+    });
 
     handleSeatMapChange({
       ...formData.seatMap,
@@ -366,15 +446,26 @@ export default function CreateVenue() {
     const { rows, columns, sections, aisles } = formData.seatMap;
     const seats = [];
 
+    // Create a 2D array to track which section owns each seat
+    const seatGrid = Array(rows).fill(null).map(() => Array(columns).fill(null));
+    
+    // Fill the grid with section ownership (last section wins in case of overlap)
+    sections.forEach(section => {
+      for (let row = section.startRow; row < Math.min(section.startRow + section.rows, rows); row++) {
+        for (let col = section.startCol; col < Math.min(section.startCol + section.columns, columns); col++) {
+          if (row >= 0 && col >= 0 && row < rows && col < columns) {
+            seatGrid[row][col] = section;
+          }
+        }
+      }
+    });
+
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < columns; col++) {
-        const section = sections.find(s => 
-          row >= s.startRow && row < s.startRow + s.rows &&
-          col >= s.startCol && col < s.startCol + s.columns
-        );
-
+        const section = seatGrid[row][col];
         const isAisle = aisles.includes(row);
         const isSelected = selectedSection === section?.id;
+        const isEmpty = !section;
 
         seats.push(
           <div
@@ -383,12 +474,15 @@ export default function CreateVenue() {
               isAisle ? 'opacity-50' : ''
             } ${
               isSelected ? 'ring-2 ring-white ring-offset-1' : ''
+            } ${
+              isEmpty ? 'border-2 border-dashed border-gray-400' : ''
             }`}
             style={{
               backgroundColor: section?.color || '#6B7280',
               opacity: section ? 1 : 0.3
             }}
             onClick={() => section && setSelectedSection(section.id)}
+            title={section ? `${section.name} (${row + 1}, ${col + 1})` : `Empty seat (${row + 1}, ${col + 1})`}
           />
         );
       }
@@ -408,6 +502,14 @@ export default function CreateVenue() {
         {/* Stage */}
         <div className="mt-6 w-full h-8 bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 rounded-lg flex items-center justify-center">
           <span className="text-white text-sm font-semibold">🎭 STAGE</span>
+        </div>
+        
+        {/* Section Info */}
+        <div className="mt-4 text-white text-xs">
+          <div className="flex justify-between">
+            <span>Total Seats: {sections.reduce((sum, s) => sum + Math.min(s.rows, rows - s.startRow) * Math.min(s.columns, columns - s.startCol), 0)}</span>
+            <span>Sections: {sections.length}</span>
+          </div>
         </div>
       </div>
     );
@@ -956,13 +1058,42 @@ export default function CreateVenue() {
 
                               <div className="grid grid-cols-2 gap-2 text-xs">
                                 <div>
+                                  <label className="block text-muted-foreground">Start Row</label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max={formData.seatMap.rows - 1}
+                                    value={section.startRow}
+                                    onChange={(e) => updateSection(section.id, { 
+                                      startRow: Math.max(0, Math.min(parseInt(e.target.value) || 0, formData.seatMap.rows - 1))
+                                    })}
+                                    className="w-full px-2 py-1 border rounded text-xs"
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-muted-foreground">Start Col</label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max={formData.seatMap.columns - 1}
+                                    value={section.startCol}
+                                    onChange={(e) => updateSection(section.id, { 
+                                      startCol: Math.max(0, Math.min(parseInt(e.target.value) || 0, formData.seatMap.columns - 1))
+                                    })}
+                                    className="w-full px-2 py-1 border rounded text-xs"
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                </div>
+                                <div>
                                   <label className="block text-muted-foreground">Rows</label>
                                   <input
                                     type="number"
                                     min="1"
+                                    max={formData.seatMap.rows - section.startRow}
                                     value={section.rows}
                                     onChange={(e) => updateSection(section.id, { 
-                                      rows: parseInt(e.target.value) || 1 
+                                      rows: Math.max(1, Math.min(parseInt(e.target.value) || 1, formData.seatMap.rows - section.startRow))
                                     })}
                                     className="w-full px-2 py-1 border rounded text-xs"
                                     onClick={(e) => e.stopPropagation()}
@@ -973,9 +1104,10 @@ export default function CreateVenue() {
                                   <input
                                     type="number"
                                     min="1"
+                                    max={formData.seatMap.columns - section.startCol}
                                     value={section.columns}
                                     onChange={(e) => updateSection(section.id, { 
-                                      columns: parseInt(e.target.value) || 1 
+                                      columns: Math.max(1, Math.min(parseInt(e.target.value) || 1, formData.seatMap.columns - section.startCol))
                                     })}
                                     className="w-full px-2 py-1 border rounded text-xs"
                                     onClick={(e) => e.stopPropagation()}

@@ -330,7 +330,7 @@ export async function deleteEvent(id: string) {
 }
 
 export async function fetchmyVenues() {
-  const res = await secureFetch(getVenueServiceUrl('/venues/myvenues'));
+  const res = await secureFetch(getVenueServiceUrl('/api/venues/myvenues'));
   if (!res.ok) throw new Error("Failed to fetch my venues");
   return res.json();
 }
@@ -374,7 +374,7 @@ export async function getTenantByFirebaseUid(firebaseUid: string) {
 
 // Set Firebase custom claims for users
 export async function setUserClaims(firebaseUid: string, claims: { role: string }) {
-  const res = await secureFetch(getApiUrl('/users/set-claims'), {
+  const res = await secureFetch(process.env.NEXT_PUBLIC_USER_SERVICE_URL + '/api/users/set-claims', {
     method: 'POST',
     body: JSON.stringify({ firebaseUid, claims })
   });
@@ -415,7 +415,7 @@ export async function fetchFirebaseUsers(role?: string) {
 
 // Ensure current user has a tenant record
 export async function ensureUserTenant() {
-  const res = await secureFetch(getApiUrl('/users/ensure-tenant'), {
+  const res = await secureFetch(process.env.NEXT_PUBLIC_USER_SERVICE_URL + '/users/ensure-tenant', {
     method: 'POST'
   });
   if (!res.ok) throw new Error("Failed to ensure user tenant");
