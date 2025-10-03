@@ -48,11 +48,6 @@ const itemVariants = {
   }
 };
 
-const darkBg = "#181A20";
-const cardBg = "#23262F";
-const greenBorder = "#CBF83E" + '50';
-const cardShadow = "0 2px 16px 0 rgba(57,253,72,0.08)";
-
 export default function AdminEvents() {
   const [pendingEvents, setPendingEvents] = useState<any[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(false);
@@ -171,38 +166,38 @@ export default function AdminEvents() {
   };
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: darkBg }}>
+    <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-3xl font-bold mb-8" style={{ color: '#fff' }}>Manage Events</h1>
-        <div className="backdrop-blur-xl border rounded-2xl p-8 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
-          <h2 className="text-2xl font-semibold mb-6" style={{ color: '#fff' }}>Pending Event Approvals</h2>
+        <h1 className="text-3xl font-bold mb-8 text-foreground">Manage Events</h1>
+        <div className="backdrop-blur-xl border rounded-2xl p-8 shadow-xl bg-card border-border">
+          <h2 className="text-2xl font-semibold mb-6 text-foreground">Pending Event Approvals</h2>
           {loadingEvents ? (
             <div className="text-center py-12">
               <div className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-              <h3 className="text-xl font-semibold text-white mb-2">Loading Events...</h3>
+              <h3 className="text-xl font-semibold text-foreground mb-2">Loading Events...</h3>
             </div>
           ) : pendingEvents.length === 0 ? (
             <div className="text-center py-12">
-              <h3 className="text-xl font-semibold text-white mb-2">No Pending Events</h3>
-              <p className="text-gray-400 mb-4">All events have been reviewed.</p>
+              <h3 className="text-xl font-semibold text-foreground mb-2">No Pending Events</h3>
+              <p className="text-muted-foreground mb-4">All events have been reviewed.</p>
             </div>
           ) : (
             <div className="space-y-6">
               {pendingEvents.map(event => (
-                <div key={event.id} className="rounded-2xl border p-6 bg-background shadow-md flex flex-col md:flex-row items-start md:items-center justify-between" style={{ backgroundColor: darkBg, borderColor: greenBorder }}>
+                <div key={event.id} className="rounded-2xl border p-6 bg-card shadow-md flex flex-col md:flex-row items-start md:items-center justify-between">
                   <div className="flex-1 min-w-0">
-                    <div className="block text-lg font-semibold text-white truncate">{event.title}</div>
-                    <p className="text-sm text-gray-400 truncate">{event.description}</p>
+                    <div className="block text-lg font-semibold text-foreground truncate">{event.title}</div>
+                    <p className="text-sm text-muted-foreground truncate">{event.description}</p>
                     <div className="flex flex-wrap gap-2 mt-2">
-                      <span className="text-xs rounded-full bg-primary/10 text-primary px-3 py-1" style={{ color: greenBorder, backgroundColor: greenBorder + '20' }}>{event.category}</span>
-                      <span className="text-xs rounded-full bg-secondary/10 text-secondary px-3 py-1" style={{ color: '#fff', backgroundColor: '#2a2d34' }}>{event.startDate}</span>
+                      <span className="text-xs rounded-full bg-primary/10 text-primary px-3 py-1">{event.category}</span>
+                      <span className="text-xs rounded-full bg-secondary/10 text-secondary px-3 py-1">{event.startDate}</span>
                     </div>
                   </div>
                   <div className="mt-4 md:mt-0 md:ml-4 flex gap-2">
-                    <Button variant="outline" className="flex items-center" style={{ backgroundColor: darkBg, borderColor: greenBorder, color: '#fff' }} onClick={() => handleApproveEvent(event)}>
+                    <Button variant="outline" className="flex items-center border-primary text-foreground hover:bg-primary/10" onClick={() => handleApproveEvent(event)}>
                       <Check className="h-4 w-4 mr-2" /> Approve
                     </Button>
-                    <Button variant="outline" className="flex items-center" style={{ backgroundColor: darkBg, borderColor: greenBorder, color: '#fff' }} onClick={() => handleRejectEvent(event.id)}>
+                    <Button variant="outline" className="flex items-center border-destructive text-destructive hover:bg-destructive/10" onClick={() => handleRejectEvent(event.id)}>
                       <X className="h-4 w-4 mr-2" /> Reject
                     </Button>
                   </div>
@@ -216,12 +211,12 @@ export default function AdminEvents() {
       {/* Staff Assignment Modal */}
       {showApprovalModal && selectedEvent && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md" style={{ backgroundColor: cardBg, borderColor: greenBorder }}>
-            <h3 className="text-xl font-semibold mb-4 text-white">Assign Staff to Event</h3>
+          <div className="bg-card rounded-2xl p-6 w-full max-w-md border border-border">
+            <h3 className="text-xl font-semibold mb-4 text-foreground">Assign Staff to Event</h3>
             <div className="space-y-4">
               <div>
-                <h4 className="text-lg font-medium text-white mb-2">{selectedEvent.title}</h4>
-                <p className="text-gray-400 text-sm">{selectedEvent.description}</p>
+                <h4 className="text-lg font-medium text-foreground mb-2">{selectedEvent.title}</h4>
+                <p className="text-muted-foreground text-sm">{selectedEvent.description}</p>
               </div>
               
               <div>
@@ -285,8 +280,7 @@ export default function AdminEvents() {
               <div className="flex gap-2 pt-4">
                 <Button 
                   onClick={confirmApproval}
-                  className="flex-1"
-                  style={{ backgroundColor: '#CBF83E', color: '#000' }}
+                  className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
                 >
                   <Check className="h-4 w-4 mr-2" />
                   Approve Event
@@ -294,8 +288,7 @@ export default function AdminEvents() {
                 <Button 
                   onClick={() => setShowApprovalModal(false)}
                   variant="outline"
-                  className="flex-1"
-                  style={{ backgroundColor: darkBg, borderColor: greenBorder, color: '#fff' }}
+                  className="flex-1 border-border text-foreground hover:bg-muted/50"
                 >
                   Cancel
                 </Button>

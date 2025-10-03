@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -414,17 +414,16 @@ export default function OrganizerEventsPage() {
         {/* Horizontal Search Bar */}
         <div className="mb-8">
           <div className="max-w-6xl mx-auto">
-            <div className="flex flex-col sm:flex-row gap-4 items-center" style={{ backgroundColor: '#191C24', padding: '1.5rem', borderRadius: '0.5rem', border: `1px solid #CBF83E50` }}>
+            <div className="flex flex-col sm:flex-row gap-4 items-center bg-card p-6 rounded-lg border border-border">
               {/* Search Input */}
               <div className="relative flex-1 w-full sm:w-auto">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <input
                   type="text"
                   placeholder="Search events by title, description, venue, or tags..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  style={{ backgroundColor: '#191C24', borderColor: '#CBF83E50' }}
+                  className="w-full pl-12 pr-4 py-3 border rounded-lg bg-background text-foreground placeholder-muted-foreground border-border focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 />
               </div>
 
@@ -434,10 +433,9 @@ export default function OrganizerEventsPage() {
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value as EventStatus)}
-                  className="px-4 py-3 border rounded-lg text-white bg-transparent focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent min-w-[130px]"
-                  style={{ backgroundColor: '#191C24', borderColor: '#CBF83E50' }}
+                  className="px-4 py-3 border rounded-lg bg-background text-foreground border-border focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent min-w-[130px]"
                 >
-                  <option value="all" className="bg-gray-800">All Events</option>
+                  <option value="all" className="bg-background">All Events</option>
                   <option value="upcoming" className="bg-gray-800">Upcoming</option>
                   <option value="today" className="bg-gray-800">Today</option>
                   <option value="past" className="bg-gray-800">Past</option>
@@ -447,12 +445,11 @@ export default function OrganizerEventsPage() {
                 <select
                   value={categoryFilter}
                   onChange={(e) => setCategoryFilter(e.target.value)}
-                  className="px-4 py-3 border rounded-lg text-white bg-transparent focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent min-w-[140px]"
-                  style={{ backgroundColor: '#191C24', borderColor: '#CBF83E50' }}
+                  className="px-4 py-3 border rounded-lg bg-background text-foreground border-border focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent min-w-[140px]"
                 >
-                  <option value="all" className="bg-gray-800">All Categories</option>
+                  <option value="all" className="bg-background">All Categories</option>
                   {categories.map(category => (
-                    <option key={category} value={category} className="bg-gray-800">{category}</option>
+                    <option key={category} value={category} className="bg-background">{category}</option>
                   ))}
                 </select>
 
@@ -460,15 +457,14 @@ export default function OrganizerEventsPage() {
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as SortOption)}
-                  className="px-4 py-3 border rounded-lg text-white bg-transparent focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent min-w-[150px]"
-                  style={{ backgroundColor: '#191C24', borderColor: '#CBF83E50' }}
+                  className="px-4 py-3 border rounded-lg bg-background text-foreground border-border focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent min-w-[150px]"
                 >
-                  <option value="date-asc" className="bg-gray-800">Date (Earliest)</option>
-                  <option value="date-desc" className="bg-gray-800">Date (Latest)</option>
-                  <option value="title-asc" className="bg-gray-800">Title (A-Z)</option>
-                  <option value="title-desc" className="bg-gray-800">Title (Z-A)</option>
-                  <option value="price-asc" className="bg-gray-800">Price (Low-High)</option>
-                  <option value="price-desc" className="bg-gray-800">Price (High-Low)</option>
+                  <option value="date-asc" className="bg-background">Date (Earliest)</option>
+                  <option value="date-desc" className="bg-background">Date (Latest)</option>
+                  <option value="title-asc" className="bg-background">Title (A-Z)</option>
+                  <option value="title-desc" className="bg-background">Title (Z-A)</option>
+                  <option value="price-asc" className="bg-background">Price (Low-High)</option>
+                  <option value="price-desc" className="bg-background">Price (High-Low)</option>
                 </select>
 
                 {/* Clear Filters Button */}
