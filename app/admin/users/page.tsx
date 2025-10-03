@@ -419,26 +419,26 @@ export default function AdminUsers() {
             
             // Step 1: Set admin role via backend
             await bootstrapAdmin(firebaseUser.uid, firebaseUser.email || '');
-            console.log(`✅ Step 1: Admin role set in backend`);
+            console.log(`Step 1: Admin role set in backend`);
             
             // Step 2: Force refresh the Firebase ID token to get updated custom claims
-            console.log(`🔄 Step 2: Forcing token refresh to get updated custom claims...`);
+            console.log(`Step 2: Forcing token refresh to get updated custom claims...`);
             const freshToken = await firebaseUser.getIdToken(true); // true = force refresh
-            console.log(`✅ Step 2: Fresh token obtained, length: ${freshToken.length}`);
+            console.log(`Step 2: Fresh token obtained, length: ${freshToken.length}`);
             
             // Step 3: Verify the token now has admin role (optional debug)
-            console.log(`🔍 Step 3: Token should now include admin role`);
+            console.log(`Step 3: Token should now include admin role`);
             
             // Step 4: Also refresh the auth provider's token
-            console.log(`🔄 Step 4: Refreshing auth provider token...`);
+            console.log(`Step 4: Refreshing auth provider token...`);
             try {
                 await refreshUserToken();
-                console.log(`✅ Step 4: Auth provider token refreshed`);
+                console.log(`Step 4: Auth provider token refreshed`);
             } catch (refreshError) {
                 console.warn('⚠️ Auth provider refresh failed, but admin role should still work:', refreshError);
             }
             
-            setSuccessMessage(`✅ Admin role successfully set for ${firebaseUser.email}! Custom claims updated and token refreshed.`);
+            setSuccessMessage(`Step 5: Admin role successfully set for ${firebaseUser.email}! Custom claims updated and token refreshed.`);
             
             // Wait a moment for everything to propagate, then reload
             setTimeout(() => {

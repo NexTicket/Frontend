@@ -74,7 +74,7 @@ export default function SignupPage() {
           router.push('/organizer/dashboard');
           break;
         case 'customer':
-          router.push('/dashboard');
+          router.push('/events');
           break;
         default:
           router.push('/auth/signin');
