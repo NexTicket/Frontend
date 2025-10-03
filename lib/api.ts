@@ -26,6 +26,17 @@ function getVenueServiceUrl(endpoint: string): string {
   return `${trimmed}${cleanEndpoint}`;
 }
 
+// Utility function to construct user service URLs
+function getUserServiceUrl(endpoint: string): string {
+  const rawBase = process.env.NEXT_PUBLIC_USER_SERVICE_URL || '';
+  const trimmed = rawBase.replace(/\/$/, '');
+  
+  // For user service, we assume the endpoint already includes the correct path
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  
+  return `${trimmed}${cleanEndpoint}`;
+}
+
 // Public fetch function for endpoints that don't require authentication
 export async function publicFetch(url: string, options: RequestInit = {}) {
   const headers: Record<string, string> = {};
@@ -47,9 +58,9 @@ export async function publicFetch(url: string, options: RequestInit = {}) {
   });
 }
 
-// API function to fetch checkin officers
+// API function to fetch checkin officers - now uses User Service
 export const fetchCheckinOfficers = async () => {
-  const url = getVenueServiceUrl('/api/users/firebase-users');
+  const url = getUserServiceUrl('/api/users/firebase-users');
   const response = await secureFetch(url, {
     method: 'POST',
     body: JSON.stringify({ role: 'checkin_officer' })
@@ -322,7 +333,7 @@ export async function deleteEvent(id: string) {
 }
 
 export async function fetchmyVenues() {
-  const res = await secureFetch(getVenueServiceUrl('/venues/myvenues'));
+  const res = await secureFetch(getVenueServiceUrl('/api/venues/myvenues'));
   if (!res.ok) throw new Error("Failed to fetch my venues");
   return res.json();
 }
@@ -343,14 +354,14 @@ export async function uploadEventImage(eventId: string | number, file: File) {
   return res.json();
 }
 
-// Tenant management functions
+// Tenant management functions - now uses User Service
 export async function createTenant(tenantData: {
   firebaseUid: string;
   name: string;
   email: string;
   role: string;
 }) {
-  const res = await secureFetch(getApiUrl('/tenants'), {
+  const res = await secureFetch(getUserServiceUrl('/api/users/tenants'), {
     method: 'POST',
     body: JSON.stringify(tenantData)
   });
@@ -359,14 +370,14 @@ export async function createTenant(tenantData: {
 }
 
 export async function getTenantByFirebaseUid(firebaseUid: string) {
-  const res = await secureFetch(getApiUrl(`/tenants/firebase/${firebaseUid}`));
+  const res = await secureFetch(getUserServiceUrl(`/api/users/tenants/firebase/${firebaseUid}`));
   if (!res.ok) throw new Error("Failed to fetch tenant");
   return res.json();
 }
 
-// Set Firebase custom claims for users
+// Set Firebase custom claims for users - now uses User Service
 export async function setUserClaims(firebaseUid: string, claims: { role: string }) {
-  const res = await secureFetch(getApiUrl('/users/set-claims'), {
+  const res = await secureFetch(getUserServiceUrl('/api/users/set-claims'), {
     method: 'POST',
     body: JSON.stringify({ firebaseUid, claims })
   });
@@ -374,9 +385,9 @@ export async function setUserClaims(firebaseUid: string, claims: { role: string 
   return res.json();
 }
 
-// Bootstrap admin role (no auth required - only for initial setup)
+// Bootstrap admin role (no auth required - only for initial setup) - now uses User Service
 export async function bootstrapAdmin(firebaseUid: string, email: string) {
-  const res = await fetch(getApiUrl('/users/bootstrap-admin'), {
+  const res = await fetch(getUserServiceUrl('/api/users/bootstrap-admin'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -395,9 +406,9 @@ export async function deleteVenue(id: string) {
   return res.json();
 }
 
-// Fetch users from Firebase for staff assignment
+// Fetch users from Firebase for staff assignment - now uses User Service
 export async function fetchFirebaseUsers(role?: string) {
-  const res = await secureFetch(getApiUrl('/users/firebase-users'), {
+  const res = await secureFetch(getUserServiceUrl('/api/users/firebase-users'), {
     method: 'POST',
     body: JSON.stringify({ role })
   });
@@ -405,9 +416,9 @@ export async function fetchFirebaseUsers(role?: string) {
   return res.json();
 }
 
-// Ensure current user has a tenant record
+// Ensure current user has a tenant record - now uses User Service
 export async function ensureUserTenant() {
-  const res = await secureFetch(getApiUrl('/users/ensure-tenant'), {
+  const res = await secureFetch(getUserServiceUrl('/api/users/ensure-tenant'), {
     method: 'POST'
   });
   if (!res.ok) throw new Error("Failed to ensure user tenant");
