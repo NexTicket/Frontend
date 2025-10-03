@@ -77,7 +77,7 @@ const defaultSeatMap: SeatMapData = {
       rows: 10,
       columns: 10,
       price_multiplier: 1.0,
-      color: '#3B82F6',
+      color: 'hsl(var(--primary))',
       startRow: 0,
       startCol: 0
     }
@@ -89,14 +89,14 @@ const defaultSeatMap: SeatMapData = {
 };
 
 const sectionColors = [
-  '#3B82F6', // Blue
-  '#10B981', // Green
-  '#F59E0B', // Yellow
-  '#EF4444', // Red
-  '#8B5CF6', // Purple
-  '#06B6D4', // Cyan
-  '#F97316', // Orange
-  '#EC4899'  // Pink
+  'hsl(var(--primary))', // Primary theme color
+  'hsl(var(--secondary))', // Secondary theme color
+  'hsl(var(--accent))', // Accent theme color
+  'hsl(var(--destructive))', // Destructive theme color
+  'hsl(var(--muted))', // Muted theme color
+  'hsl(var(--popover))', // Popover theme color
+  'hsl(var(--card))', // Card theme color
+  'hsl(var(--border))'  // Border theme color
 ];
 
 const predefinedLayouts = [
@@ -109,9 +109,9 @@ const predefinedLayouts = [
       rows: 15,
       columns: 20,
       sections: [
-        { id: 'premium', name: 'Premium', rows: 5, columns: 20, price_multiplier: 1.5, color: '#F59E0B', startRow: 0, startCol: 0 },
-        { id: 'standard', name: 'Standard', rows: 7, columns: 20, price_multiplier: 1.0, color: '#3B82F6', startRow: 5, startCol: 0 },
-        { id: 'economy', name: 'Economy', rows: 3, columns: 20, price_multiplier: 0.8, color: '#10B981', startRow: 12, startCol: 0 }
+        { id: 'premium', name: 'Premium', rows: 5, columns: 20, price_multiplier: 1.5, color: 'hsl(var(--accent))', startRow: 0, startCol: 0 },
+        { id: 'standard', name: 'Standard', rows: 7, columns: 20, price_multiplier: 1.0, color: 'hsl(var(--primary))', startRow: 5, startCol: 0 },
+        { id: 'economy', name: 'Economy', rows: 3, columns: 20, price_multiplier: 0.8, color: 'hsl(var(--secondary))', startRow: 12, startCol: 0 }
       ],
       aisles: [5, 12],
       wheelchair_accessible: [1, 15],
@@ -128,8 +128,8 @@ const predefinedLayouts = [
       rows: 12,
       columns: 16,
       sections: [
-        { id: 'front', name: 'Front VIP', rows: 3, columns: 16, price_multiplier: 1.3, color: '#8B5CF6', startRow: 0, startCol: 0 },
-        { id: 'middle', name: 'Standard', rows: 9, columns: 16, price_multiplier: 1.0, color: '#3B82F6', startRow: 3, startCol: 0 }
+        { id: 'front', name: 'Front VIP', rows: 3, columns: 16, price_multiplier: 1.3, color: 'hsl(var(--primary))', startRow: 0, startCol: 0 },
+        { id: 'middle', name: 'Standard', rows: 9, columns: 16, price_multiplier: 1.0, color: 'hsl(var(--secondary))', startRow: 3, startCol: 0 }
       ],
       aisles: [3, 8],
       wheelchair_accessible: [1, 12],
@@ -146,9 +146,9 @@ const predefinedLayouts = [
       rows: 20,
       columns: 25,
       sections: [
-        { id: 'orchestra', name: 'Orchestra', rows: 8, columns: 25, price_multiplier: 1.4, color: '#F59E0B', startRow: 0, startCol: 0 },
-        { id: 'mezzanine', name: 'Mezzanine', rows: 6, columns: 25, price_multiplier: 1.1, color: '#3B82F6', startRow: 8, startCol: 0 },
-        { id: 'balcony', name: 'Balcony', rows: 6, columns: 25, price_multiplier: 0.9, color: '#10B981', startRow: 14, startCol: 0 }
+        { id: 'orchestra', name: 'Orchestra', rows: 8, columns: 25, price_multiplier: 1.4, color: 'hsl(var(--accent))', startRow: 0, startCol: 0 },
+        { id: 'mezzanine', name: 'Mezzanine', rows: 6, columns: 25, price_multiplier: 1.1, color: 'hsl(var(--primary))', startRow: 8, startCol: 0 },
+        { id: 'balcony', name: 'Balcony', rows: 6, columns: 25, price_multiplier: 0.9, color: 'hsl(var(--secondary))', startRow: 14, startCol: 0 }
       ],
       aisles: [8, 14],
       wheelchair_accessible: [1, 20],
@@ -478,7 +478,7 @@ export default function CreateVenue() {
               isEmpty ? 'border-2 border-dashed border-gray-400' : ''
             }`}
             style={{
-              backgroundColor: section?.color || '#6B7280',
+              backgroundColor: section?.color || 'hsl(var(--muted))',
               opacity: section ? 1 : 0.3
             }}
             onClick={() => section && setSelectedSection(section.id)}

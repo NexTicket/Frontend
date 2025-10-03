@@ -169,30 +169,30 @@ export default function VenuesPage() {
   }
 
   return (
-    <div className="min-h-screen " style={{ backgroundColor: '#191C24' }}>
+    <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl text-white font-bold text-foreground mb-4">
+          <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
             Discover Venues
           </h1>
-          <p className="text-lg text-muted-foreground text-white">
+          <p className="text-lg text-muted-foreground">
             Find amazing venues for your next event
           </p>
         </div>
 
         {/* Search and Filters */}
-        <div className="bg-card rounded-lg  p-6 mb-8" style={{ backgroundColor: '#191C24', borderColor: '#CBF83E'+'50' }}>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4" style={{ backgroundColor: '#191C24' }}>
+        <div className="bg-card rounded-lg border border-border p-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {/* Search */}
-            <div className="relative" style={{ backgroundColor: '#191C24' }}>
+            <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground"  />
               <input
                 type="text"
                 placeholder="Search venues..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border rounded-md placeholder-white bg-background " style={{  backgroundColor: '#191C24' , borderColor: '#CBF83E'+'50' }}
+                className="w-full pl-10 pr-4 py-2 border rounded-md bg-background text-foreground placeholder-muted-foreground border-border"
               />
             </div>
 
@@ -200,7 +200,7 @@ export default function VenuesPage() {
             <select
               value={selectedCity}
               onChange={(e) => setSelectedCity(e.target.value)}
-              className="px-4 py-2 border rounded-md text-white bg-background" style={{ backgroundColor: '#191C24' , borderColor: '#CBF83E'+'50' }}
+              className="px-4 py-2 border rounded-md bg-background text-foreground border-border"
             >
               {cities.map((city: string) => (
                 <option key={city} value={city}>
@@ -213,7 +213,7 @@ export default function VenuesPage() {
             <select
               value={capacityFilter}
               onChange={(e) => setCapacityFilter(e.target.value)}
-              className="px-4 py-2 border text-white rounded-md bg-background" style={{  backgroundColor: '#191C24' , borderColor: '#CBF83E'+'50' }}
+              className="px-4 py-2 border rounded-md bg-background text-foreground border-border"
             >
               {capacityRanges.map(range => (
                 <option key={range.value} value={range.value}>
@@ -225,8 +225,7 @@ export default function VenuesPage() {
             {/* Clear Filters */}
             <Button
               variant="outline"
-              style={{  backgroundColor: '#191C24' , borderColor: '#CBF83E'+'50' }}
-              className='text-white hover:text-white'
+              className="border-border text-foreground hover:bg-muted/50"
               onClick={() => {
                 setSearchTerm('');
                 setSelectedCity('all');
@@ -263,12 +262,12 @@ export default function VenuesPage() {
         )} */}
 
         {/* Venues Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" style={{ backgroundColor: '#191C24' }}>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredVenues.map((venue) => {
             const upcomingEvents = getUpcomingEvents(venue.id);
             
             return (
-              <div key={venue.id} className="bg-card rounded-lg border shadow-lg overflow-hidden hover:shadow-xl transition-shadow" style={{  backgroundColor: '#191C24' , borderColor: '#CBF83E'+'50' }}>
+              <div key={venue.id} className="bg-card rounded-lg border border-border shadow-lg overflow-hidden hover:shadow-xl transition-shadow">'
                 <div className="aspect-video bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center overflow-hidden">
                   {venue.featuredImage || venue.image ? (
                     <img 
@@ -288,25 +287,25 @@ export default function VenuesPage() {
                 
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-xl text-white font-semibold">{venue.name || 'Unnamed Venue'}</h3>
-                    <div className="flex items-center text-white text-sm text-muted-foreground">
-                      <Users className="h-4 w-4 mr-1 text-white" />
+                    <h3 className="text-xl font-semibold text-foreground">{venue.name || 'Unnamed Venue'}</h3>
+                    <div className="flex items-center text-sm text-muted-foreground">
+                      <Users className="h-4 w-4 mr-1" />
                       {venue.capacity ? Number(venue.capacity).toLocaleString() : 'N/A'}
                     </div>
                   </div>
 
-                  <div className="flex items-center text-sm text-muted-foreground mb-4" style={{ color: '#198754' }}>
-                    <MapPin className="h-4 w-4  mr-1"  style={{ color: '#CBF83E' }} />
+                  <div className="flex items-center text-sm text-muted-foreground mb-4">
+                    <MapPin className="h-4 w-4 mr-1 text-primary" />
                     {venue.location || 'Location not specified'}
                   </div>
 
-                  {/* <p className="text-muted-foreground text-white mb-4 line-clamp-3">
+                  {/* <p className="text-muted-foreground mb-4 line-clamp-3">
                     {venue.description || 'No description available'}
                   </p> */}
 
                   {/* Tenant/Owner Info */}
                   {venue.tenant && (
-                    <div className="mb-4 p-2 bg-muted rounded-lg" style={{ backgroundColor: '#191C24' , borderColor: '#CBF83E'+'50' }}>
+                    <div className="mb-4 p-2 bg-muted/30 rounded-lg border border-border">
                       <p className="text-sm text-muted-foreground">
                         <strong>Managed by:</strong> {venue.tenant.name}
                       </p>
@@ -346,9 +345,9 @@ export default function VenuesPage() {
 
                   <div className="flex gap-2">
                     <Link href={`/venues/${venue.id || venue._id || 'unknown'}`} className="flex-1">
-                      <Button className="w-full" style={{ backgroundColor: '#0D6EFD' }}>View Details</Button>
+                      <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">View Details</Button>
                     </Link>
-                    <Button  size="default" style={{ backgroundColor: '#0D6EFD'  }}>
+                    <Button size="default" className="bg-blue-600 hover:bg-blue-700 text-white">
                       Contact
                     </Button>
                   </div>
