@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/auth/auth-provider';
 import { motion } from 'framer-motion';
+import { Loading } from '@/components/ui/loading';
 import {
   TrendingUp,
   TrendingDown,
@@ -244,10 +245,10 @@ export default function AdminDashboard() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-lg font-semibold text-foreground">Loading admin dashboard...</p>
-        </div>
+        <Loading
+          size="lg"
+          text="Loading admin dashboard..."
+        />
       </div>
     );
   }
@@ -476,8 +477,10 @@ export default function AdminDashboard() {
               
               {loadingEvents ? (
                 <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                  <p className="mt-4 text-sm text-foreground">Loading pending events...</p>
+                  <Loading
+                    size="md"
+                    text="Loading pending events..."
+                  />
                 </div>
               ) : pendingEvents.length === 0 ? (
                 <div className="text-center py-8">

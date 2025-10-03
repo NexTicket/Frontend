@@ -7,6 +7,7 @@ import { Calendar, Filter, MapPin, Clock, Users, Star, Ticket } from 'lucide-rea
 import { fetchEvents } from '@/lib/api';
 import Image from 'next/image';
 import { useRef } from 'react';
+import { Loading } from '@/components/ui/loading';
 
 interface Event {
   id: number;
@@ -128,13 +129,26 @@ export default function EventsPage() {
   };
 
   if (loading) {
+    // Commented out original loading implementation
+    // return (
+    //   <div className="min-h-screen bg-[#18181c] text-white flex items-center justify-center">
+    //     <div className="text-center">
+    //       <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+    //       <h2 className="text-2xl font-bold mb-2">Loading Events...</h2>
+    //       <p className="text-gray-400">Fetching the latest events for you</p>
+    //     </div>
+    //   </div>
+    // );
+
+    // Using new global Loading component
     return (
       <div className="min-h-screen bg-[#18181c] text-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <h2 className="text-2xl font-bold mb-2">Loading Events...</h2>
-          <p className="text-gray-400">Fetching the latest events for you</p>
-        </div>
+        <Loading
+          type="wave"
+          size="lg"
+          text="Loading Events..."
+          className="text-white"
+        />
       </div>
     );
   }

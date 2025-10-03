@@ -5,6 +5,7 @@ import { useAuth } from '@/components/auth/auth-provider';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
+import { Loading } from '@/components/ui/loading';
 import { 
   Calendar,
   MapPin,
@@ -123,7 +124,11 @@ export default function EventAdminDashboard() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: darkBg }}>
-        <div className="text-lg" style={{ color: '#fff' }}>Loading...</div>
+        <Loading
+          size="lg"
+          text="Loading..."
+          className="text-white"
+        />
       </div>
     );
   }
@@ -380,8 +385,11 @@ export default function EventAdminDashboard() {
           >
             {loading ? (
               <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" style={{ borderColor: '#CBF83E' }}></div>
-                <p style={{ color: '#ABA8A9' }}>Loading your assigned events...</p>
+                <Loading
+                  size="md"
+                  text="Loading your assigned events..."
+                  className="text-white"
+                />
               </div>
             ) : assignedEvents.length === 0 ? (
               <div className="text-center py-12">

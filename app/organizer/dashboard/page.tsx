@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/components/auth/auth-provider';
+import { Loading } from '@/components/ui/loading';
 import { 
   Plus, 
   Calendar,  
@@ -132,10 +133,11 @@ export default function OrganizerDashboard() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: darkBg }}>
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-lg font-semibold" style={{ color: '#fff' }}>Loading organizer dashboard...</p>
-        </div>
+        <Loading
+          size="lg"
+          text="Loading organizer dashboard..."
+          className="text-white"
+        />
       </div>
     );
   }
@@ -380,8 +382,11 @@ export default function OrganizerDashboard() {
               
               {eventsLoading ? (
                 <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                  <p className="mt-4 text-sm" style={{ color: '#fff' }}>Loading your events...</p>
+                  <Loading
+                    size="md"
+                    text="Loading your events..."
+                    className="text-white"
+                  />
                 </div>
               ) : events.length === 0 ? (
                 <div className="text-center py-8">

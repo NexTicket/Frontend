@@ -10,10 +10,10 @@ import {
   Calendar,
   Phone,
   Mail,
-  Filter,
-  Loader2
+  Filter
 } from 'lucide-react';
 import { fetchVenues } from '@/lib/api';
+import { Loading } from '@/components/ui/loading';
 
 export default function VenuesPage() {
   const [venues, setVenues] = useState<any[]>([]);
@@ -132,17 +132,29 @@ export default function VenuesPage() {
   };
 
   if (loading) {
+    // Commented out original loading implementation
+    // return (
+    //   <div className="min-h-screen bg-background">
+    //     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    //       <div className="flex items-center justify-center py-12">
+    //         <div className="text-center">
+    //           <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+    //           <h3 className="text-xl font-semibold mb-2">Loading venues...</h3>
+    //           <p className="text-muted-foreground">Please wait while we fetch the latest venues</p>
+    //         </div>
+    //       </div>
+    //     </div>
+    //   </div>
+    // );
+
+    // Using new global Loading component
     return (
-      <div className="min-h-screen bg-background">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Loading venues...</h3>
-              <p className="text-muted-foreground">Please wait while we fetch the latest venues</p>
-            </div>
-          </div>
-        </div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loading
+          type="wave"
+          size="lg"
+          text="Loading venues..."
+        />
       </div>
     );
   }
