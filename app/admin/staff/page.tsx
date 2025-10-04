@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { collection, getDocs, doc, updateDoc, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { Loading } from '@/components/ui/loading';
 import { 
   Users, 
   Star, 
@@ -158,10 +159,10 @@ export default function AdminStaff() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-orange-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading staff data...</p>
-        </div>
+        <Loading
+          size="lg"
+          text="Loading staff data..."
+        />
       </div>
     );
   }

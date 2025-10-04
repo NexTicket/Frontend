@@ -1,11 +1,12 @@
 "use client"
 
 import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/components/auth/auth-provider';
+import { Loading } from '@/components/ui/loading';
+import { ErrorDisplay } from '@/components/ui/error-display';
 import { 
   Plus, 
   Calendar,  
@@ -18,8 +19,6 @@ import {
   Eye,
   Edit,
   RefreshCw,
-  Star,
-  MapPin
 } from 'lucide-react';
 import { deleteEvent, fetchEventsByOrganizer } from '@/lib/api';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
@@ -92,21 +91,21 @@ export default function OrganizerDashboard() {
     }
   }, [userProfile]);
 
-  const handleDeleteEvent = async (eventId: string) => {
-    if (confirm('Are you sure you want to delete this event?')) {
-      try {
-        await deleteEvent(eventId);
-        // Refresh events list
-        const response = await fetchEventsByOrganizer(userProfile?.uid || '');
-        const eventsData = response?.data || response || [];
-        setEvents(Array.isArray(eventsData) ? eventsData : []);
-        alert('Event deleted successfully!');
-      } catch (error) {
-        console.error('Failed to delete event:', error);
-        alert('Failed to delete event');
-      }
-    }
-  };
+  // const handleDeleteEvent = async (eventId: string) => {
+  //   if (confirm('Are you sure you want to delete this event?')) {
+  //     try {
+  //       await deleteEvent(eventId);
+  //       // Refresh events list
+  //       const response = await fetchEventsByOrganizer(userProfile?.uid || '');
+  //       const eventsData = response?.data || response || [];
+  //       setEvents(Array.isArray(eventsData) ? eventsData : []);
+  //       alert('Event deleted successfully!');
+  //     } catch (error) {
+  //       console.error('Failed to delete event:', error);
+  //       alert('Failed to delete event');
+  //     }
+  //   }
+  // };
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -132,10 +131,11 @@ export default function OrganizerDashboard() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: darkBg }}>
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-lg font-semibold" style={{ color: '#fff' }}>Loading organizer dashboard...</p>
-        </div>
+        <Loading
+          size="lg"
+          text="Loading organizer dashboard..."
+          className="text-white"
+        />
       </div>
     );
   }
@@ -143,23 +143,14 @@ export default function OrganizerDashboard() {
   // Show access denied if not authenticated or not organizer
   if (!firebaseUser || !userProfile || userProfile.role !== 'organizer') {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: darkBg }}>
-        <div className="backdrop-blur-xl border rounded-3xl p-8 shadow-2xl text-center max-w-md" style={{ backgroundColor: cardBg, borderColor: greenBorder + '30', boxShadow: cardShadow }}>
-          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6" style={{ background: '#FF5722' + '20' }}>
-            <Users className="h-8 w-8" style={{ color: '#FF5722' }} />
-          </div>
-          <h1 className="text-2xl font-bold mb-4" style={{ color: '#fff' }}>Access Denied</h1>
-          <p className="mb-6" style={{ color: '#ABA8A9' }}>
-            You need organizer privileges to access this page.
-          </p>
-          <Button 
-            onClick={() => router.push('/auth/signin')}
-            className="text-white hover:opacity-90 transition-opacity"
-            style={{ background: blueHeader }}
-          >
-            Sign In
-          </Button>
-        </div>
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: darkBg }}>
+        <ErrorDisplay
+          type="auth"
+          title="Access Denied"
+          message="You need organizer privileges to access this page."
+          variant="card"
+          className="max-w-md"
+        />
       </div>
     );
   }
@@ -380,8 +371,11 @@ export default function OrganizerDashboard() {
               
               {eventsLoading ? (
                 <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                  <p className="mt-4 text-sm" style={{ color: '#fff' }}>Loading your events...</p>
+                  <Loading
+                    size="md"
+                    text="Loading your events..."
+                    className="text-white"
+                  />
                 </div>
               ) : events.length === 0 ? (
                 <div className="text-center py-8">

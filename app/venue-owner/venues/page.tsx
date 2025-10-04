@@ -6,6 +6,8 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/components/auth/auth-provider';
 import { fetchmyVenues, deleteVenue } from '@/lib/api';
+import { Loading } from '@/components/ui/loading';
+import { ErrorDisplay } from '@/components/ui/error-display';
 import { 
   Building2, 
   Plus, 
@@ -185,24 +187,11 @@ export default function VenueOwnerVenues() {
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: '#191C24' }}>
-        <div className="text-center">
-          <div className="relative">
-            <motion.div
-              className="w-16 h-16 border-4 border-[#0D6EFD] border-t-[#39FD48] rounded-full mx-auto"
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-            />
-          </div>
-          <motion.h3 
-            className="text-2xl font-bold mt-6 mb-4"
-            style={{ color: '#fff' }}
-            animate={{ opacity: [0.5, 1, 0.5] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          >
-            Authenticating...
-          </motion.h3>
-          <p style={{ color: '#ABA8A9' }}>Verifying your credentials</p>
-        </div>
+        <Loading
+          size="lg"
+          text="Authenticating..."
+          className="text-white"
+        />
       </div>
     );
   }
@@ -227,6 +216,22 @@ export default function VenueOwnerVenues() {
             </Link>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  // Show error if there was an error loading venues
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#191C24' }}>
+        <ErrorDisplay
+          type="error"
+          title="Failed to Load Venues"
+          message={error}
+          variant="card"
+          onRetry={retryFetch}
+          className="max-w-md"
+        />
       </div>
     );
   }
@@ -363,24 +368,11 @@ export default function VenueOwnerVenues() {
           {/* Loading State */}
           {loading ? (
             <motion.div variants={itemVariants} className="flex items-center justify-center py-20">
-              <div className="text-center">
-                <div className="relative">
-                  <motion.div
-                    className="w-16 h-16 border-4 border-[#0D6EFD] border-t-[#39FD48] rounded-full mx-auto"
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                  />
-                </div>
-                <motion.h3 
-                  className="text-2xl font-bold mt-6 mb-4"
-                  style={{ color: '#fff' }}
-                  animate={{ opacity: [0.5, 1, 0.5] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                >
-                  Loading Venues...
-                </motion.h3>
-                <p style={{ color: '#ABA8A9' }}>Fetching your venue data</p>
-              </div>
+              <Loading
+                size="lg"
+                text="Loading Venues..."
+                className="text-white"
+              />
             </motion.div>
           ) : error ? (
             <motion.div variants={itemVariants} className="text-center py-20">

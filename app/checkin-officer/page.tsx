@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/components/auth/auth-provider';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
+import { Loading } from '@/components/ui/loading';
 import { 
   QrCode,
   Users, 
@@ -665,8 +666,10 @@ export default function CheckinOfficerDashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {loading ? (
               <div className="col-span-full text-center py-8">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-                <p className="text-muted-foreground">Loading your assigned events...</p>
+                <Loading
+                  size="lg"
+                  text="Loading your assigned events..."
+                />
               </div>
             ) : assignedEvents.length === 0 ? (
               <div className="col-span-full text-center py-8">

@@ -1,9 +1,11 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/auth/auth-provider';
 import { motion } from 'framer-motion';
+import { Loading } from '@/components/ui/loading';
 import {
   TrendingUp,
   TrendingDown,
@@ -15,41 +17,23 @@ import {
   Star,
   AlertTriangle,
   RefreshCw,
-  Settings,
-  Plus,
-  Bell,
   Download,
-  LogOut,
-  ArrowLeft,
-  BarChart3,
-  PieChart,
-  LineChart,
   Eye,
   Edit,
-  Trash2,
   MoreVertical,
-  PersonStanding
+  PersonStanding,
+  BarChart3
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   AreaChart,
   Area,
-  BarChart,
-  Bar,
-  LineChart as RechartsLineChart,
-  Line,
-  PieChart as RechartsPieChart,
-  Pie,
-  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer
 } from 'recharts';
-import { format, subDays, startOfWeek, endOfWeek } from 'date-fns';
-import RouteGuard from '@/components/auth/routeGuard';
 import { fetchEvents, approveEvent, rejectEvent } from '@/lib/api';
 
 // Animation variants for smooth transitions
@@ -86,23 +70,15 @@ const revenueData = [
   { name: 'Jul', revenue: 74000, tickets: 210, events: 22 }
 ];
 
-const categoryData = [
-  { name: 'Concerts', value: 35, color: 'hsl(var(--chart-1))' },
-  { name: 'Sports', value: 25, color: 'hsl(var(--chart-2))' },
-  { name: 'Theater', value: 20, color: 'hsl(var(--chart-3))' },
-  { name: 'Comedy', value: 12, color: 'hsl(var(--chart-4))' },
-  { name: 'Other', value: 8, color: 'hsl(var(--chart-5))' }
-];
+// const categoryData = [
+//   { name: 'Concerts', value: 35, color: 'hsl(var(--chart-1))' },
+//   { name: 'Sports', value: 25, color: 'hsl(var(--chart-2))' },
+//   { name: 'Theater', value: 20, color: 'hsl(var(--chart-3))' },
+//   { name: 'Comedy', value: 12, color: 'hsl(var(--chart-4))' },
+//   { name: 'Other', value: 8, color: 'hsl(var(--chart-5))' }
+// ];
 
-const weeklyData = [
-  { day: 'Mon', sales: 45, users: 12 },
-  { day: 'Tue', sales: 52, users: 19 },
-  { day: 'Wed', sales: 48, users: 15 },
-  { day: 'Thu', sales: 61, users: 25 },
-  { day: 'Fri', sales: 58, users: 22 },
-  { day: 'Sat', sales: 67, users: 31 },
-  { day: 'Sun', sales: 74, users: 28 }
-];
+
 
 const recentActivities = [
   { id: 1, user: 'John Doe', action: 'Purchased ticket', event: 'Rock Concert 2025', time: '2 min ago', avatar: '/Images/profile-avatar-account-icon.png' },
@@ -129,7 +105,7 @@ interface StatCardProps {
   subtitle?: string;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ title, value, icon, trend, color, subtitle }) => {
+const StatCard: React.FC<StatCardProps> = ({ title, value, icon, trend, subtitle }) => {
   const TrendIcon = trend && trend > 0 ? TrendingUp : TrendingDown;
   const trendColor = trend && trend > 0 ? 'text-green-500' : 'text-red-500';
 
@@ -244,10 +220,10 @@ export default function AdminDashboard() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-lg font-semibold text-foreground">Loading admin dashboard...</p>
-        </div>
+        <Loading
+          size="lg"
+          text="Loading admin dashboard..."
+        />
       </div>
     );
   }
@@ -476,8 +452,10 @@ export default function AdminDashboard() {
               
               {loadingEvents ? (
                 <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                  <p className="mt-4 text-sm text-foreground">Loading pending events...</p>
+                  <Loading
+                    size="md"
+                    text="Loading pending events..."
+                  />
                 </div>
               ) : pendingEvents.length === 0 ? (
                 <div className="text-center py-8">

@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { createVenue, uploadVenueImage } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import '@/utils/test-venue-creation'; // Load test utilities
+import { Loading } from '@/components/ui/loading';
+import { ErrorDisplay } from '@/components/ui/error-display';
 import { 
   Building2,
   MapPin,
@@ -162,6 +164,7 @@ export default function CreateVenue() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [formData, setFormData] = useState<VenueFormData>({
     name: '',
     location: '',
@@ -621,7 +624,7 @@ export default function CreateVenue() {
         errorMessage = error.message;
       }
         
-      alert(`❌ ${errorMessage}`);
+      setSubmitError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -644,6 +647,23 @@ export default function CreateVenue() {
           </h1>
           <p className="text-muted-foreground">Design your venue with our advanced seating layout system</p>
         </div>
+
+        {/* Error Display */}
+        {submitError && (
+          <div className="mb-6">
+            <ErrorDisplay
+              type="error"
+              title="Failed to Create Venue"
+              message={submitError}
+              variant="card"
+              onRetry={() => {
+                setSubmitError(null);
+                handleSubmit();
+              }}
+              className="max-w-2xl"
+            />
+          </div>
+        )}
 
         {/* Progress Bar */}
         <div className="mb-8">
@@ -792,8 +812,10 @@ export default function CreateVenue() {
                   >
                     {uploadingImages ? (
                       <div className="flex flex-col items-center">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
-                        <p className="text-muted-foreground">Uploading images...</p>
+                        <Loading
+                          size="lg"
+                          text="Uploading images..."
+                        />
                       </div>
                     ) : (
                       <div className="space-y-4">
