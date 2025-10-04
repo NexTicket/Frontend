@@ -89,17 +89,31 @@ export default function EventsPage() {
   const handlePrev = () => setCarouselIndex((prev) => (prev === 0 ? Math.max(0, featuredEvents.length - 1) : prev - 1));
   const handleNext = () => setCarouselIndex((prev) => (prev === Math.max(0, featuredEvents.length - 1) ? 0 : prev + 1));
 
-  // Scroll to center the selected poster
+  // Auto-play carousel
   useEffect(() => {
-    if (carouselRef.current && featuredEvents.length > 0) {
-      const container = carouselRef.current;
-      const child = container.children[carouselIndex] as HTMLElement;
-      if (child) {
-        const offset = child.offsetLeft - (container.offsetWidth / 2) + (child.offsetWidth / 2);
-        container.scrollTo({ left: offset, behavior: 'smooth' });
-      }
-    }
-  }, [carouselIndex, featuredEvents.length]);
+    if (featuredEvents.length <= 1) return;
+
+    const interval = setInterval(() => {
+      setCarouselIndex((prev) => (prev + 1) % featuredEvents.length);
+    }, 6000); // Change slide every 6 seconds
+
+    return () => clearInterval(interval);
+  }, [featuredEvents.length]);
+
+  // Pause auto-play on hover
+  const [isHovered, setIsHovered] = useState(false);
+
+  useEffect(() => {
+    if (featuredEvents.length <= 1) return;
+
+    if (isHovered) return; // Pause when hovered
+
+    const interval = setInterval(() => {
+      setCarouselIndex((prev) => (prev + 1) % featuredEvents.length);
+    }, 6000);
+
+    return () => clearInterval(interval);
+  }, [carouselIndex, featuredEvents.length, isHovered]);
 
   const filteredEvents = currentEvents
     .filter(event => 
@@ -200,15 +214,11 @@ export default function EventsPage() {
         <div className="absolute inset-0 bg-gradient-to-r from-black/20 via-transparent to-black/20 z-10" />
 
         {/* Carousel */}
-        <div className="relative z-20 w-full max-w-6xl mx-auto flex items-center justify-center h-full px-4">
-          {/* Enhanced Navigation Arrows */}
-          <button
-            onClick={handlePrev}
-            className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/70 backdrop-blur-sm border border-white/20 rounded-full p-4 z-30 transition-all duration-300 hover:scale-110 shadow-lg group"
-          >
-            <span className="text-2xl text-white group-hover:text-blue-400 transition-colors duration-300">&#8592;</span>
-          </button>
-
+        <div
+          className="relative z-20 w-full max-w-7xl mx-auto flex items-center justify-center h-full px-8"
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
           {/* Posters Row with improved spacing */}
           <div ref={carouselRef} className="flex gap-8 overflow-hidden px-20 w-full items-center justify-center">
             {featuredEvents.map((event, idx) => {
@@ -221,23 +231,24 @@ export default function EventsPage() {
               return (
                 <div
                   key={event.id}
-                  className={`relative flex-shrink-0 transition-all duration-700 ease-out cursor-pointer transform-gpu`}
+                  className={`relative flex-shrink-0 transition-all duration-500 ease-in-out cursor-pointer transform-gpu ${isActive ? 'drop-shadow-2xl' : ''}`}
                   style={{
                     width: isActive ? 280 : 200,
                     height: isActive ? 420 : 300,
                     transform: `scale(${scale})`,
                     opacity: opacity,
                     zIndex: isActive ? 30 : 20 - distance,
-                    scrollSnapAlign: 'center'
+                    scrollSnapAlign: 'center',
+                    filter: isActive ? 'drop-shadow(0 25px 50px rgba(168, 85, 247, 0.4))' : 'none'
                   }}
                   onClick={() => setCarouselIndex(idx)}
                 >
-                  <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl hover:shadow-blue-500/20 transition-shadow duration-500">
+                  <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl hover:shadow-blue-500/20 transition-all duration-300 ease-in-out">
                     <Image
                       src={getEventImage(event)}
                       alt={event.title}
                       fill
-                      className="object-cover transition-transform duration-700 ease-out hover:scale-105"
+                      className="object-cover transition-transform duration-500 ease-in-out hover:scale-105"
                     />
                     {/* Subtle border glow for active item */}
                     {isActive && (
@@ -245,46 +256,16 @@ export default function EventsPage() {
                     )}
                   </div>
 
-                  {/* Enhanced Overlay details only for active */}
+                  {/* Simplified Overlay - just title for active */}
                   {isActive && (
-                    <div className="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-black/95 via-black/70 to-transparent rounded-b-2xl backdrop-blur-sm">
-                      <div className="space-y-4">
-                        <h2 className="text-4xl font-bold mb-2 text-white drop-shadow-lg">{event.title}</h2>
-                        <div className="flex items-center gap-4 mb-3">
-                          <div className="flex items-center gap-2 bg-yellow-500/20 px-3 py-1 rounded-full">
-                            <span className="text-yellow-400 font-bold text-lg">8.5</span>
-                            <span className="text-yellow-300 text-sm">(2024)</span>
-                          </div>
-                          <span className="bg-blue-600/80 text-white text-sm px-3 py-1 rounded-full font-medium">
-                            {event.category}
-                          </span>
-                        </div>
-                        <p className="text-gray-200 text-base line-clamp-2 mb-4 leading-relaxed drop-shadow-md">
-                          {event.description}
-                        </p>
-                        <div className="flex gap-3">
-                          <Link href={`/events/${event.id}`}>
-                            <Button className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-8 py-3 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 border border-blue-500/30">
-                              <span className="mr-2">🎫</span>
-                              Buy Tickets
-                            </Button>
-                          </Link>
-                        </div>
-                      </div>
+                    <div className="absolute bottom-6 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent rounded-b-2xl">
+                      <h2 className="text-2xl font-bold text-white text-center drop-shadow-lg">{event.title}</h2>
                     </div>
                   )}
                 </div>
               );
             })}
           </div>
-
-          {/* Enhanced Navigation Arrows */}
-          <button
-            onClick={handleNext}
-            className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/70 backdrop-blur-sm border border-white/20 rounded-full p-4 z-30 transition-all duration-300 hover:scale-110 shadow-lg group"
-          >
-            <span className="text-2xl text-white group-hover:text-blue-400 transition-colors duration-300">&#8594;</span>
-          </button>
         </div>
 
         {/* Carousel Indicators */}
@@ -293,14 +274,24 @@ export default function EventsPage() {
             <button
               key={idx}
               onClick={() => setCarouselIndex(idx)}
-              className={`w-3 h-3 rounded-full transition-all duration-300 ${
+              className={`transition-all duration-500 rounded-full ${
                 idx === carouselIndex
-                  ? 'bg-blue-500 scale-125 shadow-lg shadow-blue-500/50'
-                  : 'bg-white/40 hover:bg-white/70'
+                  ? 'w-8 h-3 bg-gradient-to-r from-blue-500 to-purple-500 scale-125 shadow-lg shadow-blue-500/50'
+                  : 'w-3 h-3 bg-white/40 hover:bg-white/70 hover:scale-110'
               }`}
             />
           ))}
         </div>
+
+        {/* Auto-play indicator */}
+        {!isHovered && featuredEvents.length > 1 && (
+          <div className="absolute top-6 right-6 z-30">
+            <div className="bg-black/40 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-2">
+              <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+              <span className="text-white text-xs font-medium">Auto</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Filter/Search Bar - Horizontal Layout */}
