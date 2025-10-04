@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { useAuth } from "@/components/auth/auth-provider";
+import { Loading } from "@/components/ui/loading";
 import {
   Plus,
   Calendar,
@@ -143,12 +144,10 @@ export default function OrganizerDashboard() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-          <p className="mt-4 text-muted-foreground">
-            Loading organizer dashboard...
-          </p>
-        </div>
+        <Loading
+          size="lg"
+          text="Loading organizer dashboard..."
+        />
       </div>
     );
   }
@@ -635,10 +634,10 @@ export default function OrganizerDashboard() {
               </div>
               {eventsLoading ? (
                 <div className="text-center py-10">
-                  <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto"></div>
-                  <p className="mt-4 text-muted-foreground">
-                    Loading your events...
-                  </p>
+                  <Loading
+                    size="lg"
+                    text="Loading your events..."
+                  />
                 </div>
               ) : (
                 <div>
@@ -715,10 +714,10 @@ export default function OrganizerDashboard() {
               </div>
               {venuesLoading ? (
                 <div className="text-center py-10">
-                  <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto"></div>
-                  <p className="mt-4 text-muted-foreground">
-                    Loading your venues...
-                  </p>
+                  <Loading
+                    size="lg"
+                    text="Loading your venues..."
+                  />
                 </div>
               ) : (
                 <div>

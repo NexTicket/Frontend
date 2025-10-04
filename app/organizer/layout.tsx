@@ -4,6 +4,7 @@ import { useAuth } from '@/components/auth/auth-provider';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import { Loading } from '@/components/ui/loading';
 
 export default function OrganizerLayout({ children }: { children: React.ReactNode }) {
   const { firebaseUser, userProfile, isLoading } = useAuth();
@@ -50,10 +51,10 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-2 text-muted-foreground">Loading...</p>
-        </div>
+        <Loading
+          size="md"
+          text="Loading..."
+        />
       </div>
     );
   }
@@ -62,10 +63,10 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
   if (firebaseUser && !userProfile) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-2 text-muted-foreground">Checking permissions...</p>
-        </div>
+        <Loading
+          size="md"
+          text="Checking permissions..."
+        />
       </div>
     );
   }

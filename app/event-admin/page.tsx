@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -19,10 +20,6 @@ import {
   CheckCircle,
   XCircle,
   Edit,
-  UserPlus,
-  UserMinus,
-  Save,
-  Plus,
   ChevronRight,
   Activity,
   TrendingUp
@@ -138,7 +135,7 @@ export default function EventAdminDashboard() {
       <div className="min-h-screen flex items-center justify-center" style={{ background: darkBg }}>
         <div className="text-center">
           <div className="text-lg mb-4" style={{ color: '#fff' }}>Access Denied</div>
-          <p style={{ color: '#ABA8A9' }}>You don't have permission to access this page.</p>
+          <p style={{ color: '#ABA8A9' }}>You do not have permission to access this page.</p>
         </div>
       </div>
     );
@@ -185,14 +182,14 @@ export default function EventAdminDashboard() {
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'active': return <CheckCircle className="w-4 h-4" />;
-      case 'upcoming': return <Clock className="w-4 h-4" />;
-      case 'completed': return <XCircle className="w-4 h-4" />;
-      default: return <AlertCircle className="w-4 h-4" />;
-    }
-  };
+  // const getStatusIcon = (status: string) => {
+  //   switch (status) {
+  //     case 'active': return <CheckCircle className="w-4 h-4" />;
+  //     case 'upcoming': return <Clock className="w-4 h-4" />;
+  //     case 'completed': return <XCircle className="w-4 h-4" />;
+  //     default: return <AlertCircle className="w-4 h-4" />;
+  //   }
+  // };
 
   // Format date
   const formatDate = (dateString: string) => {
@@ -395,7 +392,7 @@ export default function EventAdminDashboard() {
               <div className="text-center py-12">
                 <CalendarDays className="w-16 h-16 mx-auto mb-4" style={{ color: '#ABA8A9' }} />
                 <h3 className="text-lg font-medium mb-2" style={{ color: '#fff' }}>No Assigned Events</h3>
-                <p style={{ color: '#ABA8A9' }}>You haven't been assigned to any events yet.</p>
+                <p style={{ color: '#ABA8A9' }}>You have not been assigned to any events yet.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

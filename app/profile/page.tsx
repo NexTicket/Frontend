@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/components/auth/auth-provider';
 import { Loading } from '@/components/ui/loading';
+import { ErrorDisplay } from '@/components/ui/error-display';
 import { 
   User, 
   Calendar, 
@@ -14,7 +15,6 @@ import {
   Ticket, 
   Download,
   Share2,
-  Star,
   Settings,
   Heart,
   History,
@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { mockEvents, mockTickets } from '@/lib/mock-data';
 import { db } from '@/lib/firebase';
-import { setDoc, doc, serverTimestamp, getDoc, collection } from 'firebase/firestore';
+import { setDoc, doc, serverTimestamp, getDoc } from 'firebase/firestore';
 
 export default function ProfilePage() {
   const { userProfile, firebaseUser, logout, isLoading } = useAuth();
@@ -151,14 +151,14 @@ export default function ProfilePage() {
   // Show signin prompt if not authenticated
   if (!firebaseUser || !userProfile) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
-          <p className="text-muted-foreground mb-6">Please sign in to view your profile.</p>
-          <Button asChild>
-            <Link href="/auth/signin">Sign In</Link>
-          </Button>
-        </div>
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <ErrorDisplay
+          type="auth"
+          title="Access Denied"
+          message="Please sign in to view your profile."
+          variant="card"
+          className="max-w-md"
+        />
       </div>
     );
   }
@@ -472,7 +472,7 @@ export default function ProfilePage() {
                     <Ticket className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                     <h3 className="text-lg font-semibold mb-2">No tickets yet</h3>
                     <p className="text-muted-foreground mb-4">
-                      You haven't purchased any tickets yet. Start exploring events!
+                      You have not purchased any tickets yet. Start exploring events!
                     </p>
                     <Link href="/events">
                       <Button>Browse Events</Button>

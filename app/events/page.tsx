@@ -3,11 +3,12 @@
 import React,{ useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Calendar, Filter, MapPin, Clock, Users, Star, Ticket } from 'lucide-react';
+import { Calendar, Filter } from 'lucide-react';
 import { fetchEvents } from '@/lib/api';
 import Image from 'next/image';
 import { useRef } from 'react';
 import { Loading } from '@/components/ui/loading';
+import { ErrorDisplay } from '@/components/ui/error-display';
 
 interface Event {
   id: number;
@@ -117,11 +118,11 @@ export default function EventsPage() {
     });
 
   // Helper function to format date
-  const formatEventDate = (startDate: string, startTime?: string) => {
-    const date = new Date(startDate);
-    const dateStr = date.toLocaleDateString();
-    return startTime ? `${dateStr} at ${startTime}` : dateStr;
-  };
+  // const formatEventDate = (startDate: string, startTime?: string) => {
+  //   const date = new Date(startDate);
+  //   const dateStr = date.toLocaleDateString();
+  //   return startTime ? `${dateStr} at ${startTime}` : dateStr;
+  // };
 
   // Helper function to get placeholder image
   const getEventImage = (event: Event) => {
@@ -155,15 +156,15 @@ export default function EventsPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#18181c] text-white flex items-center justify-center">
-        <div className="text-center">
-          <Calendar className="h-16 w-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold mb-2">Failed to Load Events</h2>
-          <p className="text-gray-400 mb-4">{error}</p>
-          <Button onClick={() => window.location.reload()} className="bg-blue-600 hover:bg-blue-700">
-            Try Again
-          </Button>
-        </div>
+      <div className="min-h-screen bg-[#18181c] text-white flex items-center justify-center p-4">
+        <ErrorDisplay
+          type="error"
+          title="Failed to Load Events"
+          message={error}
+          variant="card"
+          onRetry={() => window.location.reload()}
+          className="max-w-md"
+        />
       </div>
     );
   }

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { fetchVenues } from '@/lib/api';
 import { Loading } from '@/components/ui/loading';
+import { ErrorDisplay } from '@/components/ui/error-display';
 
 export default function VenuesPage() {
   const [venues, setVenues] = useState<any[]>([]);
@@ -126,6 +127,7 @@ export default function VenuesPage() {
     });
 
   // For now, we'll mock upcoming events since we don't have events API integrated yet
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const getUpcomingEvents = (venueId: string) => {
     // Return empty array until events API is integrated
     return [];
@@ -161,21 +163,15 @@ export default function VenuesPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-center py-12">
-            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-6 max-w-md mx-auto">
-              <h3 className="text-xl font-semibold text-destructive mb-2">Error Loading Venues</h3>
-              <p className="text-muted-foreground mb-4">{error}</p>
-              <Button 
-                onClick={() => window.location.reload()} 
-                variant="outline"
-              >
-                Try Again
-              </Button>
-            </div>
-          </div>
-        </div>
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <ErrorDisplay
+          type="error"
+          title="Error Loading Venues"
+          message={error}
+          variant="card"
+          onRetry={() => window.location.reload()}
+          className="max-w-md"
+        />
       </div>
     );
   }
@@ -282,6 +278,7 @@ export default function VenuesPage() {
               <div key={venue.id} className="bg-card rounded-lg border border-border shadow-lg overflow-hidden hover:shadow-xl transition-shadow">'
                 <div className="aspect-video bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center overflow-hidden">
                   {venue.featuredImage || venue.image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img 
                       src={venue.featuredImage || venue.image} 
                       alt={venue.name || 'Venue'} 
