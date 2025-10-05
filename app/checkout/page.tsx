@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { 
@@ -14,7 +14,8 @@ import {
   Check,
   ShoppingCart
 } from 'lucide-react';
-import { mockEvents, mockSeats } from '@/lib/mock-data';
+import { mockEvents } from '@/lib/mock-data';
+import { getUserLockedSeats } from '@/lib/api_ticket';
 import { motion } from 'framer-motion';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
@@ -51,15 +52,108 @@ export default function CheckoutPage() {
   const [processing, setProcessing] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [selectedSeats, setSelectedSeats] = useState<Array<{
+    id: string;
+    section: string;
+    row: string;
+    number: number;
+    price: number;
+  }>>([]);
+  const [bulkTicketInfo, setBulkTicketInfo] = useState<{
+    bulk_ticket_id: number;
+    price_per_seat: number;
+    seat_type: string;
+  } | null>(null);
   
-  // Mock selected seats and event (in a real app, this would come from state/context)
-  const selectedSeats = mockSeats.filter(s => s.isSelected).slice(0, 2);
+  // Default event data
   const event = mockEvents[0];
   const orderId = 1; // This should come from your order creation logic
   
-  const subtotal = selectedSeats.reduce((sum, seat) => sum + seat.price, 0);
-  const serviceFee = 250;
+  // Calculate subtotal based on fetched seats and bulk_ticket_info
+  const pricePerSeat = bulkTicketInfo?.price_per_seat || 75; // Default to 75 if no bulk price
+  const subtotal = selectedSeats.length * pricePerSeat;
+  const serviceFee = 5;
   const total = subtotal + serviceFee;
+
+  // Fetch user's locked seats when the component mounts
+  useEffect(() => {
+    async function fetchLockedSeats() {
+      try {
+        setLoading(true);
+        const response = await getUserLockedSeats();
+        console.log('API response:', response);
+        
+        // Handle the actual response structure from your backend
+        if (response && response.seat_ids && response.seat_ids.length > 0) {
+          // Extract bulk ticket info if available
+          if (response.bulk_ticket_info?.additionalProp1) {
+            const bulkInfo = response.bulk_ticket_info.additionalProp1;
+            setBulkTicketInfo({
+              bulk_ticket_id: parseInt(response.cart_id, 10) || 1,
+              price_per_seat: bulkInfo?.price_per_ticket || 75,
+              seat_type: bulkInfo?.seat_type || 'Standard'
+            });
+            console.log('Bulk ticket info:', response.bulk_ticket_info);
+          }
+          
+          // Transform seat_ids into seat format
+          const seatsFromResponse = response.seat_ids.map((seatId: string, index: number) => {
+            // Parse seat_id format
+            let section = '';
+            let row = '';
+            let number = 0;
+            
+            // Try to match patterns like "Orchestra A7" or just "A7"
+            if (seatId.includes(' ')) {
+              // Format like "Orchestra A7"
+              const parts = seatId.split(' ');
+              section = parts[0];
+              
+              if (parts.length > 1) {
+                // Extract row and number from the second part (e.g., "A7")
+                const rowNumMatch = parts[1].match(/([A-Za-z]+)([0-9]+)$/);
+                if (rowNumMatch && rowNumMatch.length > 2) {
+                  row = rowNumMatch[1];
+                  number = parseInt(rowNumMatch[2], 10);
+                }
+              }
+            } else {
+              // Format like "A7" (no space)
+              section = 'Orchestra'; // Default section
+              const rowNumMatch = seatId.match(/([A-Za-z]+)([0-9]+)$/);
+              if (rowNumMatch && rowNumMatch.length > 2) {
+                row = rowNumMatch[1];
+                number = parseInt(rowNumMatch[2], 10);
+              }
+            }
+            
+            // Get price from bulk_ticket_info if available, otherwise use default
+            const price = response.bulk_ticket_info?.additionalProp1?.price_per_ticket || 75;
+            
+            return {
+              id: `${response.cart_id}-${index}`,
+              section,
+              row,
+              number,
+              price
+            };
+          });
+          
+          setSelectedSeats(seatsFromResponse);
+        } else {
+          console.error('Failed to get locked seats - invalid response format:', response);
+        }
+      } catch (error) {
+        console.error('Error fetching locked seats:', error instanceof Error ? error.message : 'Unknown error');
+        // Optionally set an error state here
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    fetchLockedSeats();
+  }, []);
 
   const handlePaymentSuccess = () => {
     setOrderComplete(true);
@@ -205,105 +299,7 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              {/* Payment Method */}
-              <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}>
-                <h3 className="text-lg font-semibold mb-4" style={{ color: '#fff' }}>Payment Method</h3>
-                
-                <div className="space-y-3 mb-6">
-                  <div className="flex items-center space-x-3">
-                    <input
-                      type="radio"
-                      id="card"
-                      name="payment"
-                      value="card"
-                      checked={paymentMethod === 'card'}
-                      onChange={(e) => setPaymentMethod(e.target.value)}
-                      className="h-4 w-4 focus:ring-2"
-                      style={{ accentColor: '#39FD48' }}
-                    />
-                    <label htmlFor="card" className="flex items-center space-x-2" style={{ color: '#ABA8A9' }}>
-                      <CreditCard className="h-4 w-4" style={{ color: '#CBF83E' }} />
-                      <span>Credit or Debit Card</span>
-                    </label>
-                  </div>
-                  
-                  <div className="flex items-center space-x-3">
-                    <input
-                      type="radio"
-                      id="paypal"
-                      name="payment"
-                      value="paypal"
-                      checked={paymentMethod === 'paypal'}
-                      onChange={(e) => setPaymentMethod(e.target.value)}
-                      className="h-4 w-4 focus:ring-2"
-                      style={{ accentColor: '#39FD48' }}
-                    />
-                    <label htmlFor="paypal" className="flex items-center space-x-2" style={{ color: '#ABA8A9' }}>
-                      <div className="w-4 h-4 rounded-sm" style={{ backgroundColor: '#0D6EFD' }}></div>
-                      <span>PayPal</span>
-                    </label>
-                  </div>
-                </div>
 
-                {paymentMethod === 'card' && (
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-2" style={{ color: '#ABA8A9' }}>Card Number</label>
-                      <input
-                        type="text"
-                        className="w-full px-3 py-2 border rounded-md transition-colors duration-200 focus:outline-none focus:ring-2"
-                        style={{ 
-                          backgroundColor: '#191C24', 
-                          borderColor: '#39FD48' + '50',
-                          color: '#fff'
-                        }}
-                        placeholder="1234 5678 9012 3456"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium mb-2" style={{ color: '#ABA8A9' }}>Expiry Date</label>
-                        <input
-                          type="text"
-                          className="w-full px-3 py-2 border rounded-md transition-colors duration-200 focus:outline-none focus:ring-2"
-                          style={{ 
-                            backgroundColor: '#191C24', 
-                            borderColor: '#39FD48' + '50',
-                            color: '#fff'
-                          }}
-                          placeholder="MM/YY"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-2" style={{ color: '#ABA8A9' }}>CVV</label>
-                        <input
-                          type="text"
-                          className="w-full px-3 py-2 border rounded-md transition-colors duration-200 focus:outline-none focus:ring-2"
-                          style={{ 
-                            backgroundColor: '#191C24', 
-                            borderColor: '#39FD48' + '50',
-                            color: '#fff'
-                          }}
-                          placeholder="123"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2" style={{ color: '#ABA8A9' }}>Name on Card</label>
-                      <input
-                        type="text"
-                        className="w-full px-3 py-2 border rounded-md transition-colors duration-200 focus:outline-none focus:ring-2"
-                        style={{ 
-                          backgroundColor: '#191C24', 
-                          borderColor: '#39FD48' + '50',
-                          color: '#fff'
-                        }}
-                        placeholder="John Doe"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
 
               {/* Billing Address */}
               <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}>
@@ -365,7 +361,7 @@ export default function CheckoutPage() {
                   <div className="space-y-1 text-sm" style={{ color: '#ABA8A9' }}>
                     <div className="flex items-center">
                       <Calendar className="h-4 w-4 mr-2" style={{ color: '#0D6EFD' }} />
-                      {new Date(event.date).toLocaleDateString()}
+                      {event.date}
                     </div>
                     <div className="flex items-center">
                       <Clock className="h-4 w-4 mr-2" style={{ color: '#0D6EFD' }} />
@@ -382,20 +378,35 @@ export default function CheckoutPage() {
                 <div className="border-b pb-4 mb-4" style={{ borderColor: '#0D6EFD' + '30' }}>
                   <h4 className="font-medium mb-2" style={{ color: '#fff' }}>Selected Seats</h4>
                   <div className="space-y-2">
-                    {selectedSeats.map(seat => (
-                      <div key={seat.id} className="flex items-center justify-between text-sm">
-                        <span style={{ color: '#ABA8A9' }}>{seat.section} {seat.row}{seat.number}</span>
-                        <span style={{ color: '#CBF83E' }}>LKR {seat.price}</span>
-                      </div>
-                    ))}
+                    {loading ? (
+                      <div style={{ color: '#ABA8A9' }}>Loading your seats...</div>
+                    ) : selectedSeats.length > 0 ? (
+                      selectedSeats.map(seat => (
+                        <div key={seat.id} className="flex items-center justify-between text-sm">
+                          <span style={{ color: '#ABA8A9' }}>
+                            {/* Only show section name once, then row and number */}
+                            {seat.section === 'Orchestra' ? '' : `${seat.section} `}{seat.row}{seat.number}
+                          </span>
+                          <span style={{ color: '#CBF83E' }}>LKR {pricePerSeat}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div style={{ color: '#ABA8A9' }}>No seats selected</div>
+                    )}
                   </div>
                 </div>
 
                 {/* Price Breakdown */}
                 <div className="space-y-2 mb-6">
+                  {bulkTicketInfo && (
+                    <div className="flex items-center justify-between">
+                      <span style={{ color: '#ABA8A9' }}>Seat Type</span>
+                      <span style={{ color: '#fff' }}>{bulkTicketInfo.seat_type}</span>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between">
                     <span style={{ color: '#ABA8A9' }}>Subtotal</span>
-                    <span style={{ color: '#fff' }}>LKR {subtotal}</span>
+                    <span style={{ color: '#fff' }}>{loading ? 'Calculating...' : `LKR ${subtotal}`}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span style={{ color: '#ABA8A9' }}>Service fee</span>
@@ -403,7 +414,7 @@ export default function CheckoutPage() {
                   </div>
                   <div className="flex items-center justify-between font-medium text-lg border-t pt-2" style={{ borderColor: '#0D6EFD' + '30' }}>
                     <span style={{ color: '#fff' }}>Total</span>
-                    <span style={{ color: '#CBF83E' }}>LKR {total}</span>
+                    <span style={{ color: '#CBF83E' }}>{loading ? 'Calculating...' : `LKR ${total}`}</span>
                   </div>
                 </div>
 
