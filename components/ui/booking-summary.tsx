@@ -8,6 +8,8 @@ import {
   ShoppingCart
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { lockSeats } from '@/lib/api_ticket';
+import { useState, useEffect } from 'react';
 
 interface Seat {
   id: string;
@@ -27,6 +29,8 @@ interface BookingSummaryProps {
   serviceFee?: number;
   checkoutUrl?: string;
   className?: string;
+  eventId?: number;
+  bulkTicketId?: string;
 }
 
 const itemVariants = {
@@ -47,8 +51,48 @@ export function BookingSummary({
   onClearAllSeats,
   serviceFee = 5.00,
   checkoutUrl = "/checkout",
-  className = ""
+  className = "",
+  eventId,
+  bulkTicketId = "1"
 }: BookingSummaryProps) {
+  const [isLocking, setIsLocking] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  const handleProceedToCheckout = async () => {
+    if (selectedSeatsData.length === 0) {
+      console.error('No seats selected');
+      return;
+    }
+
+    setIsLocking(true);
+    try {
+      const seatIds = selectedSeatsData.map(seat => `${seat.section}${seat.row}${seat.number}`);
+      console.log('Locking seats:', seatIds);
+      await lockSeats({
+        event_id: 1, // Hardcoded to 1 for now
+        seat_ids: seatIds,
+        bulk_ticket_id: bulkTicketId
+      });
+
+      // Proceed to checkout after successful seat locking
+      window.location.href = checkoutUrl;
+    } catch (error) {
+      console.error('Failed to lock seats:', error);
+      alert('Failed to lock seats. Please try again.');
+    } finally {
+      setIsLocking(false);
+    }
+  };
+
+  // Prevent hydration mismatch by not rendering until client-side
+  if (!isMounted) {
+    return null;
+  }
+
   return (
     <motion.div 
       variants={itemVariants} 
@@ -127,16 +171,16 @@ export function BookingSummary({
             </div>
 
             {/* Checkout Button */}
-            <Link href={checkoutUrl}>
-              <Button 
-                className="w-full text-white hover:opacity-90 transition-opacity" 
-                size="lg"
-                style={{ background: '#0D6EFD' }}
-              >
-                <ShoppingCart className="mr-2 h-5 w-5" />
-                Proceed to Checkout
-              </Button>
-            </Link>
+            <Button 
+              onClick={handleProceedToCheckout}
+              disabled={isLocking}
+              className="w-full text-white hover:opacity-90 transition-opacity disabled:opacity-50" 
+              size="lg"
+              style={{ background: '#0D6EFD' }}
+            >
+              <ShoppingCart className="mr-2 h-5 w-5" />
+              {isLocking ? 'Locking Seats...' : 'Proceed to Checkout'}
+            </Button>
           </div>
         ) : (
           /* Empty State */

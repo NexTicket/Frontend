@@ -557,28 +557,82 @@ export const mockVenues: Venue[] = [
   }
 ];
 
-export const mockSeats: Seat[] = [
-  // Generate some sample seats for event 1
-  ...Array.from({ length: 100 }, (_, i) => ({
-    id: `seat-${i + 1}`,
-    row: String.fromCharCode(65 + Math.floor(i / 10)), // A, B, C, etc.
-    number: (i % 10) + 1,
-    section: 'Orchestra',
-    price: 75,
-    isAvailable: Math.random() > 0.3, // 70% available
-    isSelected: false
-  })),
-  // Generate seats for other sections
-  ...Array.from({ length: 50 }, (_, i) => ({
-    id: `balcony-${i + 1}`,
-    row: String.fromCharCode(65 + Math.floor(i / 10)),
-    number: (i % 10) + 1,
-    section: 'Balcony',
-    price: 50,
-    isAvailable: Math.random() > 0.2,
-    isSelected: false
-  }))
-];
+// Fixed seating arrangement - no more random generation
+const generateFixedSeats = () => {
+  const seats: Seat[] = [];
+  
+  // Orchestra section - 10 rows, 10 seats each
+  for (let row = 0; row < 10; row++) {
+    const rowLetter = String.fromCharCode(65 + row); // A, B, C, etc.
+    for (let seatNum = 1; seatNum <= 10; seatNum++) {
+      const seatId = `orchestra-${rowLetter}${seatNum}`;
+      // Fixed availability pattern - some specific seats are occupied
+      const occupiedSeats = [
+        'orchestra-A1', 'orchestra-A2', 'orchestra-B5', 'orchestra-C3', 
+        'orchestra-C8', 'orchestra-D1', 'orchestra-D9', 'orchestra-E4',
+        'orchestra-F6', 'orchestra-F7', 'orchestra-G2', 'orchestra-H5',
+        'orchestra-I3', 'orchestra-J8', 'orchestra-J9'
+      ];
+      
+      seats.push({
+        id: seatId,
+        row: rowLetter,
+        number: seatNum,
+        section: 'Orchestra',
+        price: 75,
+        isAvailable: !occupiedSeats.includes(seatId),
+        isSelected: false
+      });
+    }
+  }
+  
+  // Balcony section - 5 rows, 10 seats each
+  for (let row = 0; row < 5; row++) {
+    const rowLetter = String.fromCharCode(65 + row); // A, B, C, D, E
+    for (let seatNum = 1; seatNum <= 10; seatNum++) {
+      const seatId = `balcony-${rowLetter}${seatNum}`;
+      // Fixed availability pattern for balcony
+      const occupiedSeats = [
+        'balcony-A3', 'balcony-A7', 'balcony-B2', 'balcony-B9',
+        'balcony-C5', 'balcony-D1', 'balcony-D6', 'balcony-E4', 'balcony-E8'
+      ];
+      
+      seats.push({
+        id: seatId,
+        row: rowLetter,
+        number: seatNum,
+        section: 'Balcony',
+        price: 50,
+        isAvailable: !occupiedSeats.includes(seatId),
+        isSelected: false
+      });
+    }
+  }
+  
+  // VIP section - 3 rows, 6 seats each
+  for (let row = 0; row < 3; row++) {
+    const rowLetter = String.fromCharCode(65 + row); // A, B, C
+    for (let seatNum = 1; seatNum <= 6; seatNum++) {
+      const seatId = `vip-${rowLetter}${seatNum}`;
+      // Fixed availability pattern for VIP
+      const occupiedSeats = ['vip-A1', 'vip-B3', 'vip-C2', 'vip-C6'];
+      
+      seats.push({
+        id: seatId,
+        row: rowLetter,
+        number: seatNum,
+        section: 'VIP',
+        price: 150,
+        isAvailable: !occupiedSeats.includes(seatId),
+        isSelected: false
+      });
+    }
+  }
+  
+  return seats;
+};
+
+export const mockSeats: Seat[] = generateFixedSeats();
 
 export const mockTickets: Ticket[] = [
   {
