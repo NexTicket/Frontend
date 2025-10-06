@@ -184,18 +184,17 @@ export default function VenueOwnerVenues() {
   // Show loading while auth is being checked
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#191C24' }}>
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <div className="relative">
             <motion.div
-              className="w-16 h-16 border-4 border-[#0D6EFD] border-t-[#39FD48] rounded-full mx-auto"
+              className="w-16 h-16 border-4 border-primary border-t-green-500 rounded-full mx-auto"
               animate={{ rotate: 360 }}
               transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
             />
           </div>
           <motion.h3 
-            className="text-2xl font-bold mt-6 mb-4"
-            style={{ color: '#fff' }}
+            className="text-2xl font-bold mt-6 mb-4 text-foreground"
             animate={{ opacity: [0.5, 1, 0.5] }}
             transition={{ duration: 2, repeat: Infinity }}
           >
@@ -210,18 +209,16 @@ export default function VenueOwnerVenues() {
   // Redirect to login if not authenticated
   if (!firebaseUser) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#191C24' }}>
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <div className="backdrop-blur-xl border rounded-2xl p-12 max-w-md mx-auto shadow-xl" 
-            style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '50' }}>
-            <Building2 className="h-16 w-16 mx-auto mb-6" style={{ color: '#39FD48' }} />
-            <h3 className="text-2xl font-bold mb-4" style={{ color: '#fff' }}>Authentication Required</h3>
-            <p className="mb-8 leading-relaxed" style={{ color: '#ABA8A9' }}>
+          <div className="backdrop-blur-xl border rounded-2xl p-12 max-w-md mx-auto shadow-xl bg-card border-border">
+            <Building2 className="h-16 w-16 mx-auto mb-6 text-primary" />
+            <h3 className="text-2xl font-bold mb-4 text-foreground">Authentication Required</h3>
+            <p className="mb-8 leading-relaxed text-muted-foreground">
               Please log in to access your venue dashboard
             </p>
             <Link href="/auth/signin">
-              <Button className="text-white font-semibold px-8 py-3 rounded-xl hover:opacity-90 transition-opacity"
-                style={{ background: 'linear-gradient(135deg, #39FD48, #0D6EFD)' }}>
+              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-8 py-3 rounded-xl">
                 Sign In
               </Button>
             </Link>
@@ -232,11 +229,11 @@ export default function VenueOwnerVenues() {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: '#191C24' }}>
+    <div className="min-h-screen bg-background">
       {/* Background Elements */}
-      <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-20" style={{ backgroundColor: '#ABA8A9' }}></div>
-      <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-15" style={{ backgroundColor: '#D8DFEE' }}></div>
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl opacity-10" style={{ backgroundColor: '#ABA8A9' }}></div>
+      <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-20 bg-muted"></div>
+      <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-15 bg-accent"></div>
+      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl opacity-10 bg-muted"></div>
       
       {/* Content Container */}
       <div className="relative z-10 pt-8 px-8">
@@ -248,7 +245,7 @@ export default function VenueOwnerVenues() {
         >
           {/* Header */}
           <motion.div variants={itemVariants} className="mb-12 h-25">
-            <div className="border rounded-2xl p-6 shadow-lg" style={{ backgroundColor: '#0D6EFD', borderColor: '#000' }}>
+            <div className="border rounded-2xl p-6 shadow-lg bg-primary border-primary-foreground">
               <div className="flex items-center justify-between">
                 <div>
                   <motion.h1 
@@ -320,40 +317,29 @@ export default function VenueOwnerVenues() {
 
           {/* Search and Filters */}
           <motion.div variants={itemVariants} className="mb-8">
-            <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl" 
-              style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '50', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}>
+            <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl bg-card border-border">
               <div className="flex flex-col lg:flex-row gap-6">
                 <div className="flex-1 relative">
-                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5" style={{ color: '#ABA8A9' }} />
+                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <input
                     type="text"
                     placeholder="Search venues by name or location..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-12 pr-4 py-3 rounded-xl border focus:outline-none focus:border-[#39FD48] transition-all duration-300"
-                    style={{ 
-                      backgroundColor: '#0D6EFD' + '20', 
-                      borderColor: '#0D6EFD' + '30',
-                      color: '#fff'
-                    }}
+                    className="w-full pl-12 pr-4 py-3 rounded-xl border focus:outline-none focus:border-primary transition-all duration-300 bg-background text-foreground border-border placeholder:text-muted-foreground"
                   />
                 </div>
                 <div className="relative">
-                  <Filter className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5" style={{ color: '#ABA8A9' }} />
+                  <Filter className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <select
                     value={filterStatus}
                     onChange={(e) => setFilterStatus(e.target.value)}
-                    className="w-full pl-12 pr-10 py-3 rounded-xl border focus:outline-none focus:border-[#39FD48] transition-all duration-300 appearance-none"
-                    style={{ 
-                      backgroundColor: '#0D6EFD' + '20', 
-                      borderColor: '#0D6EFD' + '30',
-                      color: '#fff'
-                    }}
+                    className="w-full pl-12 pr-10 py-3 rounded-xl border focus:outline-none focus:border-primary transition-all duration-300 appearance-none bg-background text-foreground border-border"
                   >
-                    <option value="all" style={{ backgroundColor: '#191C24', color: '#fff' }}>All Status</option>
-                    <option value="active" style={{ backgroundColor: '#191C24', color: '#fff' }}>Active</option>
-                    <option value="maintenance" style={{ backgroundColor: '#191C24', color: '#fff' }}>Maintenance</option>
-                    <option value="inactive" style={{ backgroundColor: '#191C24', color: '#fff' }}>Inactive</option>
+                    <option value="all" className="bg-background text-foreground">All Status</option>
+                    <option value="active" className="bg-background text-foreground">Active</option>
+                    <option value="maintenance" className="bg-background text-foreground">Maintenance</option>
+                    <option value="inactive" className="bg-background text-foreground">Inactive</option>
                   </select>
                 </div>
               </div>
@@ -384,8 +370,7 @@ export default function VenueOwnerVenues() {
             </motion.div>
           ) : error ? (
             <motion.div variants={itemVariants} className="text-center py-20">
-              <div className="backdrop-blur-xl border rounded-2xl p-12 max-w-md mx-auto shadow-xl" 
-                style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '50' }}>
+              <div className="backdrop-blur-xl border rounded-2xl p-12 max-w-md mx-auto shadow-xl bg-card border-border">
                 <motion.div
                   initial={{ scale: 0.5, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
@@ -422,7 +407,7 @@ export default function VenueOwnerVenues() {
                   }}
                   className="group relative backdrop-blur-xl border rounded-2xl overflow-hidden hover:shadow-2xl transition-all duration-500"
                   style={{ 
-                    backgroundColor: '#191C24', 
+                  backgroundColor: 'hsl(var(--card))', 
                     borderColor: '#39FD48' + '50',
                     boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)'
                   }}
@@ -452,8 +437,7 @@ export default function VenueOwnerVenues() {
                     
                     {/* Rating Badge */}
                     {venue.rating && venue.rating > 0 && (
-                      <div className="absolute top-4 left-4 z-20 flex items-center space-x-1 backdrop-blur-md rounded-full px-3 py-2" 
-                        style={{ backgroundColor: '#191C24' + '80' }}>
+                      <div className="absolute top-4 left-4 z-20 flex items-center space-x-1 bg-card/80 backdrop-blur-xl border border-border rounded-full px-3 py-2">
                         <Star className="h-4 w-4 fill-current" style={{ color: '#39FD48' }} />
                         <span className="text-sm font-bold" style={{ color: '#fff' }}>{venue.rating}</span>
                       </div>
@@ -567,8 +551,7 @@ export default function VenueOwnerVenues() {
           {/* Empty State */}
           {!loading && !error && filteredVenues.length === 0 && (
             <motion.div variants={itemVariants} className="text-center py-20">
-              <div className="backdrop-blur-xl border rounded-2xl p-16 max-w-2xl mx-auto shadow-xl" 
-                style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '50' }}>
+              <div className="backdrop-blur-xl border rounded-2xl p-16 max-w-2xl mx-auto shadow-xl bg-card border-border">
                 <motion.div
                   initial={{ scale: 0.5, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}

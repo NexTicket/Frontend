@@ -557,15 +557,14 @@ export default function AdminUsers() {
                 >
                     {/* Clean Header */}
                     <motion.div variants={itemVariants} className="mb-12">
-                        <div className="border rounded-2xl p-6 shadow-lg" style={{ backgroundColor: '#0D6EFD', borderColor: '#000' }}>
+                        <div className="border rounded-2xl p-6 shadow-lg bg-primary border-border">
                             <div className="flex items-center justify-between">
                                 <div>
                                     <motion.h1 
                                         initial={{ opacity: 0, x: -30 }}
                                         animate={{ opacity: 1, x: 0 }}
                                         transition={{ duration: 0.6, ease: "easeOut" }}
-                                        className="text-3xl font-bold mb-2"
-                                        style={{ color: '#fff' }}
+                                        className="text-3xl font-bold mb-2 text-primary-foreground"
                                     >
                                         User Management
                                     </motion.h1>
@@ -573,8 +572,7 @@ export default function AdminUsers() {
                                         initial={{ opacity: 0, y: 10 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         transition={{ delay: 0.2, duration: 0.5 }}
-                                        className="text-lg font-normal"
-                                        style={{ color: '#fff' }}
+                                        className="text-lg font-normal text-primary-foreground"
                                     >
                                         Manage users, roles, and permissions across your platform
                                     </motion.p>
@@ -605,37 +603,37 @@ export default function AdminUsers() {
 
                 {/* Quick Stats in Header - Simplified Boxes */}
                             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
-                                <div className="backdrop-blur-xl border rounded-3xl p-5 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}>
-                                    <div className="text-xl font-bold " style={{ color: '#CBF83E' }}>{userStats.total}</div>
-                                    <div className="text-xs text-white font-medium">Total Users</div>
+                                <div className="backdrop-blur-xl border rounded-3xl p-5 shadow-xl bg-card border-border">
+                                    <div className="text-xl font-bold text-primary">{userStats.total}</div>
+                                    <div className="text-xs text-muted-foreground font-medium">Total Users</div>
                                 </div>
-                                <div className="backdrop-blur-xl border rounded-3xl p-5 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}>
-                                    <div className="text-xl font-bold" style={{ color: '#CBF83E' }}>{roleRequests.length}</div>
-                                    <div className="text-xs text-white font-medium">Pending</div>
+                                <div className="backdrop-blur-xl border rounded-3xl p-5 shadow-xl bg-card border-border">
+                                    <div className="text-xl font-bold text-primary">{roleRequests.length}</div>
+                                    <div className="text-xs text-muted-foreground font-medium">Pending</div>
                                 </div>
-                                <div className="backdrop-blur-xl border rounded-3xl p-5 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}>
-                                    <div className="text-xl font-bold" style={{ color: '#CBF83E' }}>{userStats.admins}</div>
-                                    <div className="text-xs text-white font-medium">Admins</div>
+                                <div className="backdrop-blur-xl border rounded-3xl p-5 shadow-xl bg-card border-border">
+                                    <div className="text-xl font-bold text-primary">{userStats.admins}</div>
+                                    <div className="text-xs text-muted-foreground font-medium">Admins</div>
                                 </div>
-                                <div className="backdrop-blur-xl border rounded-3xl p-5 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}>
-                                    <div className="text-xl font-bold" style={{ color: '#CBF83E' }}>{userStats.organizers}</div>
-                                    <div className="text-xs text-white font-medium">Organizers</div>
+                                <div className="backdrop-blur-xl border rounded-3xl p-5 shadow-xl bg-card border-border">
+                                    <div className="text-xl font-bold text-primary">{userStats.organizers}</div>
+                                    <div className="text-xs text-muted-foreground font-medium">Organizers</div>
                                 </div>
-                                <div className="backdrop-blur-xl border rounded-3xl p-5 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}>
-                                    <div className="text-xl font-bold" style={{ color: '#CBF83E' }}>{userStats.venue_owners}</div>
-                                    <div className="text-xs text-white font-medium">Venues</div>
+                                <div className="backdrop-blur-xl border rounded-3xl p-5 shadow-xl bg-card border-border">
+                                    <div className="text-xl font-bold text-primary">{userStats.venue_owners}</div>
+                                    <div className="text-xs text-muted-foreground font-medium">Venues</div>
                                 </div>
-                                <div className="backdrop-blur-xl border rounded-3xl p-5 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}>
-                                    <div className="text-xl font-bold" style={{ color: '#CBF83E' }}>{userStats.event_admins}</div>
-                                    <div className="text-xs text-white font-medium">Event Staff</div>
+                                <div className="backdrop-blur-xl border rounded-3xl p-5 shadow-xl bg-card border-border">
+                                    <div className="text-xl font-bold text-primary">{userStats.event_admins}</div>
+                                    <div className="text-xs text-muted-foreground font-medium">Event Staff</div>
                                 </div>
-                                <div className="backdrop-blur-xl border rounded-3xl p-5 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}>
-                                    <div className="text-xl font-bold" style={{ color: '#CBF83E' }}>{userStats.checkin_officers}</div>
-                                    <div className="text-xs text-white font-medium">Check-in</div>
+                                <div className="backdrop-blur-xl border rounded-3xl p-5 shadow-xl bg-card border-border">
+                                    <div className="text-xl font-bold text-primary">{userStats.checkin_officers}</div>
+                                    <div className="text-xs text-muted-foreground font-medium">Check-in</div>
                                 </div>
-                                <div className="backdrop-blur-xl border rounded-3xl p-5 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}>
-                                    <div className="text-xl font-bold" style={{ color: '#CBF83E' }}>{userStats.newThisWeek}</div>
-                                    <div className="text-xs text-white font-medium">New Week</div>
+                                <div className="backdrop-blur-xl border rounded-3xl p-5 shadow-xl bg-card border-border">
+                                    <div className="text-xl font-bold text-primary">{userStats.newThisWeek}</div>
+                                    <div className="text-xs text-muted-foreground font-medium">New Week</div>
                                 </div>
                             </div>
 
@@ -686,13 +684,13 @@ export default function AdminUsers() {
 
                 {/* Tab Navigation */}
                 <div className="flex items-center justify-between mb-8">
-                    <div className="border rounded-2xl p-2 shadow-lg inline-flex" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30' }}>
+                    <div className="border rounded-2xl p-2 shadow-lg inline-flex bg-card border-border">
                         <button
                             onClick={() => setActiveTab('requests')}
                             className={`px-6 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
                                 activeTab === 'requests'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-white hover:text-gray-900 hover:bg-gray-50'
+                                    ? 'bg-primary text-primary-foreground shadow-md'
+                                    : 'text-foreground hover:text-primary hover:bg-muted'
                             }`}
                         >
                             <div className="flex items-center space-x-2">
@@ -704,8 +702,8 @@ export default function AdminUsers() {
                             onClick={() => setActiveTab('users')}
                             className={`px-6 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
                                 activeTab === 'users'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-white hover:text-gray-900 hover:bg-gray-50'
+                                    ? 'bg-primary text-primary-foreground shadow-md'
+                                    : 'text-foreground hover:text-primary hover:bg-muted'
                             }`}
                         >
                             <div className="flex items-center space-x-2">
@@ -717,8 +715,7 @@ export default function AdminUsers() {
                     
                     <Button
                         onClick={() => window.location.href = '/admin/staff'}
-                        className="hover:bg-green-700 text-white px-6 py-3 font-medium shadow-lg hover:shadow-xl transition-all duration-300"
-                        style={{ backgroundColor: '#0D6EFD' }}
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 font-medium shadow-lg hover:shadow-xl transition-all duration-300"
                     >
                         <div className="flex items-center space-x-2">
                             <UserCheck className="w-5 h-5" />
@@ -729,22 +726,17 @@ export default function AdminUsers() {
 
                 {/* Search and Filters */}
                 {activeTab === 'users' && (
-                    <div className="backdrop-blur-xl border rounded-3xl p-5 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}>
+                    <div className="backdrop-blur-xl border rounded-3xl p-5 shadow-xl bg-card border-border">
                         <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
                             <div className="flex items-center space-x-4">
                                 <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white w-4 h-4" />
+                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                                     <input
                                         type="text"
                                         placeholder="Search users..."
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
-                                        className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent text-white placeholder-white bg-transparent"
-                                        style={{ 
-                                            backgroundColor: 'transparent',
-                                            color: '#fff',
-                                            borderColor: '#39FD48' + '50'
-                                        }}
+                                        className="pl-10 pr-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-foreground placeholder-muted-foreground bg-background"
                                     />
                                 </div>
                                 
@@ -752,12 +744,7 @@ export default function AdminUsers() {
                                     <select
                                         value={roleFilter}
                                         onChange={(e) => setRoleFilter(e.target.value as typeof roleFilter)}
-                                        className="appearance-none border rounded-lg px-4 py-2 pr-8 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                        style={{
-                                            backgroundColor: '#191C24',
-                                            color: '#fff',
-                                            borderColor: '#39FD48' + '50'
-                                        }}
+                                        className="appearance-none border rounded-lg px-4 py-2 pr-8 focus:ring-2 focus:ring-primary focus:border-transparent bg-background text-foreground border-border"
                                     >
                                         <option value="all">All Roles</option>
                                         <option value="admin">Admin</option>
@@ -767,12 +754,12 @@ export default function AdminUsers() {
                                         <option value="checkin_officer">Check-in Officer</option>
                                         <option value="customer">Customer</option>
                                     </select>
-                                    <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                                    <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                                 </div>
                             </div>
                             
                             <div className="flex items-center space-x-4">
-                                <div className="flex items-center space-x-2 text-sm text-white">
+                                <div className="flex items-center space-x-2 text-sm text-foreground">
                                     <Filter className="w-4 h-4" />
                                     <span>Showing {filteredUsers.length} users</span>
                                 </div>
@@ -784,12 +771,11 @@ export default function AdminUsers() {
                                     }}
                                     disabled={loading}
                                     variant="outline"
-                                    className="border-purple-200 text-white hover:bg-purple-50"
-                                    style={{ borderColor: '#39FD48' + '50' , backgroundColor: '#0D6EFD'}}
+                                    className="border-border text-primary-foreground hover:bg-muted bg-primary"
                                 >
                                     {loading ? (
                                         <div className="flex items-center">
-                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                                            <div className="w-4 h-4 border-2 border-foreground border-t-transparent rounded-full animate-spin mr-2"></div>
                                             Loading...
                                         </div>
                                     ) : (
@@ -803,33 +789,30 @@ export default function AdminUsers() {
 
                 {/* Content */}
                 {loading ? (
-                    <div className="rounded-2xl border p-12 shadow-lg text-center" style={{
-                        backgroundColor: '#191C24',
-                        borderColor: '#39FD48' + '50'
-                    }}>
-                        <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                        <h3 className="text-lg font-medium text-white mb-2">Loading...</h3>
-                        <p className="text-white">Fetching user data and role requests</p>
+                    <div className="rounded-2xl border p-12 shadow-lg text-center bg-card border-border">
+                        <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                        <h3 className="text-lg font-medium text-foreground mb-2">Loading...</h3>
+                        <p className="text-muted-foreground">Fetching user data and role requests</p>
                     </div>
                 ) : activeTab === 'requests' ? (
-                    <div className=" rounded-2xl shadow-lg overflow-hidden">
-                        <div className=" rounded-2xl p-6 border " style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '50' }}>
-                            <h2 className="text-xl font-semibold text-white">Role Upgrade Requests</h2>
-                            <p className="text-sm text-white mt-1">Review and approve role change requests from users</p>
+                    <div className="rounded-2xl shadow-lg overflow-hidden">
+                        <div className="rounded-2xl p-6 border bg-card border-border">
+                            <h2 className="text-xl font-semibold text-foreground">Role Upgrade Requests</h2>
+                            <p className="text-sm text-muted-foreground mt-1">Review and approve role change requests from users</p>
                         </div>
                         
                         {roleRequests.length === 0 ? (
-                            <div className="rounded-2xl p-12 border text-center" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '50' }}>
-                                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                    <Clock className="w-8 h-8 text-purple-600" />
+                            <div className="rounded-2xl p-12 border text-center bg-card border-border">
+                                <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <Clock className="w-8 h-8 text-primary" />
                                 </div>
-                                <h3 className="text-lg font-medium text-white mb-2">No Pending Requests</h3>
-                                <p className="text-white">All role requests have been processed</p>
+                                <h3 className="text-lg font-medium text-foreground mb-2">No Pending Requests</h3>
+                                <p className="text-muted-foreground">All role requests have been processed</p>
                             </div>
                         ) : (
-                            <div className="divide-y divide-gray-200">
+                            <div className="divide-y divide-border">
                                 {roleRequests.map((request) => (
-                                    <div key={request.id} className="p-6 hover:bg-gray-50 transition-colors border rounded-2xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '50' }}>
+                                    <div key={request.id} className="p-6 hover:bg-muted/50 transition-colors border rounded-2xl bg-card border-border">
                                         <div className="flex items-start justify-between">
                                             <div className="flex items-start space-x-4 flex-1">
                                                 <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
@@ -837,27 +820,27 @@ export default function AdminUsers() {
                                                 </div>
                                                 <div className="flex-1">
                                                     <div className="flex items-center space-x-3 mb-2">
-                                                        <h3 className="text-lg font-semibold text-white">
+                                                        <h3 className="text-lg font-semibold text-foreground">
                                                             {request.userName}
                                                         </h3>
                                                         <div className="flex items-center space-x-2">
-                                                            <span className="inline-flex items-center px-3 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">
+                                                            <span className="inline-flex items-center px-3 py-1 text-xs font-medium bg-muted text-muted-foreground rounded-full">
                                                                 {getRoleIcon(request.currentRole)}
                                                                 <span className="ml-1">{getRoleDisplayName(request.currentRole)}</span>
                                                             </span>
-                                                            <span className="text-gray-400">→</span>
-                                                            <span className="inline-flex items-center px-3 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">
+                                                            <span className="text-muted-foreground">→</span>
+                                                            <span className="inline-flex items-center px-3 py-1 text-xs font-medium bg-primary/20 text-primary rounded-full">
                                                                 {getRoleIcon(request.requestedRole)}
                                                                 <span className="ml-1">{getRoleDisplayName(request.requestedRole)}</span>
                                                             </span>
                                                         </div>
                                                     </div>
-                                                    <div className="flex items-center space-x-4 text-sm  mb-3" style={{ color: '#0D6EFD' }}>
+                                                    <div className="flex items-center space-x-4 text-sm mb-3 text-primary">
                                                         <div className="flex items-center">
                                                             <Mail className="w-4 h-4 mr-1" />
                                                             {request.userEmail}
                                                         </div>
-                                                        <div className="flex items-center" style={{ color: '#198754' }}>
+                                                        <div className="flex items-center text-green-600">
                                                             <Calendar className="w-4 h-4 mr-1" />
                                                             {formatDate(request.createdAt)}
                                                         </div>
@@ -904,36 +887,36 @@ export default function AdminUsers() {
                         )}
                     </div>
                 ) : (
-                    <div className=" rounded-2xl border shadow-lg overflow-hidden" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '50' }}>
-                        <div className="p-6 border rounded-1xl " style={{borderColor:'#198754'}}>
-                            <h2 className="text-xl font-semibold text-white">All Users</h2>
-                            <p className="text-sm text-white mt-1">Manage all registered users in the system</p>
+                    <div className="rounded-2xl border shadow-lg overflow-hidden bg-card border-border">
+                        <div className="p-6 border rounded-xl bg-gradient-to-r from-primary/20 to-primary/10 border-primary/20">
+                            <h2 className="text-xl font-semibold text-foreground">All Users</h2>
+                            <p className="text-sm text-muted-foreground mt-1">Manage all registered users in the system</p>
                         </div>
                         
                         {filteredUsers.length === 0 ? (
                             <div className="p-12 text-center">
-                                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                    <Users className="w-8 h-8 text-gray-400" />
+                                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <Users className="w-8 h-8 text-muted-foreground" />
                                 </div>
-                                <h3 className="text-lg font-medium text-gray-900 mb-2">No Users Found</h3>
-                                <p className="text-gray-600">
+                                <h3 className="text-lg font-medium text-foreground mb-2">No Users Found</h3>
+                                <p className="text-muted-foreground">
                                     {searchTerm || roleFilter !== 'all' ? 'No users match your current filters.' : 'No users have registered yet.'}
                                 </p>
                             </div>
                         ) : (
-                            <div className=" rounded-2xl  shadow-lg overflow-hidden" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '50' }}>
+                            <div className="rounded-2xl shadow-lg overflow-hidden bg-card border-border">
                                 {filteredUsers.map((user) => (
-                                    <div key={user.id} className="p-6 transition-all duration-300 hover:transform hover:scale-101 hover:shadow-2xl hover:bg-gradient-to-r hover:from-blue-600/10 hover:to-purple-600/10 cursor-pointer" >
+                                    <div key={user.id} className="p-6 transition-all duration-300 hover:transform hover:scale-101 hover:shadow-2xl hover:bg-muted/50 cursor-pointer border-b border-border last:border-b-0">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center space-x-4">
-                                                <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center text-white font-semibold">
+                                                <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center text-primary-foreground font-semibold">
                                                     {user.displayName ? user.displayName.charAt(0).toUpperCase() : 
                                                      user.firstName ? user.firstName.charAt(0).toUpperCase() : 
                                                      user.email.charAt(0).toUpperCase()}
                                                 </div>
                                                 <div className="flex-1">
                                                     <div className="flex items-center space-x-3 mb-1">
-                                                        <h3 className="text-lg font-semibold text-white hover:text-black">
+                                                        <h3 className="text-lg font-semibold text-foreground hover:text-primary">
                                                             {user.displayName || `${user.firstName} ${user.lastName}`.trim() || 'No Name'}
                                                         </h3>
                                                         <span className={`inline-flex items-center px-3 py-1 text-xs font-medium rounded-full ${
@@ -948,12 +931,12 @@ export default function AdminUsers() {
                                                             <span className="ml-1">{getRoleDisplayName(user.role)}</span>
                                                         </span>
                                                     </div>
-                                                    <div className="flex items-center space-x-4 text-sm" style={{ color: '#0D6EFD' }}>
+                                                    <div className="flex items-center space-x-4 text-sm text-primary">
                                                         <div className="flex items-center">
                                                             <Mail className="w-4 h-4 mr-1" />
                                                             {user.email}
                                                         </div>
-                                                        <div className="flex items-center" style={{ color: '#198754' }}>
+                                                        <div className="flex items-center text-green-600">
                                                             <Calendar className="w-4 h-4 mr-1" />
                                                             {user.createdAt ? formatDate(
                                                                 user.createdAt.toDate ? user.createdAt.toDate().toISOString() : user.createdAt.toString()

@@ -49,10 +49,10 @@ export default function SeatingPage({ params }: SeatingPageProps) {
 
   if (!event) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#191C24' }}>
+      <div className="min-h-screen flex items-center justify-center bg-background">
         {/* Background Elements */}
-        <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-20" style={{ backgroundColor: '#ABA8A9' }}></div>
-        <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-15" style={{ backgroundColor: '#D8DFEE' }}></div>
+        <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-20 bg-muted"></div>
+        <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-15 bg-accent"></div>
         
         <motion.div 
           initial={{ opacity: 0, scale: 0.9 }}
@@ -60,13 +60,10 @@ export default function SeatingPage({ params }: SeatingPageProps) {
           transition={{ duration: 0.6 }}
           className="text-center relative z-10"
         >
-          <div className="backdrop-blur-xl border rounded-2xl p-8 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '50', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}>
-            <h1 className="text-2xl font-bold mb-4" style={{ color: '#fff' }}>Event Not Found</h1>
+          <div className="backdrop-blur-xl border rounded-2xl p-8 shadow-xl bg-card border-border">
+            <h1 className="text-2xl font-bold mb-4 text-foreground">Event Not Found</h1>
             <Link href="/events">
-              <Button 
-                className="text-white hover:opacity-90 transition-opacity"
-                style={{ background: 'linear-gradient(135deg, #0D6EFD, #CBF83E)' }}
-              >
+              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
                 Browse Events
               </Button>
             </Link>
@@ -113,11 +110,11 @@ export default function SeatingPage({ params }: SeatingPageProps) {
   }, {} as Record<string, Record<string, typeof seats>>);
 
   return (
-    <div className="min-h-screen" style={{ background: '#191C24' }}>
+    <div className="min-h-screen bg-background">
       {/* Background Elements */}
-      <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-20" style={{ backgroundColor: '#ABA8A9' }}></div>
-      <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-15" style={{ backgroundColor: '#D8DFEE' }}></div>
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl opacity-10" style={{ backgroundColor: '#ABA8A9' }}></div>
+      <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-20 bg-muted"></div>
+      <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-15 bg-accent"></div>
+      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl opacity-10 bg-muted"></div>
       
       {/* Content Container */}
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -149,21 +146,21 @@ export default function SeatingPage({ params }: SeatingPageProps) {
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             {/* Seating Chart */}
             <motion.div variants={itemVariants} className="lg:col-span-3">
-              <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}>
+              <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl bg-card border-border">
                 {/* Stage */}
-                <div className="rounded-lg p-4 mb-8 text-center" style={{ background: 'linear-gradient(135deg, #0D6EFD' + '20, #CBF83E' + '20)' }}>
-                  <h3 className="text-lg font-semibold" style={{ color: '#CBF83E' }}>STAGE</h3>
+                <div className="rounded-lg p-4 mb-8 text-center bg-primary/20">
+                  <h3 className="text-lg font-semibold text-primary">STAGE</h3>
                 </div>
 
                 {/* Legend */}
                 <div className="flex items-center justify-center space-x-8 mb-8">
                   <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 rounded" style={{ backgroundColor: '#39FD48' }}></div>
-                    <span className="text-sm" style={{ color: '#ABA8A9' }}>Available</span>
+                    <div className="w-4 h-4 rounded bg-green-500"></div>
+                    <span className="text-sm text-muted-foreground">Available</span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 rounded" style={{ backgroundColor: '#0D6EFD' }}></div>
-                    <span className="text-sm" style={{ color: '#ABA8A9' }}>Selected</span>
+                    <div className="w-4 h-4 rounded bg-primary"></div>
+                    <span className="text-sm text-muted-foreground">Selected</span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <div className="w-4 h-4 bg-red-500 rounded"></div>
