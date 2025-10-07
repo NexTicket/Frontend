@@ -66,8 +66,8 @@ export async function getUserLockedSeats(): Promise<UserLockedSeatsResponse> {
     }
     
     const token = await user.getIdToken();
-    
-    const response = await fetch('http://localhost:8000/api/ticket-locking/locked-seats', {
+
+    const response = await fetch('http://localhost:5000/ticket_service/api/ticket-locking/locked-seats', {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -117,7 +117,7 @@ export async function lockSeats({
     
     const token = await user.getIdToken();
     
-    const response = await fetch('http://localhost:8000/api/ticket-locking/lock-seats', {
+    const response = await fetch('http://localhost:5000/ticket_service/api/ticket-locking/lock-seats', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
