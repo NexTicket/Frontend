@@ -716,10 +716,10 @@ export default function CheckinOfficerDashboard() {
                       ></div>
                     </div>
                   </div>
-
-                  <div className="mb-4 p-3 rounded-lg" style={{ backgroundColor: '#1f222a' }}>
-                    <div className="text-sm" style={{ color: '#ABA8A9' }}>My Check-ins</div>
-                    <div className="text-2xl font-bold" style={{ color: '#CBF83E' }}>0</div>
+                {/* TODO : implement the checkin count */}
+                  <div className="mb-4 p-3 rounded-lg" >
+                    <div className="text-sm text-black" >My Check-ins</div>
+                    <div className="text-2xl font-bold" >0</div>
                   </div>
 
                   <div className="flex space-x-2">
@@ -727,16 +727,14 @@ export default function CheckinOfficerDashboard() {
                       <button
                         type="button"
                         onClick={openScannerModal}
-                        className="flex-1 flex items-center justify-center h-10 px-4 py-2 rounded-md font-medium text-white shadow-md transition-all duration-200"
-                        style={{ background: '#0D6EFD' }}
+                        className="flex-1 flex items-center justify-center h-10 px-4 py-2 rounded-md font-medium text-primary-foreground shadow-md transition-all duration-200 bg-primary"
                       >
                         <Scan className="w-4 h-4 mr-1" />
                         Check-in
                       </button>
                     ) : (
                       <button
-                        className="flex-1 flex items-center justify-center h-10 px-4 py-2 rounded-md font-medium text-white shadow-md opacity-50 cursor-not-allowed"
-                        style={{ background: '#0D6EFD' }}
+                        className="flex-1 flex items-center justify-center h-10 px-4 py-2 rounded-md font-medium text-primary-foreground shadow-md opacity-50 cursor-not-allowed bg-primary"
                         disabled
                       >
                         <Scan className="w-4 h-4 mr-1" />
@@ -891,21 +889,21 @@ export default function CheckinOfficerDashboard() {
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full">
-                <thead style={{ backgroundColor: '#1f222a' }}>
+                <thead>
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: '#fff' }}>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-foreground">
                       Attendee
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: '#fff' }}>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-foreground">
                       Ticket
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: '#fff' }}>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-foreground">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: '#fff' }}>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-foreground">
                       Check-in Time
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: '#fff' }}>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-foreground">
                       Actions
                     </th>
                   </tr>
@@ -943,7 +941,7 @@ export default function CheckinOfficerDashboard() {
                           </span>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-sm" style={{ color: '#ABA8A9' }}>
+                      <td className="px-6 py-4 text-sm text-muted-foreground">
                         {attendee.checkedInAt ? new Date(attendee.checkedInAt).toLocaleString() : 'Not checked in'}
                       </td>
                       <td className="px-6 py-4 text-sm font-medium">
@@ -1007,7 +1005,7 @@ export default function CheckinOfficerDashboard() {
                   }}
                 />
               ) : (
-                <div className="border-2 border-dashed rounded-lg p-6 mb-4" style={{ borderColor: '#2a2d34' }}>
+                <div className="border-2 border-dashed rounded-lg p-6 mb-4 border-muted">
                   <p className="text-sm text-muted-foreground">Scanner placeholder — integrate camera/QR scanner here.</p>
                 </div>
               )}
