@@ -56,7 +56,6 @@ interface VenueFormData {
   location: string;
   capacity: number;
   description: string;
-  type: string;
   amenities: string[];
   contact: {
     phone: string;
@@ -65,6 +64,7 @@ interface VenueFormData {
   seatMap: SeatMapData;
   images: string[];
   featuredImage?: string;
+  type: string;
 }
 
 const defaultSeatMap: SeatMapData = {
@@ -168,7 +168,6 @@ export default function CreateVenue() {
     location: '',
     capacity: 0,
     description: '',
-    type: '',
     amenities: [],
     contact: {
       phone: '',
@@ -176,7 +175,8 @@ export default function CreateVenue() {
     },
     seatMap: defaultSeatMap,
     images: [],
-    featuredImage: ''
+    featuredImage: '',
+    type: ''
   });
 
   const [selectedLayout, setSelectedLayout] = useState<string>('');
@@ -186,6 +186,7 @@ export default function CreateVenue() {
   const [uploadingImages, setUploadingImages] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [imageFiles, setImageFiles] = useState<File[]>([]); // Store actual file objects
+  const [validationErrors, setValidationErrors] = useState<{phone?: string; email?: string}>({});
 
   const totalSteps = 5;
 
@@ -240,6 +241,39 @@ export default function CreateVenue() {
         [field]: value
       }
     }));
+
+    // Validate the field
+    if (field === 'phone') {
+      validatePhone(value);
+    } else if (field === 'email') {
+      validateEmail(value);
+    }
+  };
+
+  const validatePhone = (phone: string) => {
+    const phoneRegex = /^\d{10}$/;
+    if (!phone) {
+      setValidationErrors(prev => ({ ...prev, phone: undefined }));
+    } else if (!phoneRegex.test(phone)) {
+      setValidationErrors(prev => ({ ...prev, phone: 'Phone number must be exactly 10 digits' }));
+    } else {
+      setValidationErrors(prev => ({ ...prev, phone: undefined }));
+    }
+  };
+
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email) {
+      setValidationErrors(prev => ({ ...prev, email: undefined }));
+    } else if (!emailRegex.test(email)) {
+      setValidationErrors(prev => ({ ...prev, email: 'Please enter a valid email address' }));
+    } else {
+      setValidationErrors(prev => ({ ...prev, email: undefined }));
+    }
+  };
+
+  const hasValidationErrors = () => {
+    return Object.values(validationErrors).some(error => error !== undefined);
   };
 
   const handleSeatMapChange = (seatMap: SeatMapData) => {
@@ -525,10 +559,25 @@ export default function CreateVenue() {
     
     try {
       setIsSubmitting(true);
+
+      // Check for validation errors
+      if (hasValidationErrors()) {
+        throw new Error('Please fix the validation errors before submitting');
+      }
       
       // Validate required fields
-      if (!formData.name.trim() || !formData.location.trim() || !formData.capacity || !formData.type) {
-        throw new Error('Please fill in all required fields (Name, Location, Capacity, Type)');
+      if (!formData.name.trim() || !formData.location.trim() || !formData.capacity) {
+        throw new Error('Please fill in all required fields (Name, Location, Capacity)');
+      }
+
+      // Validate phone number
+      if (formData.contact.phone && !/^\d{10}$/.test(formData.contact.phone)) {
+        throw new Error('Phone number must be exactly 10 digits');
+      }
+
+      // Validate email
+      if (formData.contact.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.contact.email)) {
+        throw new Error('Please enter a valid email address');
       }
       
       // Confirm if no images
@@ -547,7 +596,6 @@ export default function CreateVenue() {
         location: formData.location.trim(),
         capacity: formData.capacity,
         description: formData.description.trim() || null,
-        type: formData.type,
         seatMap: formData.seatMap,
         contact: {
           phone: formData.contact.phone.trim(),
@@ -748,19 +796,6 @@ export default function CreateVenue() {
 
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">
-                    Description
-                  </label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => handleInputChange('description', e.target.value)}
-                    rows={4}
-                    className="w-full px-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                    placeholder="Describe your venue..."
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
                     Venue Type *
                   </label>
                   <select
@@ -780,6 +815,19 @@ export default function CreateVenue() {
                   </select>
                 </div>
 
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) => handleInputChange('description', e.target.value)}
+                    rows={4}
+                    className="w-full px-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                    placeholder="Describe your venue..."
+                  />
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-2">
@@ -789,9 +837,14 @@ export default function CreateVenue() {
                       type="tel"
                       value={formData.contact.phone}
                       onChange={(e) => handleContactChange('phone', e.target.value)}
-                      className="w-full px-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                      className={`w-full px-4 py-3 border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all ${
+                        validationErrors.phone ? 'border-red-500' : 'border-border'
+                      }`}
                       placeholder="Enter phone number"
                     />
+                    {validationErrors.phone && (
+                      <p className="text-red-500 text-sm mt-1">{validationErrors.phone}</p>
+                    )}
                   </div>
 
                   <div>
@@ -802,9 +855,14 @@ export default function CreateVenue() {
                       type="email"
                       value={formData.contact.email}
                       onChange={(e) => handleContactChange('email', e.target.value)}
-                      className="w-full px-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                      className={`w-full px-4 py-3 border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all ${
+                        validationErrors.email ? 'border-red-500' : 'border-border'
+                      }`}
                       placeholder="Enter email address"
                     />
+                    {validationErrors.email && (
+                      <p className="text-red-500 text-sm mt-1">{validationErrors.email}</p>
+                    )}
                   </div>
                 </div>
               </div>
