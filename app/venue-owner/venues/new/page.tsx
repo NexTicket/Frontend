@@ -3,14 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
+import { ErrorDisplay } from '@/components/ui/error-display';
+import { Loading } from '@/components/ui/loading';
 import { createVenue, uploadVenueImage } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import '@/utils/test-venue-creation'; // Load test utilities
-import { Loading } from '@/components/ui/loading';
-import { ErrorDisplay } from '@/components/ui/error-display';
+import { LocationPicker } from '@/components/ui/location-picker';
 import { 
   Building2,
-  MapPin,
   Users,
   Image as ImageIcon,
   Save,
@@ -54,12 +54,18 @@ interface SeatMapData {
 interface VenueFormData {
   name: string;
   location: string;
+  latitude?: number;
+  longitude?: number;
   capacity: number;
   description: string;
   amenities: string[];
   contact: {
     phone: string;
     email: string;
+  };
+  availability: {
+    weekdays: boolean;
+    weekends: boolean;
   };
   seatMap: SeatMapData;
   images: string[];
@@ -97,6 +103,20 @@ const sectionColors = [
   'hsl(var(--popover))', // Popover theme color
   'hsl(var(--card))', // Card theme color
   'hsl(var(--border))'  // Border theme color
+];
+
+const venueTypes = [
+  'Banquet Halls',
+  'Conference Centers',
+  'Country Clubs',
+  'Cruise Ships',
+  'Museums and Art Galleries',
+  'Parks and Gardens',
+  'Rooftop Venues',
+  'Stadiums - Indoor',
+  'Stadiums - Outdoor',
+  'Theatres',
+  'Universities and University Halls'
 ];
 
 const predefinedLayouts = [
@@ -172,6 +192,10 @@ export default function CreateVenue() {
     contact: {
       phone: '',
       email: ''
+    },
+    availability: {
+      weekdays: true,
+      weekends: true
     },
     seatMap: defaultSeatMap,
     images: [],
@@ -566,8 +590,8 @@ export default function CreateVenue() {
       }
       
       // Validate required fields
-      if (!formData.name.trim() || !formData.location.trim() || !formData.capacity) {
-        throw new Error('Please fill in all required fields (Name, Location, Capacity)');
+      if (!formData.name.trim() || !formData.location.trim() || !formData.capacity || !formData.latitude || !formData.longitude) {
+        throw new Error('Please fill in all required fields (Name, Location, Capacity) and select a location on the map');
       }
 
       // Validate phone number
@@ -594,9 +618,12 @@ export default function CreateVenue() {
       const venuePayload = {
         name: formData.name.trim(),
         location: formData.location.trim(),
+        latitude: formData.latitude,
+        longitude: formData.longitude,
         capacity: formData.capacity,
         description: formData.description.trim() || null,
         seatMap: formData.seatMap,
+        type: formData.type.trim(),
         contact: {
           phone: formData.contact.phone.trim(),
           email: formData.contact.email.trim()
@@ -780,17 +807,26 @@ export default function CreateVenue() {
                     <label className="block text-sm font-medium text-foreground mb-2">
                       Location *
                     </label>
-                    <div className="relative">
-                      <MapPin className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
-                      <input
-                        type="text"
-                        value={formData.location}
-                        onChange={(e) => handleInputChange('location', e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                        placeholder="Enter venue location"
-                        required
-                      />
-                    </div>
+                    <LocationPicker
+                      apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''}
+                      onLocationSelect={(location) => {
+                        setFormData(prev => ({
+                          ...prev,
+                          location: location.address,
+                          latitude: location.latitude,
+                          longitude: location.longitude
+                        }));
+                      }}
+                      initialLocation={
+                        formData.location && formData.latitude && formData.longitude
+                          ? {
+                              address: formData.location,
+                              latitude: formData.latitude,
+                              longitude: formData.longitude
+                            }
+                          : undefined
+                      }
+                    />
                   </div>
                 </div>
 
@@ -1306,6 +1342,11 @@ export default function CreateVenue() {
                         <div>
                           <span className="text-sm text-muted-foreground">Location:</span>
                           <p className="font-medium">{formData.location}</p>
+                          {formData.latitude && formData.longitude && (
+                            <p className="text-xs text-muted-foreground">
+                              Coordinates: {formData.latitude.toFixed(6)}, {formData.longitude.toFixed(6)}
+                            </p>
+                          )}
                         </div>
                         <div>
                           <span className="text-sm text-muted-foreground">Capacity:</span>
