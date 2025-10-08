@@ -120,6 +120,35 @@ const venueTypes = [
   'Universities and University Halls'
 ];
 
+const commonAmenities = [
+  'WiFi',
+  'Parking',
+  'Catering',
+  'Sound System',
+  'Projector',
+  'Microphones',
+  'Stage Lighting',
+  'Air Conditioning',
+  'Heating',
+  'Restrooms',
+  'Bar',
+  'Kitchen',
+  'Dance Floor',
+  'Outdoor Space',
+  'Wheelchair Accessible',
+  'Security',
+  'First Aid',
+  'Lounge Area',
+  'Dressing Rooms',
+  'Green Room',
+  'Loading Dock',
+  'Power Backup',
+  'Internet',
+  'Coffee/Tea',
+  'Water',
+  'Snacks'
+];
+
 const predefinedLayouts = [
   {
     id: 'theater',
@@ -276,12 +305,13 @@ export default function CreateVenue() {
     }
   };
 
-  const handleAvailabilityChange = (field: string, value: boolean) => {
+  const handleAvailabilityChange = (field: string) => {
     setFormData(prev => ({
       ...prev,
       availability: {
-        ...prev.availability,
-        [field]: value
+        weekdays: field === 'weekdays',
+        weekends: field === 'weekends',
+        allWeek: field === 'allWeek'
       }
     }));
   };
@@ -743,23 +773,6 @@ export default function CreateVenue() {
           <p className="text-muted-foreground">Design your venue with our advanced seating layout system</p>
         </div>
 
-        {/* Error Display */}
-        {submitError && (
-          <div className="mb-6">
-            <ErrorDisplay
-              type="error"
-              title="Failed to Create Venue"
-              message={submitError}
-              variant="card"
-              onRetry={() => {
-                setSubmitError(null);
-                handleSubmit();
-              }}
-              className="max-w-2xl"
-            />
-          </div>
-        )}
-
         {/* Progress Bar */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
@@ -931,9 +944,10 @@ export default function CreateVenue() {
                       <div className="relative">
                         <label className="flex items-center p-3 rounded-lg border-2 transition-all cursor-pointer hover:border-primary/50 hover:bg-primary/5 group">
                           <input
-                            type="checkbox"
+                            type="radio"
+                            name="availability"
                             checked={formData.availability.weekdays}
-                            onChange={(e) => handleAvailabilityChange('weekdays', e.target.checked)}
+                            onChange={() => handleAvailabilityChange('weekdays')}
                             className="mr-3 accent-primary"
                           />
                           <div className="flex-1">
@@ -950,9 +964,10 @@ export default function CreateVenue() {
                       <div className="relative">
                         <label className="flex items-center p-3 rounded-lg border-2 transition-all cursor-pointer hover:border-primary/50 hover:bg-primary/5 group">
                           <input
-                            type="checkbox"
+                            type="radio"
+                            name="availability"
                             checked={formData.availability.weekends}
-                            onChange={(e) => handleAvailabilityChange('weekends', e.target.checked)}
+                            onChange={() => handleAvailabilityChange('weekends')}
                             className="mr-3 accent-primary"
                           />
                           <div className="flex-1">
@@ -969,9 +984,10 @@ export default function CreateVenue() {
                       <div className="relative">
                         <label className="flex items-center p-3 rounded-lg border-2 transition-all cursor-pointer hover:border-primary/50 hover:bg-primary/5 group">
                           <input
-                            type="checkbox"
+                            type="radio"
+                            name="availability"
                             checked={formData.availability.allWeek}
-                            onChange={(e) => handleAvailabilityChange('allWeek', e.target.checked)}
+                            onChange={() => handleAvailabilityChange('allWeek')}
                             className="mr-3 accent-primary"
                           />
                           <div className="flex-1">
@@ -1122,6 +1138,100 @@ export default function CreateVenue() {
                       className="w-full px-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
                       placeholder="Describe your venue, its features, capacity, and what makes it special..."
                     />
+                  </div>
+
+                  {/* Amenities */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-foreground">
+                      Amenities
+                    </label>
+                    <div className="space-y-3">
+                      {/* Selected amenities */}
+                      <div className="flex flex-wrap gap-2">
+                        {formData.amenities.map((amenity, index) => (
+                          <div key={index} className="flex items-center bg-primary/10 border border-primary/20 rounded-full px-3 py-1">
+                            <span className="text-sm text-primary mr-2">{amenity}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  amenities: prev.amenities.filter((_, i) => i !== index)
+                                }));
+                              }}
+                              className="text-primary hover:text-primary/80 transition-colors"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Common amenities suggestions */}
+                      <div className="space-y-2">
+                        <p className="text-xs text-muted-foreground">Quick add common amenities:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {commonAmenities.filter(amenity => !formData.amenities.includes(amenity)).slice(0, 12).map((amenity) => (
+                            <button
+                              key={amenity}
+                              type="button"
+                              onClick={() => {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  amenities: [...prev.amenities, amenity]
+                                }));
+                              }}
+                              className="px-3 py-1 text-xs bg-muted hover:bg-muted/80 border border-border rounded-full transition-colors"
+                            >
+                              + {amenity}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Custom amenity input */}
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="Add custom amenity"
+                          className="flex-1 px-3 py-2 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all text-sm"
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              const value = e.currentTarget.value.trim();
+                              if (value && !formData.amenities.includes(value)) {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  amenities: [...prev.amenities, value]
+                                }));
+                                e.currentTarget.value = '';
+                              }
+                            }
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const input = document.querySelector('input[placeholder*="custom amenity"]') as HTMLInputElement;
+                            const value = input?.value.trim();
+                            if (value && !formData.amenities.includes(value)) {
+                              setFormData(prev => ({
+                                ...prev,
+                                amenities: [...prev.amenities, value]
+                              }));
+                              if (input) input.value = '';
+                            }
+                          }}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Click common amenities above or type custom ones. Press Enter or click + to add.
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1470,6 +1580,18 @@ export default function CreateVenue() {
                           <span className="text-sm text-muted-foreground">Capacity:</span>
                           <p className="font-medium">{formData.capacity} seats</p>
                         </div>
+                        {formData.amenities.length > 0 && (
+                          <div>
+                            <span className="text-sm text-muted-foreground">Amenities:</span>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {formData.amenities.map((amenity, index) => (
+                                <span key={index} className="inline-flex items-center px-2 py-1 bg-primary/10 border border-primary/20 rounded-full text-xs text-primary">
+                                  {amenity}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                         {formData.description && (
                           <div>
                             <span className="text-sm text-muted-foreground">Description:</span>
@@ -1570,6 +1692,23 @@ export default function CreateVenue() {
             )}
           </motion.div>
         </AnimatePresence>
+
+        {/* Error Display - moved near create button */}
+        {submitError && (
+          <div className="flex justify-center mb-6">
+            <ErrorDisplay
+              type="error"
+              title="Failed to Create Venue"
+              message={submitError}
+              variant="card"
+              onRetry={() => {
+                setSubmitError(null);
+                handleSubmit();
+              }}
+              className="max-w-2xl"
+            />
+          </div>
+        )}
 
         {/* Navigation */}
         <div className="flex items-center justify-between mt-8">
