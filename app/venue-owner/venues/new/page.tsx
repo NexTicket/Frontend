@@ -17,16 +17,13 @@ import {
   ArrowLeft,
   ArrowRight,
   Plus,
-  Minus,
   Grid,
   Eye,
   Palette,
   Settings,
-  Zap,
   Check,
   X,
   RotateCcw,
-  Move,
   Square,
   Circle
 } from 'lucide-react';
@@ -59,6 +56,7 @@ interface VenueFormData {
   location: string;
   capacity: number;
   description: string;
+  type: string;
   amenities: string[];
   contact: {
     phone: string;
@@ -170,6 +168,7 @@ export default function CreateVenue() {
     location: '',
     capacity: 0,
     description: '',
+    type: '',
     amenities: [],
     contact: {
       phone: '',
@@ -528,8 +527,8 @@ export default function CreateVenue() {
       setIsSubmitting(true);
       
       // Validate required fields
-      if (!formData.name.trim() || !formData.location.trim() || !formData.capacity) {
-        throw new Error('Please fill in all required fields (Name, Location, Capacity)');
+      if (!formData.name.trim() || !formData.location.trim() || !formData.capacity || !formData.type) {
+        throw new Error('Please fill in all required fields (Name, Location, Capacity, Type)');
       }
       
       // Confirm if no images
@@ -548,6 +547,7 @@ export default function CreateVenue() {
         location: formData.location.trim(),
         capacity: formData.capacity,
         description: formData.description.trim() || null,
+        type: formData.type,
         seatMap: formData.seatMap,
         contact: {
           phone: formData.contact.phone.trim(),
@@ -757,6 +757,27 @@ export default function CreateVenue() {
                     className="w-full px-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
                     placeholder="Describe your venue..."
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Venue Type *
+                  </label>
+                  <select
+                    value={formData.type}
+                    onChange={(e) => handleInputChange('type', e.target.value)}
+                    className="w-full px-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                    required
+                  >
+                    <option value="">Select venue type</option>
+                    <option value="STADIUM_INDOOR">Indoor Stadium</option>
+                    <option value="STADIUM_OUTDOOR">Outdoor Stadium</option>
+                    <option value="THEATRE">Theatre</option>
+                    <option value="CONFERENCE_HALL">Conference Hall</option>
+                    <option value="MUSIC_VENUE">Music Venue</option>
+                    <option value="MOVIE_THEATER">Movie Theater</option>
+                    <option value="OPEN_AREA">Open Area</option>
+                  </select>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
