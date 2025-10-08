@@ -89,17 +89,31 @@ export default function EventsPage() {
   const handlePrev = () => setCarouselIndex((prev) => (prev === 0 ? Math.max(0, featuredEvents.length - 1) : prev - 1));
   const handleNext = () => setCarouselIndex((prev) => (prev === Math.max(0, featuredEvents.length - 1) ? 0 : prev + 1));
 
-  // Scroll to center the selected poster
+  // Auto-play carousel
   useEffect(() => {
-    if (carouselRef.current && featuredEvents.length > 0) {
-      const container = carouselRef.current;
-      const child = container.children[carouselIndex] as HTMLElement;
-      if (child) {
-        const offset = child.offsetLeft - (container.offsetWidth / 2) + (child.offsetWidth / 2);
-        container.scrollTo({ left: offset, behavior: 'smooth' });
-      }
-    }
-  }, [carouselIndex, featuredEvents.length]);
+    if (featuredEvents.length <= 1) return;
+
+    const interval = setInterval(() => {
+      setCarouselIndex((prev) => (prev + 1) % featuredEvents.length);
+    }, 6000); // Change slide every 6 seconds
+
+    return () => clearInterval(interval);
+  }, [featuredEvents.length]);
+
+  // Pause auto-play on hover
+  const [isHovered, setIsHovered] = useState(false);
+
+  useEffect(() => {
+    if (featuredEvents.length <= 1) return;
+
+    if (isHovered) return; // Pause when hovered
+
+    const interval = setInterval(() => {
+      setCarouselIndex((prev) => (prev + 1) % featuredEvents.length);
+    }, 6000);
+
+    return () => clearInterval(interval);
+  }, [carouselIndex, featuredEvents.length, isHovered]);
 
   const filteredEvents = currentEvents
     .filter(event => 
@@ -185,50 +199,99 @@ export default function EventsPage() {
     <div className="min-h-screen bg-[#18181c] text-white">
       {/* Hero Section with Background */}
       <div className="relative w-full h-[500px] flex items-center justify-center overflow-hidden">
-        {/* Background image (use first featured event as bg) */}
-        <Image src={getEventImage(featuredEvents[carouselIndex])} alt="Hero Background" fill className="object-cover brightness-50" priority />
-        {/* Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/60 to-black/90 z-10" />
+        {/* Background image with smooth transition */}
+        <div className="absolute inset-0 transition-all duration-1000 ease-in-out">
+          <Image
+            src={getEventImage(featuredEvents[carouselIndex])}
+            alt="Hero Background"
+            fill
+            className="object-cover brightness-50 scale-105 transition-transform duration-1000 ease-in-out"
+            priority
+          />
+        </div>
+        {/* Enhanced Overlay with better gradient */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/90 z-10" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/20 via-transparent to-black/20 z-10" />
+
         {/* Carousel */}
-        <div className="relative z-20 w-full max-w-5xl mx-auto flex items-center justify-center h-full">
-          {/* Left Arrow */}
-          <button onClick={handlePrev} className="absolute left-0 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 rounded-full p-3 z-30"><span className="text-3xl">&#8592;</span></button>
-          {/* Posters Row */}
-          <div ref={carouselRef} className="flex gap-6 overflow-hidden px-16 w-full items-center justify-center">
+        <div
+          className="relative z-20 w-full max-w-7xl mx-auto flex items-center justify-center h-full px-8"
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
+          {/* Posters Row with improved spacing */}
+          <div ref={carouselRef} className="flex gap-8 overflow-hidden px-20 w-full items-center justify-center">
             {featuredEvents.map((event, idx) => {
               // Center poster is large, sides are smaller and faded
               const isActive = idx === carouselIndex;
+              const distance = Math.abs(idx - carouselIndex);
+              const scale = isActive ? 1.1 : distance === 1 ? 0.95 : 0.85;
+              const opacity = isActive ? 1 : distance === 1 ? 0.7 : 0.4;
+
               return (
                 <div
                   key={event.id}
-                  className={`relative flex-shrink-0 transition-all duration-500 ${isActive ? 'scale-110 z-20' : 'scale-90 opacity-60 z-10'} cursor-pointer`}
-                  style={{width: isActive ? 260 : 180, height: isActive ? 390 : 270, scrollSnapAlign: 'center'}}
+                  className={`relative flex-shrink-0 transition-all duration-500 ease-in-out cursor-pointer transform-gpu ${isActive ? 'drop-shadow-2xl' : ''}`}
+                  style={{
+                    width: isActive ? 280 : 200,
+                    height: isActive ? 420 : 300,
+                    transform: `scale(${scale})`,
+                    opacity: opacity,
+                    zIndex: isActive ? 30 : 20 - distance,
+                    scrollSnapAlign: 'center',
+                    filter: isActive ? 'drop-shadow(0 25px 50px rgba(168, 85, 247, 0.4))' : 'none'
+                  }}
                   onClick={() => setCarouselIndex(idx)}
                 >
-                  <Image src={getEventImage(event)} alt={event.title} fill className="object-cover rounded-xl shadow-2xl" />
-                  {/* Overlay details only for active */}
+                  <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl hover:shadow-blue-500/20 transition-all duration-300 ease-in-out">
+                    <Image
+                      src={getEventImage(event)}
+                      alt={event.title}
+                      fill
+                      className="object-cover transition-transform duration-500 ease-in-out hover:scale-105"
+                    />
+                    {/* Subtle border glow for active item */}
+                    {isActive && (
+                      <div className="absolute inset-0 rounded-2xl border-2 border-blue-400/50 shadow-lg shadow-blue-400/20"></div>
+                    )}
+                  </div>
+
+                  {/* Simplified Overlay - just title for active */}
                   {isActive && (
-                    <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/90 via-black/60 to-transparent rounded-b-xl flex flex-col gap-3">
-                      <h2 className="text-3xl font-bold mb-1">{event.title}</h2>
-                      <div className="flex items-center gap-3 mb-1">
-                        <span className="text-yellow-400 font-bold">8.5</span>
-                        <span className="text-xs text-gray-300">(2019)</span>
-                        <span className="text-xs text-gray-300">{event.category}</span>
-                        <span className="text-xs text-gray-300">{event.category}</span>
-                      </div>
-                      <p className="text-gray-200 text-sm line-clamp-2 mb-2">{event.description}</p>
-                      <div className="flex gap-2">
-                        <Link href={`/events/${event.id}`}><Button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded">Buy a Ticket</Button></Link>
-                      </div>
+                    <div className="absolute bottom-6 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent rounded-b-2xl">
+                      <h2 className="text-2xl font-bold text-white text-center drop-shadow-lg">{event.title}</h2>
                     </div>
                   )}
                 </div>
               );
             })}
           </div>
-          {/* Right Arrow */}
-          <button onClick={handleNext} className="absolute right-0 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 rounded-full p-3 z-30"><span className="text-3xl">&#8594;</span></button>
         </div>
+
+        {/* Carousel Indicators */}
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-3 z-30">
+          {featuredEvents.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => setCarouselIndex(idx)}
+              className={`transition-all duration-500 rounded-full ${
+                idx === carouselIndex
+                  ? 'w-8 h-3 bg-gradient-to-r from-blue-500 to-purple-500 scale-125 shadow-lg shadow-blue-500/50'
+                  : 'w-3 h-3 bg-white/40 hover:bg-white/70 hover:scale-110'
+              }`}
+            />
+          ))}
+        </div>
+
+        {/* Auto-play indicator */}
+        {!isHovered && featuredEvents.length > 1 && (
+          <div className="absolute top-6 right-6 z-30">
+            <div className="bg-black/40 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-2">
+              <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+              <span className="text-white text-xs font-medium">Auto</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Filter/Search Bar - Horizontal Layout */}
@@ -336,12 +399,12 @@ export default function EventsPage() {
                   <div className="absolute bottom-0 left-0 right-0 p-6 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300">
                     <h3 className="text-xl font-semibold mb-2 text-white">{event.title}</h3>
                     <div className="flex items-center gap-3 text-sm text-gray-300 mb-3">
-                      <span>{event.category}</span>
-                      <span className="text-yellow-400">8.5</span>
+                      <span className="bg-blue-600/80 px-2 py-1 rounded text-white font-medium">{event.category}</span>
+                      <span className="text-yellow-400 font-bold">8.5</span>
                     </div>
                     <p className="text-gray-200 text-sm line-clamp-2 mb-4">{event.description}</p>
                     <Link href={`/events/${event.id}`}>
-                      <Button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded w-full">
+                      <Button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded w-full transition-colors duration-300">
                         Buy a Ticket
                       </Button>
                     </Link>
@@ -366,8 +429,8 @@ export default function EventsPage() {
                   <div className="absolute bottom-0 left-0 right-0 p-6 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300">
                     <h3 className="text-xl font-semibold mb-2 text-white">{event.title}</h3>
                     <div className="flex items-center gap-3 text-sm text-gray-300 mb-3">
-                      <span>{event.category}</span>
-                      <span className="text-yellow-400">8.5</span>
+                      <span className="bg-blue-600/80 px-2 py-1 rounded text-white font-medium">{event.category}</span>
+                      <span className="text-yellow-400 font-bold">8.5</span>
                     </div>
                     <p className="text-gray-200 text-sm line-clamp-2 mb-4">{event.description}</p>
                     <Link href={`/events/${event.id}`}>
