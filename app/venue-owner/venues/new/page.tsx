@@ -646,7 +646,8 @@ export default function CreateVenue() {
           phone: formData.contact.phone.trim(),
           email: formData.contact.email.trim()
         },
-        amenities: formData.amenities
+        amenities: formData.amenities,
+        availability: formData.availability
       };
 
       console.log('📤 Creating venue with data:', {
@@ -656,6 +657,7 @@ export default function CreateVenue() {
         hasDescription: !!venuePayload.description,
         seatMapSections: venuePayload.seatMap.sections.length,
         hasContact: !!(venuePayload.contact.phone || venuePayload.contact.email),
+        availability: venuePayload.availability,
         pendingImages: imageFiles.length
       });
 
