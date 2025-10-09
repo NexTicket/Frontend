@@ -300,7 +300,7 @@ function NewEventPageInner() {
         ))}
       </div>
       <div className="flex justify-center">
-        <span className="text-sm font-medium text-foreground">
+        <span className="text-sm font-medium" >
           Step {currentStep} of {totalSteps}
         </span>
       </div>
@@ -311,92 +311,110 @@ function NewEventPageInner() {
   const darkBg = "#181A20";
   const blueHeader = "#1877F2";
   const cardBg = "#23262F";
-  const greenBorder = "#39FD48" + '50';
+  const greenBorder = "#000" ;
   const cardShadow = "0 2px 16px 0 rgba(57,253,72,0.08)";
 
   if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen" >
       {/* Simple Background Elements */}
-      <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-20 bg-muted"></div>
-      <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-15 bg-muted/50"></div>
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl opacity-10 bg-muted"></div>
+      <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-20" ></div>
+      <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-15" ></div>
+      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl opacity-10" ></div>
       
       {/* Content Container */}
       <div className="relative z-10 pt-8 px-8">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
-          <div className="rounded-2xl p-6 shadow-lg mb-8 bg-primary border border-border">
-            <h2 className="text-3xl font-bold mb-2 text-primary-foreground">Create New Event</h2>
-            <p className="text-lg font-normal text-primary-foreground">Set up your event in a few guided steps</p>
+          <div className="rounded-2xl border p-6 shadow-lg mb-8" style={{  borderColor: greenBorder, boxShadow: cardShadow }}>
+            <h2 className="text-3xl font-bold mb-2" >Create New Event</h2>
+            <p className="text-lg font-normal" >Set up your event in a few guided steps</p>
           </div>
 
           <StepBar />
 
-          <div className="backdrop-blur-xl border rounded-2xl p-8 shadow-xl bg-card border-border">
+          <div className="backdrop-blur-xl border rounded-2xl p-8 shadow-xl" style={{  borderColor: greenBorder, boxShadow: cardShadow }}>
         {currentStep === 1 && (
             <div className="space-y-6">
-              <h3 className="text-2xl font-semibold text-foreground">Basic Information</h3>
+              <h3 className="text-2xl font-semibold" >Basic Information</h3>
               <div>
-                <label className="block text-sm font-medium mb-2 text-foreground">Title *</label>
+                <label className="block text-sm font-medium mb-2" >Title *</label>
                 <input 
                   value={form.title} 
                   onChange={e => onChange("title", e.target.value)} 
-                  className="w-full px-4 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 bg-background text-foreground border-border placeholder:text-muted-foreground focus:ring-primary/50"
+                  className="w-full px-4 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-2 focus:ring-opacity-50 focus:ring-green-500"
+                  
+                  
                   placeholder="Enter event title"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2 text-foreground">Category *</label>
+                <label className="block text-sm font-medium mb-2" >Category *</label>
                 <select 
                   value={form.category} 
                   onChange={e => onChange("category", e.target.value)} 
-                  className="w-full px-4 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 bg-background text-foreground border-border focus:ring-primary/50"
+                  className="w-full px-4 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2"
+                  
                 >
-                  <option value="" className="bg-background text-foreground">Select category</option>
-                  <option value="Concert" className="bg-background text-foreground">Concert</option>
-                  <option value="Conference" className="bg-background text-foreground">Conference</option>
-                  <option value="Comedy" className="bg-background text-foreground">Comedy</option>
-                  <option value="Workshop" className="bg-background text-foreground">Workshop</option>
-                  <option value="Sports" className="bg-background text-foreground">Sports</option>
-                  <option value="Festival" className="bg-background text-foreground">Festival</option>
-                  <option value="Theater" className="bg-background text-foreground">Theater</option>
-                  <option value="Meetup" className="bg-background text-foreground">Meetup</option>
+                  <option value="" style={{ backgroundColor: '#191C24', color: '#fff' }}>Select category</option>
+                  <option value="Concert" style={{ backgroundColor: '#191C24', color: '#fff' }}>Concert</option>
+                  <option value="Conference" style={{ backgroundColor: '#191C24', color: '#fff' }}>Conference</option>
+                  <option value="Comedy" style={{ backgroundColor: '#191C24', color: '#fff' }}>Comedy</option>
+                  <option value="Workshop" style={{ backgroundColor: '#191C24', color: '#fff' }}>Workshop</option>
+                  <option value="Sports" style={{ backgroundColor: '#191C24', color: '#fff' }}>Sports</option>
+                  <option value="Festival" style={{ backgroundColor: '#191C24', color: '#fff' }}>Festival</option>
+                  <option value="Theater" style={{ backgroundColor: '#191C24', color: '#fff' }}>Theater</option>
+                  <option value="Meetup" style={{ backgroundColor: '#191C24', color: '#fff' }}>Meetup</option>
                 </select>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-foreground">Start Date *</label>
+                  <label className="block text-sm font-medium mb-2" >Start Date *</label>
                   <input 
                     type="date" 
                     value={form.startDateDate} 
                     onChange={e => onChange("startDateDate", e.target.value)} 
                     min={new Date().toISOString().split('T')[0]} // Prevent selecting past dates
-                    className="w-full px-4 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 bg-background text-foreground border-border focus:ring-primary/50"
+                    className="w-full px-4 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2"
+                    style={{ 
+                       
+                      borderColor: greenBorder, 
+                      
+                    }}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-foreground">Start Time *</label>
+                  <label className="block text-sm font-medium mb-2" >Start Time *</label>
                   <div className="flex gap-2">
                     <select 
                       value={form.startHour} 
                       onChange={e => onChange("startHour", e.target.value)} 
-                      className="px-3 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 w-24 bg-background text-foreground border-border focus:ring-primary/50"
+                      className="px-3 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 w-24"
+                      style={{ 
+                         
+                        borderColor: greenBorder, 
+                        
+                      }}
                     >
-                      <option value="" className="bg-background text-foreground">HH</option>
+                      <option value="" >HH</option>
                       {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map(h => 
-                        <option key={h} value={h} className="bg-background text-foreground">{h}</option>
+                        <option key={h} value={h} >{h}</option>
                       )}
                     </select>
                     <select 
                       value={form.startMinute} 
                       onChange={e => onChange("startMinute", e.target.value)} 
-                      className="px-3 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 w-24 bg-background text-foreground border-border focus:ring-primary/50"
+                      className="px-3 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 w-24"
+                      style={{ 
+                         
+                        borderColor: greenBorder, 
+                        
+                      }}
                     >
-                      <option value="" className="bg-background text-foreground">MM</option>
+                      <option value="" >MM</option>
                       {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m => 
-                        <option key={m} value={m} className="bg-background text-foreground">{m}</option>
+                        <option key={m} value={m} >{m}</option>
                       )}
                     </select>
                   </div>
@@ -404,36 +422,51 @@ function NewEventPageInner() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-foreground">End Date (optional)</label>
+                  <label className="block text-sm font-medium mb-2" >End Date (optional)</label>
                   <input 
                     type="date" 
                     value={form.endDateDate} 
                     onChange={e => onChange("endDateDate", e.target.value)} 
                     min={form.startDateDate || new Date().toISOString().split('T')[0]} // End date must be at least the start date
-                    className="w-full px-4 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 bg-background text-foreground border-border focus:ring-primary/50"
+                    className="w-full px-4 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2"
+                    style={{ 
+                       
+                      borderColor: greenBorder, 
+                      
+                    }}
                   />
                 </div>
             <div>
-                  <label className="block text-sm font-medium mb-2 text-foreground">End Time (optional)</label>
+                  <label className="block text-sm font-medium mb-2" >End Time (optional)</label>
                   <div className="flex gap-2">
                     <select 
                       value={form.endHour} 
                       onChange={e => onChange("endHour", e.target.value)} 
-                      className="px-3 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 w-24 bg-background text-foreground border-border focus:ring-primary/50"
+                      className="px-3 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 w-24"
+                      style={{ 
+                         
+                        borderColor: greenBorder, 
+                        
+                      }}
                     >
-                      <option value="" className="bg-background text-foreground">HH</option>
+                      <option value="" >HH</option>
                       {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map(h => 
-                        <option key={h} value={h} className="bg-background text-foreground">{h}</option>
+                        <option key={h} value={h} >{h}</option>
                       )}
                     </select>
                     <select 
                       value={form.endMinute} 
                       onChange={e => onChange("endMinute", e.target.value)} 
-                      className="px-3 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 w-24 bg-background text-foreground border-border focus:ring-primary/50"
+                      className="px-3 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 w-24"
+                      style={{ 
+                         
+                        borderColor: greenBorder, 
+                        
+                      }}
                     >
-                      <option value="" className="bg-background text-foreground">MM</option>
+                      <option value="" >MM</option>
                       {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m => 
-                        <option key={m} value={m} className="bg-background text-foreground">{m}</option>
+                        <option key={m} value={m} >{m}</option>
                       )}
               </select>
             </div>
@@ -452,12 +485,17 @@ function NewEventPageInner() {
                 })()
               )}
               <div>
-                <label className="block text-sm font-medium mb-2 text-foreground">Description</label>
+                <label className="block text-sm font-medium mb-2" >Description</label>
                 <textarea 
                   value={form.description} 
                   onChange={e => onChange("description", e.target.value)} 
                   rows={4} 
-                  className="w-full px-4 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 resize-none bg-background text-foreground border-border placeholder:text-muted-foreground focus:ring-primary/50"
+                  className="w-full px-4 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 resize-none"
+                  style={{ 
+                    
+                    borderColor: greenBorder, 
+                    
+                  }}
                   placeholder="Describe your event..."
                 />
               </div>
@@ -466,14 +504,13 @@ function NewEventPageInner() {
 
           {currentStep === 2 && (
             <div className="space-y-6">
-
-              <h3 className="text-2xl font-semibold" style={{ color: '#fff' }}>Venue Selection</h3>
+              <h3 className="text-2xl font-semibold" >Venue Selection</h3>
               
               {/* Venue filtering info */}
               {form.category && (
-                <div className="rounded-lg p-4" style={{ backgroundColor: '#191C24', borderColor: greenBorder, border: '1px solid' }}>
+                <div className="rounded-lg p-4" style={{  borderColor: greenBorder, border: '1px solid' }}>
                   <p className="text-sm" style={{ color: '#ABA8A9' }}>
-                    Showing venues suitable for <span className="font-semibold" style={{ color: '#fff' }}>{form.category}</span> events
+                    Showing venues suitable for <span className="font-semibold" >{form.category}</span> events
                   </p>
                 </div>
               )}
@@ -481,49 +518,64 @@ function NewEventPageInner() {
               {/* Venue cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {loadingVenues ? (
-                  <div className="text-center py-8" style={{ color: '#fff' }}>Loading venues...</div>
-                ) : filteredVenues.length === 0 ? (
-                  <div className="text-center py-8 col-span-2" style={{ color: '#fff' }}>
-                    {form.type ? `No venues available for ${form.type} events. Please select a different event type or create a suitable venue.` : 'No venues available.'}
-                  </div>
-
-
+                  <div className="text-center py-8" >Loading venues...</div>
                 ) : (
-                  filteredVenues.map((v: VenueCard) => {
-                    const selected = String(form.venueId) === String(v.id);
-                    const img = v.featuredImage || v.image || (Array.isArray(v.images) ? v.images[0] : '');
-                    return (
-                      <div 
-                        key={v.id} 
-                        className={`rounded-xl border p-4 cursor-pointer transition-all duration-200 hover:scale-105 ${selected ? 'ring-2 ring-primary' : ''} bg-card`}
-                        style={{ 
-                          borderColor: selected ? 'hsl(var(--primary))' : 'hsl(var(--border))'
-                        }} 
-                        onClick={() => {
-                          console.log('🎯 Venue card clicked:', { venueId: v.id, venueIdType: typeof v.id });
-                          onChange('venueId', String(v.id));
-                        }}
-                      >
-                        <div className="w-full h-32 overflow-hidden rounded-lg border mb-3 flex items-center justify-center bg-muted border-border">
-                          {img ? <img src={img} alt="Venue" className="w-full h-full object-cover" /> : <div className="text-sm text-muted-foreground">No image</div>}
-                        </div>
-                        <div className="font-semibold text-foreground">{v.name}</div>
-                        <div className="text-sm text-muted-foreground">{v.location || '—'}</div>
-                        <div className="text-sm text-muted-foreground">Capacity: {v.capacity ?? '—'}</div>
-                        <div className="mt-2">
-                          <Button 
-                            type="button" 
-                            variant="outline" 
-                            onClick={async (e) => { 
-                              e.stopPropagation(); 
-                              await loadVenueDetails(v.id); 
-                              setShowVenueModal(true);
-                            }}
-                            className="border-border text-foreground hover:bg-muted">
-                            <Eye className="h-4 w-4 mr-2" />
-                            View Details
-                          </Button>
-
+                  (() => {
+                    // Filter venues based on event category
+                    const filteredVenues = venues.filter(venue => {
+                      if (!form.category || !venue.type) return true; // Show all if no category selected or venue has no type
+                      
+                      const allowedVenueTypes = form.category === 'MOVIE' 
+                        ? ['MOVIE_THEATER'] 
+                        : form.category === 'CONFERENCE'
+                        ? ['CONFERENCE_HALL']
+                        : ['STADIUM_INDOOR', 'STADIUM_OUTDOOR', 'THEATRE', 'MUSIC_VENUE', 'OPEN_AREA'];
+                      
+                      return venue.type && allowedVenueTypes.includes(venue.type);
+                    });
+                    
+                    return filteredVenues.map((v: VenueCard) => {
+                      const selected = String(form.venueId) === String(v.id);
+                      const img = v.featuredImage || v.image || (Array.isArray(v.images) ? v.images[0] : '');
+                      return (
+                        <div 
+                          key={v.id} 
+                          className={`rounded-xl border p-4 cursor-pointer transition-all duration-200 hover:scale-105 ${selected ? 'ring-2 ring-[#39FD48]' : ''}`} 
+                          style={{ 
+                            backgroundColor: cardBg, 
+                            borderColor: selected ? '#39FD48' : greenBorder
+                          }} 
+                          onClick={() => {
+                            console.log('🎯 Venue card clicked:', { venueId: v.id, venueIdType: typeof v.id });
+                            onChange('venueId', String(v.id));
+                          }}
+                        >
+                          <div className="w-full h-32 overflow-hidden rounded-lg border mb-3 flex items-center justify-center" style={{ backgroundColor: '#191C24', borderColor: greenBorder }}>
+                            {img ? <img src={img} alt="Venue" className="w-full h-full object-cover" /> : <div className="text-sm" style={{ color: '#ABA8A9' }}>No image</div>}
+                          </div>
+                          <div className="font-semibold" >{v.name}</div>
+                          <div className="text-sm" style={{ color: '#ABA8A9' }}>{v.location || '—'}</div>
+                          <div className="text-sm" style={{ color: '#ABA8A9' }}>Capacity: {v.capacity ?? '—'}</div>
+                          {v.type && <div className="text-xs px-2 py-1 rounded mt-1 inline-block" style={{ backgroundColor: '#39FD48', color: '#000' }}>{v.type.replace('_', ' ')}</div>}
+                          <div className="mt-2">
+                            <Button 
+                              type="button" 
+                              variant="outline" 
+                              onClick={async (e) => { 
+                                e.stopPropagation(); 
+                                await loadVenueDetails(v.id); 
+                                setShowVenueModal(true);
+                              }}
+                              style={{ 
+                                backgroundColor: 'transparent', 
+                                borderColor: greenBorder, 
+                                color: '#fff' 
+                              }}
+                            >
+                              <Eye className="h-4 w-4 mr-2" />
+                              View Details
+                            </Button>
+                          </div>
                         </div>
                       );
                     });
@@ -533,20 +585,20 @@ function NewEventPageInner() {
 
               {/* Selected venue preview */}
               {form.venueId && (
-                <div className="rounded-xl border p-4 grid grid-cols-1 md:grid-cols-3 gap-4 bg-muted/30 border-primary/40">
+                <div className="rounded-xl border p-4 grid grid-cols-1 md:grid-cols-3 gap-4 bg-background/30" style={{ borderColor: 'rgb(57 253 72 / 40%)' }}>
                   {(() => {
                     const v: VenueCard | undefined = venues.find((vv: VenueCard) => String(vv.id) === String(form.venueId));
                     const img = v?.featuredImage || v?.image || (v?.images?.[0] ?? '');
                     return (
                       <>
                         <div className="md:col-span-1">
-                          <div className="w-full h-32 overflow-hidden rounded-lg border border-border bg-muted/50 flex items-center justify-center">
+                          <div className="w-full h-32 overflow-hidden rounded-lg border border-border bg-background/50 flex items-center justify-center">
                             {img ? <img src={img} alt="Venue" className="w-full h-full object-cover" /> : <div className="text-muted-foreground text-sm">No image</div>}
           </div>
         </div>
                         <div className="md:col-span-2 flex items-center">
                           <div>
-                            <div className="text-foreground font-semibold text-lg">{v?.name}</div>
+                            <div className="text-white font-semibold text-lg">{v?.name}</div>
                             <div className="text-muted-foreground text-sm">{v?.location}</div>
                             <div className="text-muted-foreground text-sm">Capacity: {v?.capacity ?? '—'}</div>
                             <div className="text-muted-foreground text-sm">Seat map: {(v?.seatMap ? 'Available' : '—')}</div>
@@ -561,13 +613,14 @@ function NewEventPageInner() {
               {/* Venue Details Modal */}
               {showVenueModal && selectedVenueDetails && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-                  <div className="bg-card/95 backdrop-blur-xl rounded-2xl border max-w-6xl w-full max-h-[90vh] overflow-y-auto border-border">
+                  <div className="bg-card/95 backdrop-blur-xl rounded-2xl border max-w-6xl w-full max-h-[90vh] overflow-y-auto" 
+                    style={{ borderColor: 'rgb(57 253 72 / 50)' }}>
                     
                     {/* Modal Header */}
-                    <div className="flex items-center justify-between p-6 border-b border-border">
+                    <div className="flex items-center justify-between p-6 border-b" style={{ borderColor: 'rgb(57 253 72 / 30)' }}>
                       <div>
-                        <h2 className="text-2xl font-bold text-foreground">{selectedVenueDetails.name}</h2>
-                        <div className="flex items-center text-muted-foreground mt-1">
+                        <h2 className="text-2xl font-bold text-white">{selectedVenueDetails.name}</h2>
+                        <div className="flex items-center text-gray-400 mt-1">
                           <MapPin className="h-4 w-4 mr-1" />
                           {selectedVenueDetails.location || 'Location not specified'}
                         </div>
@@ -595,7 +648,7 @@ function NewEventPageInner() {
                           <div className="p-4 rounded-xl border" style={{ backgroundColor: '#0D6EFD' + '10', borderColor: '#0D6EFD' + '30' }}>
                             <div className="flex items-center mb-2">
                               <Users className="h-5 w-5 mr-2" style={{ color: '#0D6EFD' }} />
-                              <span className="font-medium text-foreground">Capacity</span>
+                              <span className="font-medium text-white">Capacity</span>
                             </div>
                             <span className="text-2xl font-bold" style={{ color: '#39FD48' }}>
                               {selectedVenueDetails.capacity ? Number(selectedVenueDetails.capacity).toLocaleString() : 'N/A'}
@@ -606,9 +659,9 @@ function NewEventPageInner() {
                             <div className="p-4 rounded-xl border" style={{ backgroundColor: '#39FD48' + '10', borderColor: '#39FD48' + '30' }}>
                               <div className="flex items-center mb-2">
                                 <Building2 className="h-5 w-5 mr-2" style={{ color: '#39FD48' }} />
-                                <span className="font-medium text-foreground">Managed by</span>
+                                <span className="font-medium text-white">Managed by</span>
                               </div>
-                              <span className="text-foreground">{selectedVenueDetails.tenant.name}</span>
+                              <span className="text-white">{selectedVenueDetails.tenant.name}</span>
                             </div>
                           )}
                         </div>
@@ -617,7 +670,7 @@ function NewEventPageInner() {
                         <div className="md:col-span-2">
                           {seatMapData && typeof seatMapData === 'object' && 'rows' in seatMapData ? (
                             <div className="space-y-4">
-                              <h3 className="text-xl font-bold text-foreground flex items-center">
+                              <h3 className="text-xl font-bold text-white flex items-center">
                                 <Grid3X3 className="h-5 w-5 mr-2" style={{ color: '#39FD48' }} />
                                 Seating Layout
                               </h3>
@@ -629,7 +682,7 @@ function NewEventPageInner() {
                                     <div key={section.id} className="flex items-center space-x-2 px-3 py-1 rounded-lg border text-sm"
                                       style={{ backgroundColor: section.color + '20', borderColor: section.color + '50' }}>
                                       <div className="w-3 h-3 rounded" style={{ backgroundColor: section.color }}></div>
-                                      <span className="text-foreground font-medium">
+                                      <span className="text-white font-medium">
                                         {section.name} (×{section.price_multiplier})
                                       </span>
                                     </div>
@@ -638,7 +691,8 @@ function NewEventPageInner() {
                               ) : null}
 
                               {/* Stage */}
-                              <div className="rounded-lg p-4 text-center text-primary-foreground font-bold bg-gradient-to-r from-primary to-secondary">
+                              <div className="rounded-lg p-4 text-center text-white font-bold" 
+                                style={{ background: 'linear-gradient(135deg, #0D6EFD, #39FD48)' }}>
                                 🎭 STAGE
                               </div>
 
@@ -694,26 +748,26 @@ function NewEventPageInner() {
                                   <div className="text-lg font-bold" style={{ color: '#39FD48' }}>
                                     {(Number(seatMapData.rows) || 0) * (Number(seatMapData.columns) || 0)}
                                   </div>
-                                  <div className="text-xs text-muted-foreground">Total Seats</div>
+                                  <div className="text-xs text-gray-400">Total Seats</div>
                                 </div>
                                 <div className="p-3 rounded-lg border" style={{ backgroundColor: '#0D6EFD' + '10', borderColor: '#0D6EFD' + '30' }}>
                                   <div className="text-lg font-bold" style={{ color: '#0D6EFD' }}>
                                     {Array.isArray(seatMapData.sections) ? seatMapData.sections.length : 0}
                                   </div>
-                                  <div className="text-xs text-muted-foreground">Sections</div>
+                                  <div className="text-xs text-gray-400">Sections</div>
                                 </div>
                                 <div className="p-3 rounded-lg border" style={{ backgroundColor: '#39FD48' + '10', borderColor: '#39FD48' + '30' }}>
                                   <div className="text-lg font-bold" style={{ color: '#39FD48' }}>
                                     {Array.isArray(seatMapData.wheelchair_accessible) ? seatMapData.wheelchair_accessible.length : 0}
                                   </div>
-                                  <div className="text-xs text-muted-foreground">♿ Accessible</div>
+                                  <div className="text-xs text-gray-400">♿ Accessible</div>
                                 </div>
                               </div>
 
                               {/* Special Features */}
                               {seatMapData.special_features && Array.isArray(seatMapData.special_features) && seatMapData.special_features.length > 0 ? (
                                 <div className="p-4 rounded-xl border" style={{ backgroundColor: '#0D6EFD' + '10', borderColor: '#0D6EFD' + '30' }}>
-                                  <h4 className="font-bold mb-2 text-foreground">Special Features</h4>
+                                  <h4 className="font-bold mb-2 text-white">Special Features</h4>
                                   <div className="flex flex-wrap gap-2">
                                     {(seatMapData.special_features as string[]).map((feature: string, index: number) => (
                                       <span key={index} className="px-2 py-1 rounded text-xs border"
@@ -727,9 +781,9 @@ function NewEventPageInner() {
                             </div>
                           ) : (
                             <div className="text-center py-12">
-                              <Grid3X3 className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-                              <h4 className="text-lg font-bold mb-2 text-foreground">No Seating Data</h4>
-                              <p className="text-muted-foreground">No seating layout found for this venue</p>
+                              <Grid3X3 className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+                              <h4 className="text-lg font-bold mb-2 text-white">No Seating Data</h4>
+                              <p className="text-gray-400">No seating layout found for this venue</p>
                             </div>
                           )}
                         </div>
@@ -737,9 +791,9 @@ function NewEventPageInner() {
 
                       {/* Description */}
                       {selectedVenueDetails.description && (
-                        <div className="p-4 rounded-xl border bg-card border-border">
-                          <h4 className="font-bold mb-2 text-foreground">About This Venue</h4>
-                          <p className="text-muted-foreground">{selectedVenueDetails.description}</p>
+                        <div className="p-4 rounded-xl border" style={{  borderColor: '#39FD48' + '30' }}>
+                          <h4 className="font-bold mb-2 text-white">About This Venue</h4>
+                          <p className="text-gray-300">{selectedVenueDetails.description}</p>
                         </div>
                       )}
 
@@ -873,7 +927,7 @@ function NewEventPageInner() {
             </div>
           )}
 
-          {error && <div className="text-red-400 mt-4 text-center font-medium p-3 rounded-lg" style={{ backgroundColor: '#FF5722' + '20', borderColor: '#FF5722' + '50', border: '1px solid' }}>{error}</div>}
+          {error && <div className="text-red-400 mt-4 text-center font-medium p-3 rounded-lg" style={{  borderColor: '#FF5722' + '50', border: '1px solid' }}>{error}</div>}
 
           <div className="flex items-center justify-between mt-8">
             <Button 
@@ -882,10 +936,10 @@ function NewEventPageInner() {
               disabled={currentStep === 1} 
               className="flex items-center transition-all duration-200"
               style={{ 
-                backgroundColor: 'transparent', 
+                backgroundColor:'ButtonFace', 
                 borderColor: greenBorder, 
-                color: '#fff',
-                opacity: currentStep === 1 ? 0.5 : 1
+                color: '#000',
+                opacity: currentStep === 1 ? 0.8 : 1
               }}
             >
               <ArrowLeft className="h-4 w-4 mr-2" /> Previous
@@ -904,7 +958,7 @@ function NewEventPageInner() {
                 disabled={submitting} 
                 className="flex items-center transition-all duration-200 shadow-lg"
                 style={{ 
-                  background: submitting ? '#39FD48' + '50' : 'linear-gradient(135deg, #39FD48, #2DD4BF)', 
+                  background: submitting ? '#0D6EFD' + '50' : '#0D6EFD', 
                   color: '#000',
                   opacity: submitting ? 0.7 : 1
                 }}
@@ -915,7 +969,7 @@ function NewEventPageInner() {
           </div>
           </div>
           <div className="flex justify-end mt-4">
-            <Button variant="ghost" onClick={() => router.push('/organizer/dashboard')} className="text-foreground hover:text-primary">Cancel</Button>
+            <Button variant="ghost" onClick={() => router.push('/organizer/dashboard')} >Cancel</Button>
           </div>
         </div>
       </div>
