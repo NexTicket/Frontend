@@ -105,6 +105,22 @@ export async function fetchVenues() {
   return res.json();
 }
 
+export async function fetchFilteredVenues(filters: { type?: string; district?: string; amenities?: string[] }) {
+  // Build query string from filters
+  const params = new URLSearchParams();
+  if (filters.type && filters.type !== 'all') params.append('type', filters.type);
+  if (filters.district && filters.district !== 'all') params.append('district', filters.district);
+  if (filters.amenities && filters.amenities.length > 0) {
+    filters.amenities.forEach(amenity => params.append('amenities', amenity));
+  }
+  
+  const queryString = params.toString();
+  const url = getVenueServiceUrl(`/api/venues/filter${queryString ? `?${queryString}` : ''}`);
+  const res = await publicFetch(url);
+  if (!res.ok) throw new Error("Failed to fetch filtered venues");
+  return res.json();
+}
+
 export const fetchVenueById = async (id: number | string) => {
   const url = getVenueServiceUrl(`/api/venues/getvenuebyid/${id}`);
   const res = await publicFetch(url);

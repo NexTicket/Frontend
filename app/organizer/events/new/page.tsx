@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { createEvent, fetchVenues, uploadEventImage, fetchVenueSeatMap, fetchVenueById } from "@/lib/api";
+import { createEvent, fetchVenues, uploadEventImage, fetchVenueSeatMap, fetchVenueById, fetchFilteredVenues } from "@/lib/api";
 import { useAuth } from "@/components/auth/auth-provider";
 import dynamic from "next/dynamic";
 import { ArrowLeft, ArrowRight, Image as ImageIcon, X, MapPin, Users, Building2, Grid3X3, Eye } from "lucide-react";
@@ -82,27 +82,49 @@ function NewEventPageInner() {
   const [checkInEmails, setCheckInEmails] = useState<string[]>([""]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
+  // Venue filter states
+  const [venueFilters, setVenueFilters] = useState({
+    type: 'all',
+    district: 'all',
+    amenities: [] as string[]
+  });
+  const [availableAmenities, setAvailableAmenities] = useState<string[]>([
+    'WiFi', 'Parking', 'Air Conditioning', 'Sound System', 'Stage Lighting', 
+    'Catering', 'Bar Service', 'Wheelchair Accessible', 'Restrooms', 'Security'
+  ]);
+
   useEffect(() => {
     async function loadVenues() {
       setLoadingVenues(true);
       try {
-        const res = await fetchVenues();
+        const res = await fetchFilteredVenues(venueFilters);
         const data: VenueCard[] = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
         console.log('🎯 Venues loaded:', data);
         setVenues(data);
-        if (data.length > 0) {
+        if (data.length > 0 && !form.venueId) {
           const defaultVenueId = String(data[0].id) || "";
           console.log('🎯 Setting default venue ID:', defaultVenueId);
-          setForm(prev => ({ ...prev, venueId: prev.venueId || defaultVenueId }));
+          setForm(prev => ({ ...prev, venueId: defaultVenueId }));
         }
       } catch (err) {
         console.error("Failed loading venues", err);
+        setVenues([]);
       } finally {
         setLoadingVenues(false);
       }
     }
     loadVenues();
-  }, []);
+  }, [venueFilters, form.venueId]);
+
+  // Reset selected venue when filters change
+  useEffect(() => {
+    const currentVenueExists = venues.some(v => String(v.id) === String(form.venueId));
+    if (!currentVenueExists && venues.length > 0) {
+      setForm(prev => ({ ...prev, venueId: String(venues[0].id) }));
+    } else if (venues.length === 0) {
+      setForm(prev => ({ ...prev, venueId: '' }));
+    }
+  }, [venues, form.venueId]);
 
   // Debug form state changes
   useEffect(() => {
@@ -522,73 +544,181 @@ function NewEventPageInner() {
                   </p>
                 </div>
               )}
+
+              {/* Venue Filters */}
+              <div className="rounded-lg p-6" style={{ backgroundColor: '#191C24', borderColor: greenBorder, border: '1px solid' }}>
+                <h4 className="text-lg font-semibold mb-4" style={{ color: '#fff' }}>Filter Venues</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Venue Type Filter */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: '#fff' }}>Venue Type</label>
+                    <select 
+                      value={venueFilters.type}
+                      onChange={(e) => setVenueFilters(prev => ({ ...prev, type: e.target.value }))}
+                      className="w-full px-4 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2"
+                      style={{ 
+                        backgroundColor: '#23262F', 
+                        borderColor: greenBorder, 
+                        color: '#fff'
+                      }}
+                    >
+                      <option value="all" style={{ backgroundColor: '#23262F', color: '#fff' }}>All Types</option>
+                      <option value="MOVIE_THEATER" style={{ backgroundColor: '#23262F', color: '#fff' }}>Movie Theater</option>
+                      <option value="CONFERENCE_HALL" style={{ backgroundColor: '#23262F', color: '#fff' }}>Conference Hall</option>
+                      <option value="STADIUM_INDOOR" style={{ backgroundColor: '#23262F', color: '#fff' }}>Indoor Stadium</option>
+                      <option value="STADIUM_OUTDOOR" style={{ backgroundColor: '#23262F', color: '#fff' }}>Outdoor Stadium</option>
+                      <option value="THEATRE" style={{ backgroundColor: '#23262F', color: '#fff' }}>Theatre</option>
+                      <option value="MUSIC_VENUE" style={{ backgroundColor: '#23262F', color: '#fff' }}>Music Venue</option>
+                      <option value="OPEN_AREA" style={{ backgroundColor: '#23262F', color: '#fff' }}>Open Area</option>
+                    </select>
+                  </div>
+
+                  {/* District Filter */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: '#fff' }}>District</label>
+                    <select 
+                      value={venueFilters.district}
+                      onChange={(e) => setVenueFilters(prev => ({ ...prev, district: e.target.value }))}
+                      className="w-full px-4 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2"
+                      style={{ 
+                        backgroundColor: '#23262F', 
+                        borderColor: greenBorder, 
+                        color: '#fff'
+                      }}
+                    >
+                      <option value="all" style={{ backgroundColor: '#23262F', color: '#fff' }}>All Districts</option>
+                      <option value="Colombo" style={{ backgroundColor: '#23262F', color: '#fff' }}>Colombo</option>
+                      <option value="Gampaha" style={{ backgroundColor: '#23262F', color: '#fff' }}>Gampaha</option>
+                      <option value="Kalutara" style={{ backgroundColor: '#23262F', color: '#fff' }}>Kalutara</option>
+                      <option value="Kandy" style={{ backgroundColor: '#23262F', color: '#fff' }}>Kandy</option>
+                      <option value="Matale" style={{ backgroundColor: '#23262F', color: '#fff' }}>Matale</option>
+                      <option value="Nuwara Eliya" style={{ backgroundColor: '#23262F', color: '#fff' }}>Nuwara Eliya</option>
+                      <option value="Galle" style={{ backgroundColor: '#23262F', color: '#fff' }}>Galle</option>
+                      <option value="Matara" style={{ backgroundColor: '#23262F', color: '#fff' }}>Matara</option>
+                      <option value="Hambantota" style={{ backgroundColor: '#23262F', color: '#fff' }}>Hambantota</option>
+                      <option value="Jaffna" style={{ backgroundColor: '#23262F', color: '#fff' }}>Jaffna</option>
+                      <option value="Kilinochchi" style={{ backgroundColor: '#23262F', color: '#fff' }}>Kilinochchi</option>
+                      <option value="Mannar" style={{ backgroundColor: '#23262F', color: '#fff' }}>Mannar</option>
+                      <option value="Vavuniya" style={{ backgroundColor: '#23262F', color: '#fff' }}>Vavuniya</option>
+                      <option value="Mullaitivu" style={{ backgroundColor: '#23262F', color: '#fff' }}>Mullaitivu</option>
+                      <option value="Batticaloa" style={{ backgroundColor: '#23262F', color: '#fff' }}>Batticaloa</option>
+                      <option value="Ampara" style={{ backgroundColor: '#23262F', color: '#fff' }}>Ampara</option>
+                      <option value="Trincomalee" style={{ backgroundColor: '#23262F', color: '#fff' }}>Trincomalee</option>
+                      <option value="Kurunegala" style={{ backgroundColor: '#23262F', color: '#fff' }}>Kurunegala</option>
+                      <option value="Puttalam" style={{ backgroundColor: '#23262F', color: '#fff' }}>Puttalam</option>
+                      <option value="Anuradhapura" style={{ backgroundColor: '#23262F', color: '#fff' }}>Anuradhapura</option>
+                      <option value="Polonnaruwa" style={{ backgroundColor: '#23262F', color: '#fff' }}>Polonnaruwa</option>
+                      <option value="Badulla" style={{ backgroundColor: '#23262F', color: '#fff' }}>Badulla</option>
+                      <option value="Moneragala" style={{ backgroundColor: '#23262F', color: '#fff' }}>Moneragala</option>
+                      <option value="Ratnapura" style={{ backgroundColor: '#23262F', color: '#fff' }}>Ratnapura</option>
+                      <option value="Kegalle" style={{ backgroundColor: '#23262F', color: '#fff' }}>Kegalle</option>
+                    </select>
+                  </div>
+
+                  {/* Amenities Filter */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: '#fff' }}>Amenities</label>
+                    <div className="space-y-2 max-h-32 overflow-y-auto">
+                      {availableAmenities.map(amenity => (
+                        <label key={amenity} className="flex items-center space-x-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={venueFilters.amenities.includes(amenity)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setVenueFilters(prev => ({ 
+                                  ...prev, 
+                                  amenities: [...prev.amenities, amenity] 
+                                }));
+                              } else {
+                                setVenueFilters(prev => ({ 
+                                  ...prev, 
+                                  amenities: prev.amenities.filter(a => a !== amenity) 
+                                }));
+                              }
+                            }}
+                            className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                            style={{ accentColor: '#39FD48' }}
+                          />
+                          <span className="text-sm" style={{ color: '#ABA8A9' }}>{amenity}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Clear Filters Button */}
+                <div className="mt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setVenueFilters({ type: 'all', district: 'all', amenities: [] })}
+                    style={{ 
+                      backgroundColor: 'transparent', 
+                      borderColor: greenBorder, 
+                      color: '#fff' 
+                    }}
+                  >
+                    Clear All Filters
+                  </Button>
+                </div>
+              </div>
               
               {/* Venue cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {loadingVenues ? (
                   <div className="text-center py-8" style={{ color: '#fff' }}>Loading venues...</div>
+                ) : venues.length === 0 ? (
+                  <div className="text-center py-8 col-span-full" style={{ color: '#ABA8A9' }}>
+                    No venues found matching your filters. Try adjusting your filter criteria.
+                  </div>
                 ) : (
-                  (() => {
-                    // Filter venues based on event category
-                    const filteredVenues = venues.filter(venue => {
-                      if (!form.category || !venue.type) return true; // Show all if no category selected or venue has no type
-                      
-                      const allowedVenueTypes = form.category === 'MOVIE' 
-                        ? ['MOVIE_THEATER'] 
-                        : form.category === 'CONFERENCE'
-                        ? ['CONFERENCE_HALL']
-                        : ['STADIUM_INDOOR', 'STADIUM_OUTDOOR', 'THEATRE', 'MUSIC_VENUE', 'OPEN_AREA'];
-                      
-                      return venue.type && allowedVenueTypes.includes(venue.type);
-                    });
-                    
-                    return filteredVenues.map((v: VenueCard) => {
-                      const selected = String(form.venueId) === String(v.id);
-                      const img = v.featuredImage || v.image || (Array.isArray(v.images) ? v.images[0] : '');
-                      return (
-                        <div 
-                          key={v.id} 
-                          className={`rounded-xl border p-4 cursor-pointer transition-all duration-200 hover:scale-105 ${selected ? 'ring-2' : ''}`} 
-                          style={{ 
-                            backgroundColor: cardBg, 
-                            borderColor: selected ? '#39FD48' : greenBorder,
-                            ringColor: '#39FD48'
-                          }} 
-                          onClick={() => {
-                            console.log('🎯 Venue card clicked:', { venueId: v.id, venueIdType: typeof v.id });
-                            onChange('venueId', String(v.id));
-                          }}
-                        >
-                          <div className="w-full h-32 overflow-hidden rounded-lg border mb-3 flex items-center justify-center" style={{ backgroundColor: '#191C24', borderColor: greenBorder }}>
-                            {img ? <img src={img} alt="Venue" className="w-full h-full object-cover" /> : <div className="text-sm" style={{ color: '#ABA8A9' }}>No image</div>}
-                          </div>
-                          <div className="font-semibold" style={{ color: '#fff' }}>{v.name}</div>
-                          <div className="text-sm" style={{ color: '#ABA8A9' }}>{v.location || '—'}</div>
-                          <div className="text-sm" style={{ color: '#ABA8A9' }}>Capacity: {v.capacity ?? '—'}</div>
-                          {v.type && <div className="text-xs px-2 py-1 rounded mt-1 inline-block" style={{ backgroundColor: '#39FD48', color: '#000' }}>{v.type.replace('_', ' ')}</div>}
-                          <div className="mt-2">
-                            <Button 
-                              type="button" 
-                              variant="outline" 
-                              onClick={async (e) => { 
-                                e.stopPropagation(); 
-                                await loadVenueDetails(v.id); 
-                                setShowVenueModal(true);
-                              }}
-                              style={{ 
-                                backgroundColor: 'transparent', 
-                                borderColor: greenBorder, 
-                                color: '#fff' 
-                              }}
-                            >
-                              <Eye className="h-4 w-4 mr-2" />
-                              View Details
-                            </Button>
-                          </div>
+                  venues.map((v: VenueCard) => {
+                    const selected = String(form.venueId) === String(v.id);
+                    const img = v.featuredImage || v.image || (Array.isArray(v.images) ? v.images[0] : '');
+                    return (
+                      <div 
+                        key={v.id} 
+                        className={`rounded-xl border p-4 cursor-pointer transition-all duration-200 hover:scale-105 ${selected ? 'ring-2' : ''}`} 
+                        style={{ 
+                          backgroundColor: cardBg, 
+                          borderColor: selected ? '#39FD48' : greenBorder,
+                          boxShadow: selected ? '0 0 0 2px rgba(57, 253, 72, 0.5)' : undefined
+                        }} 
+                        onClick={() => {
+                          console.log('🎯 Venue card clicked:', { venueId: v.id, venueIdType: typeof v.id });
+                          onChange('venueId', String(v.id));
+                        }}
+                      >
+                        <div className="w-full h-32 overflow-hidden rounded-lg border mb-3 flex items-center justify-center" style={{ backgroundColor: '#191C24', borderColor: greenBorder }}>
+                          {img ? <img src={img} alt="Venue" className="w-full h-full object-cover" /> : <div className="text-sm" style={{ color: '#ABA8A9' }}>No image</div>}
                         </div>
-                      );
-                    });
-                  })()
+                        <div className="font-semibold" style={{ color: '#fff' }}>{v.name}</div>
+                        <div className="text-sm" style={{ color: '#ABA8A9' }}>{v.location || '—'}</div>
+                        <div className="text-sm" style={{ color: '#ABA8A9' }}>Capacity: {v.capacity ?? '—'}</div>
+                        {v.type && <div className="text-xs px-2 py-1 rounded mt-1 inline-block" style={{ backgroundColor: '#39FD48', color: '#000' }}>{v.type.replace('_', ' ')}</div>}
+                        <div className="mt-2">
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            onClick={async (e) => { 
+                              e.stopPropagation(); 
+                              await loadVenueDetails(v.id); 
+                              setShowVenueModal(true);
+                            }}
+                            style={{ 
+                              backgroundColor: 'transparent', 
+                              borderColor: greenBorder, 
+                              color: '#fff' 
+                            }}
+                          >
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Details
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })
                 )}
           </div>
 
