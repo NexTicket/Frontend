@@ -23,6 +23,7 @@ import {
 import { deleteEvent, fetchEventsByOrganizer } from '@/lib/api';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 
+// Animation variants
 const containerVariants: any = {
   hidden: { opacity: 0, scale: 0.98 },
   visible: {
@@ -41,13 +42,6 @@ const itemVariants: any = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.17, 0.67, 0.83, 0.67] as any } }
 };
-
-// Theme colors for matching admin dashboard
-const darkBg = "#181A20";
-const blueHeader = "#1877F2";
-const cardBg = "#23262F";
-const greenBorder = "#39FD48" + '50';
-const cardShadow = "0 2px 16px 0 rgba(57,253,72,0.08)";
 
 export default function OrganizerDashboard() {
   const { userProfile, firebaseUser, isLoading } = useAuth();
@@ -130,11 +124,11 @@ export default function OrganizerDashboard() {
   // Show loading if auth is still loading
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: darkBg }}>
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <Loading
           size="lg"
           text="Loading organizer dashboard..."
-          className="text-white"
+          className="text-foreground"
         />
       </div>
     );
@@ -143,7 +137,7 @@ export default function OrganizerDashboard() {
   // Show access denied if not authenticated or not organizer
   if (!firebaseUser || !userProfile || userProfile.role !== 'organizer') {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: darkBg }}>
+      <div className="min-h-screen flex items-center justify-center p-4 bg-background">
         <ErrorDisplay
           type="auth"
           title="Access Denied"
@@ -166,7 +160,7 @@ export default function OrganizerDashboard() {
     {
       title: 'Total Events',
       value: totalEvents,
-      icon: <Calendar size={24} style={{ color: '#CBF83E' }} />,
+      icon: <Calendar size={24} className="text-primary" />,
       trend: 12.5,
       color: '#CBF83E',
       subtitle: `${pendingEvents} pending approval`
@@ -174,7 +168,7 @@ export default function OrganizerDashboard() {
     {
       title: 'Active Events',
       value: activeEvents,
-      icon: <Activity size={24} style={{ color: '#CBF83E' }} />,
+      icon: <Activity size={24} className="text-primary" />,
       trend: 8.2,
       color: '#CBF83E',
       subtitle: 'Currently running'
@@ -182,7 +176,7 @@ export default function OrganizerDashboard() {
     {
       title: 'Monthly Revenue',
       value: `LKR ${totalRevenue.toLocaleString()}`,
-      icon: <DollarSign size={24} style={{ color: '#CBF83E' }} />,
+      icon: <DollarSign size={24} className="text-primary" />,
       trend: 15.8,
       color: '#CBF83E',
       subtitle: 'This month'
@@ -190,7 +184,7 @@ export default function OrganizerDashboard() {
     {
       title: 'Tickets Sold',
       value: totalTicketsSold.toLocaleString(),
-      icon: <Ticket size={24} style={{ color: '#CBF83E' }} />,
+      icon: <Ticket size={24} className="text-primary" />,
       trend: 23.1,
       color: '#CBF83E',
       subtitle: 'Total sales'
@@ -225,15 +219,14 @@ export default function OrganizerDashboard() {
       <motion.div
         variants={itemVariants}
         whileHover={{ scale: 1.02, y: -2 }}
-        className="backdrop-blur-xl border rounded-2xl p-4 shadow-xl hover:shadow-md transition-all duration-200"
-        style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '50', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}
+        className="bg-card backdrop-blur-xl border border-border rounded-2xl p-4 shadow-lg hover:shadow-xl transition-all duration-200"
       >
         <div className="flex items-center justify-between">
           <div className="flex-1">
-            <p className="text-sm font-medium mb-1" style={{ color: '#fff' }}>{title}</p>
-            <div className="text-2xl font-bold mb-1" style={{ color: '#ABA8A9' }}>{value}</div>
+            <p className="text-sm font-medium mb-1 text-muted-foreground">{title}</p>
+            <div className="text-2xl font-bold mb-1 text-foreground">{value}</div>
             {subtitle && (
-              <p className="text-xs" style={{ color: '#ABA8A9' }}>{subtitle}</p>
+              <p className="text-xs text-muted-foreground">{subtitle}</p>
             )}
             {trend && (
               <div className="flex items-center mt-2">
@@ -244,7 +237,7 @@ export default function OrganizerDashboard() {
               </div>
             )}
           </div>
-          <div className="rounded-lg p-3 ml-4" style={{ backgroundColor: '#D8DFEE' + '40' }}>
+          <div className="bg-primary/10 rounded-lg p-3 ml-4 text-primary">
             {icon}
           </div>
         </div>
@@ -253,11 +246,11 @@ export default function OrganizerDashboard() {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: darkBg }}>
-      {/* Simple Background Elements */}
-      <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-20" style={{ backgroundColor: '#ABA8A9' }}></div>
-      <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-15" style={{ backgroundColor: '#D8DFEE' }}></div>
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl opacity-10" style={{ backgroundColor: '#ABA8A9' }}></div>
+    <div className="min-h-screen bg-background">
+      {/* Background Elements */}
+      <div className="absolute top-0 right-0 w-80 h-80 bg-primary/5 rounded-full blur-3xl opacity-50"></div>
+      <div className="absolute bottom-0 left-0 w-80 h-80 bg-secondary/5 rounded-full blur-3xl opacity-40"></div>
+      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-muted/10 rounded-full blur-3xl opacity-30"></div>
       
       {/* Content Container */}
       <div className="relative z-10 pt-8 px-8">
@@ -267,17 +260,16 @@ export default function OrganizerDashboard() {
           variants={containerVariants}
           className="max-w-7xl mx-auto"
         >
-          {/* Clean Header */}
+          {/* Header */}
           <motion.div variants={itemVariants} className="mb-12">
-            <div className="rounded-2xl p-6 shadow-lg" style={{ backgroundColor: blueHeader, borderColor: greenBorder, boxShadow: cardShadow }}>
+            <div className="bg-gradient-to-r from-primary to-primary/80 border border-primary/20 rounded-2xl p-6 shadow-lg">
               <div className="flex items-center justify-between">
                 <div>
                   <motion.h1 
                     initial={{ opacity: 0, x: -30 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.6, ease: "easeOut" }}
-                    className="text-3xl font-bold mb-2"
-                    style={{ color: '#fff' }}
+                    className="text-3xl font-bold mb-2 text-primary-foreground"
                   >
                     Organizer Dashboard
                   </motion.h1>
@@ -285,8 +277,7 @@ export default function OrganizerDashboard() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2, duration: 0.5 }}
-                    className="text-lg font-normal"
-                    style={{ color: '#fff' }}
+                    className="text-lg font-normal text-primary-foreground/90"
                   >
                     Welcome back, {userProfile?.firstName || userProfile?.email?.split('@')[0] || 'Organizer'}! 
                   </motion.p>
@@ -299,8 +290,7 @@ export default function OrganizerDashboard() {
                   <Button 
                     onClick={handleRefresh}
                     disabled={refreshing}
-                    className="px-6 py-3 text-white font-medium rounded-xl hover:opacity-90 transition-opacity shadow-md"
-                    style={{ background: 'linear-gradient(135deg, #0D6EFD, #1565C0)' }}
+                    className="bg-primary-foreground/20 hover:bg-primary-foreground/30 text-primary-foreground border border-primary-foreground/30"
                   >
                     <RefreshCw className={`h-5 w-5 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
                     Refresh
@@ -315,27 +305,24 @@ export default function OrganizerDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Button 
                 onClick={() => router.push('/organizer/events/new')}
-                className="h-16 backdrop-blur-xl border text-lg rounded-2xl p-8 shadow-xl transition-all duration-200 hover:scale-105"
-                style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}
+                className="h-16 bg-card border border-border text-lg rounded-2xl p-8 shadow-lg  "
               >
-                <Plus className="h-8 w-8 mr-3" style={{ color: '#CBF83E' }} />
-                Create New Event
+                <Plus className="h-8 w-8 mr-3 text-primary" />
+                <span className="text-foreground">Create New Event</span>
               </Button>
               <Button 
                 onClick={() => router.push('/organizer/events')}
-                className="h-16 backdrop-blur-xl border text-lg rounded-2xl p-8 shadow-xl transition-all duration-200 hover:scale-105"
-                style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}
+                className="h-16 bg-card border border-border text-lg rounded-2xl p-8 shadow-lg transition-all duration-200 hover:scale-105 hover:shadow-xl"
               >
-                <Calendar className="h-8 w-8 mr-3" style={{ color: '#CBF83E' }}/>
-                Manage Events
+                <Calendar className="h-8 w-8 mr-3 text-primary"/>
+                <span className="text-foreground">Manage Events</span>
               </Button>
               <Button 
                 onClick={() => router.push('/organizer/analytics')}
-                className="h-16 backdrop-blur-xl text-lg border rounded-2xl p-8 shadow-xl transition-all duration-200 hover:scale-105"
-                style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}
+                className="h-16 bg-card border border-border text-lg rounded-2xl p-8 shadow-lg transition-all duration-200 hover:scale-105 hover:shadow-xl"
               >
-                <BarChart3 className="h-8 w-8 mr-3" style={{ color: '#CBF83E' }} />
-                View Analytics
+                <BarChart3 className="h-8 w-8 mr-3 text-primary" />
+                <span className="text-foreground">View Analytics</span>
               </Button>
             </div>
           </motion.div>
@@ -351,17 +338,16 @@ export default function OrganizerDashboard() {
 
           {/* My Events Section */}
           <motion.div variants={itemVariants} className="mb-16">
-            <div className="backdrop-blur-xl border rounded-2xl p-8 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
+            <div className="bg-card border border-border rounded-2xl p-8 shadow-lg">
               <div className="flex items-center justify-between mb-8">
-                <h3 className="text-3xl font-bold" style={{ color: '#fff' }}>My Events</h3>
+                <h3 className="text-3xl font-bold text-foreground">My Events</h3>
                 <div className="flex items-center space-x-4">
-                  <div className="text-sm font-medium" style={{ color: '#fff' }}>
+                  <div className="text-sm font-medium text-muted-foreground">
                     {eventsLoading ? 'Loading...' : `${events.length} events total`}
                   </div>
                   <Button 
                     onClick={() => router.push('/organizer/events/new')}
-                    className="transition-all duration-200 hover:shadow-md text-white"
-                    style={{ backgroundColor: '#0D6EFD' }}
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Add Event
@@ -374,18 +360,17 @@ export default function OrganizerDashboard() {
                   <Loading
                     size="md"
                     text="Loading your events..."
-                    className="text-white"
+                    className="text-foreground"
                   />
                 </div>
               ) : events.length === 0 ? (
                 <div className="text-center py-8">
-                  <Calendar className="h-12 w-12 mx-auto mb-4" style={{ color: '#CBF83E' }} />
-                  <p className="text-lg font-semibold" style={{ color: '#fff' }}>No Events Yet</p>
-                  <p className="text-sm mb-4" style={{ color: '#ABA8A9' }}>Create your first event to get started</p>
+                  <Calendar className="h-12 w-12 mx-auto mb-4 text-primary" />
+                  <p className="text-lg font-semibold text-foreground">No Events Yet</p>
+                  <p className="text-sm mb-4 text-muted-foreground">Create your first event to get started</p>
                   <Button 
                     onClick={() => router.push('/organizer/events/new')}
-                    className="text-white"
-                    style={{ backgroundColor: '#0D6EFD' }}
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Create Event
@@ -394,38 +379,38 @@ export default function OrganizerDashboard() {
               ) : (
                 <div className="space-y-4">
                   {events.slice(0, 5).map((event) => (
-                    <div key={event.id} className="rounded-2xl border p-6 bg-background shadow-md" style={{ backgroundColor: darkBg, borderColor: greenBorder }}>
+                    <div key={event.id} className="bg-card border border-border rounded-2xl p-6 shadow-md">
                       <div className="flex flex-col lg:flex-row lg:items-center justify-between">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center space-x-3 mb-2">
-                            <h4 className="text-lg font-semibold text-white truncate">{event.title}</h4>
+                            <h4 className="text-lg font-semibold text-foreground truncate">{event.title}</h4>
                             <span className={`px-2 py-1 text-xs rounded-full ${
-                              event.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
-                              event.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-red-100 text-red-800'
+                              event.status === 'APPROVED' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' :
+                              event.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300' :
+                              'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
                             }`}>
                               {event.status}
                             </span>
                           </div>
-                          <p className="text-sm text-muted-foreground mb-3" style={{ color: '#ABA8A9' }}>
+                          <p className="text-sm text-muted-foreground mb-3">
                             {event.description}
                           </p>
                           <div className="flex flex-wrap gap-3">
-                            <span className="text-xs rounded-full px-3 py-1" style={{ color: '#CBF83E', backgroundColor: '#CBF83E' + '20' }}>
+                            <span className="text-xs rounded-full px-3 py-1 bg-primary/20 text-primary">
                               {event.category}
                             </span>
-                            <span className="text-xs rounded-full px-3 py-1" style={{ color: '#fff', backgroundColor: '#2a2d34' }}>
+                            <span className="text-xs rounded-full px-3 py-1 bg-muted text-muted-foreground">
                               {new Date(event.startDate).toLocaleDateString()}
                             </span>
-                            <span className="text-xs rounded-full px-3 py-1" style={{ color: '#fff', backgroundColor: '#2a2d34' }}>
+                            <span className="text-xs rounded-full px-3 py-1 bg-muted text-muted-foreground">
                               {event.venue?.name || 'No venue'}
                             </span>
                           </div>
                         </div>
                         <div className="mt-4 lg:mt-0 lg:ml-6 flex space-x-2">
                           <Button 
-                            onClick={() => router.push(`/organizer/events/${event.id}`)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                            onClick={() => router.push(`/organizer/events/${event.id}/view`)}
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground"
                             size="sm"
                           >
                             <Eye className="h-4 w-4 mr-1" />
@@ -433,7 +418,7 @@ export default function OrganizerDashboard() {
                           </Button>
                           <Button 
                             onClick={() => router.push(`/organizer/events/${event.id}/edit`)}
-                            className="bg-gray-600 hover:bg-gray-700 text-white"
+                            className="bg-secondary hover:bg-secondary/90 text-secondary-foreground"
                             size="sm"
                           >
                             <Edit className="h-4 w-4 mr-1" />
@@ -448,7 +433,7 @@ export default function OrganizerDashboard() {
                       <Button 
                         onClick={() => router.push('/organizer/events')}
                         variant="outline"
-                        style={{ borderColor: greenBorder, color: '#fff', backgroundColor: 'transparent' }}
+                        className="border-border text-foreground hover:bg-muted"
                       >
                         View All {events.length} Events
                       </Button>
@@ -461,12 +446,12 @@ export default function OrganizerDashboard() {
 
           {/* Analytics Chart */}
           <motion.div variants={itemVariants} className="mb-16">
-            <div className="backdrop-blur-xl border rounded-2xl p-8 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
+            <div className="bg-card border border-border rounded-2xl p-8 shadow-lg">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-bold" style={{ color: '#fff' }}>Revenue Overview</h3>
+                <h3 className="text-2xl font-bold text-foreground">Revenue Overview</h3>
                 <div className="flex items-center space-x-2">
-                  <BarChart3 className="h-5 w-5" style={{ color: '#fff' }} />
-                  <span className="text-sm font-medium" style={{ color: '#fff' }}>Monthly View</span>
+                  <BarChart3 className="h-5 w-5 text-foreground" />
+                  <span className="text-sm font-medium text-foreground">Monthly View</span>
                 </div>
               </div>
               <div className="h-80">
@@ -474,15 +459,29 @@ export default function OrganizerDashboard() {
                   <AreaChart data={revenueData}>
                     <defs>
                       <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#0D6EFD" stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor="#0D6EFD" stopOpacity={0.1}/>
+                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.1}/>
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#808080" />
-                    <XAxis dataKey="name" style={{ fill: '#fff' }} />
-                    <YAxis style={{ fill: '#fff' }} />
-                    <Tooltip contentStyle={{ backgroundColor: '#0f1115', border: `1px solid ${greenBorder}`, color: '#fff' }} />
-                    <Area type="monotone" dataKey="revenue" stroke='#0D6EFD' fillOpacity={1} fill="url(#colorRevenue)" strokeWidth={2}/>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted-foreground))" />
+                    <XAxis dataKey="name" stroke="hsl(var(--foreground))" />
+                    <YAxis stroke="hsl(var(--foreground))" />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--card))', 
+                        border: '1px solid hsl(var(--border))', 
+                        color: 'hsl(var(--foreground))',
+                        borderRadius: '8px'
+                      }} 
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="revenue" 
+                      stroke="hsl(var(--primary))" 
+                      fillOpacity={1} 
+                      fill="url(#colorRevenue)" 
+                      strokeWidth={2}
+                    />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>

@@ -152,7 +152,7 @@ export default function VenueOwnerVenues() {
     try {
       setVenues(prevVenues => prevVenues.filter(venue => venue.id !== venueId));
       await deleteVenue(venueId);
-      alert(`Venue "${venueName}" has been deleted successfully.`);
+      // alert(`Venue "${venueName}" has been deleted successfully.`);
     } catch (error) {
       console.error('Failed to delete venue:', error);
       try {
@@ -179,7 +179,7 @@ export default function VenueOwnerVenues() {
       } catch (refetchError) {
         console.error('Failed to refetch venues after delete error:', refetchError);
       }
-      alert(`Failed to delete venue: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      // alert(`Failed to delete venue: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -202,7 +202,7 @@ export default function VenueOwnerVenues() {
           >
             Authenticating...
           </motion.h3>
-          <p style={{ color: '#ABA8A9' }}>Verifying your credentials</p>
+          <p >Verifying your credentials</p>
         </div>
       </div>
     );
@@ -233,7 +233,7 @@ export default function VenueOwnerVenues() {
   // Show error if there was an error loading venues
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#191C24' }}>
+      <div className="min-h-screen flex items-center justify-center p-4" >
         <ErrorDisplay
           type="error"
           title="Failed to Load Venues"
@@ -317,7 +317,7 @@ export default function VenueOwnerVenues() {
                     onClick={retryFetch}
                     disabled={loading}
                     className="px-4 py-2 text-white font-medium rounded-xl hover:opacity-90 transition-opacity shadow-md"
-                    style={{ background: 'linear-gradient(135deg, #0D6EFD, #1565C0)' }}
+                    
                   >
                     <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                     Refresh
@@ -381,13 +381,13 @@ export default function VenueOwnerVenues() {
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ duration: 0.5 }}
                 >
-                  <Building2 className="h-16 w-16 mx-auto mb-6" style={{ color: '#39FD48' }} />
+                  <Building2 className="h-16 w-16 mx-auto mb-6"  />
                   <h3 className="text-2xl font-bold mb-4" style={{ color: '#fff' }}>Connection Error</h3>
                   <p className="mb-8 leading-relaxed" style={{ color: '#ABA8A9' }}>{error}</p>
                   <Button 
                     onClick={retryFetch} 
                     className="text-white font-semibold px-8 py-3 rounded-xl hover:opacity-90 transition-opacity"
-                    style={{ background: 'linear-gradient(135deg, #39FD48, #0D6EFD)' }}
+                    
                   >
                     Retry Connection
                   </Button>
@@ -431,7 +431,7 @@ export default function VenueOwnerVenues() {
                       <span 
                         className="px-3 py-1 rounded-full text-xs font-medium border"
                         style={{ 
-                          backgroundColor: '#39FD48' + '20', 
+                           
                           borderColor: '#39FD48',
                           color: '#39FD48'
                         }}
@@ -443,7 +443,7 @@ export default function VenueOwnerVenues() {
                     {/* Rating Badge */}
                     {venue.rating && venue.rating > 0 && (
                       <div className="absolute top-4 left-4 z-20 flex items-center space-x-1 bg-card/80 backdrop-blur-xl border border-border rounded-full px-3 py-2">
-                        <Star className="h-4 w-4 fill-current" style={{ color: '#39FD48' }} />
+                        <Star className="h-4 w-4 fill-current"  />
                         <span className="text-sm font-bold" style={{ color: '#fff' }}>{venue.rating}</span>
                       </div>
                     )}
@@ -454,62 +454,62 @@ export default function VenueOwnerVenues() {
                     {/* Title and Actions */}
                     <div className="flex items-start justify-between">
                       <h3 className="text-xl font-bold group-hover:opacity-90 transition-opacity duration-300"
-                        style={{ color: '#fff' }}>
+                        >
                         {venue.name}
                       </h3>
                       <Button 
                         variant="ghost" 
                         size="sm" 
                         className="hover:bg-[#0D6EFD]/20 rounded-full transition-all duration-300"
-                        style={{ color: '#ABA8A9' }}
+                        
                       >
                         <MoreVertical className="h-4 w-4" />
                       </Button>
                     </div>
 
                     {/* Location */}
-                    <div className="flex items-center text-sm" style={{ color: '#ABA8A9' }}>
-                      <MapPin className="h-4 w-4 mr-2" style={{ color: '#39FD48' }} />
+                    <div className="flex items-center text-sm" >
+                      <MapPin className="h-4 w-4 mr-2" />
                       <span>{venue.location}</span>
                     </div>
 
-                    <p className="text-sm leading-relaxed line-clamp-2" style={{ color: '#ABA8A9' }}>
+                    <p className="text-sm leading-relaxed line-clamp-2" >
                       {venue.description || 'Premium venue space with modern amenities and exceptional service.'}
                     </p>
 
                     {/* Stats Grid */}
                     <div className="grid grid-cols-2 gap-4">
                       <div className="text-center p-3 rounded-xl border transition-all duration-300"
-                        style={{ backgroundColor: '#0D6EFD' + '20', borderColor: '#0D6EFD' + '30' }}>
-                        <Users className="h-5 w-5 mx-auto mb-2" style={{ color: '#39FD48' }} />
-                        <p className="text-lg font-bold" style={{ color: '#fff' }}>{venue.capacity.toLocaleString()}</p>
-                        <p className="text-xs" style={{ color: '#ABA8A9' }}>Capacity</p>
+                        >
+                        <Users className="h-5 w-5 mx-auto mb-2"  />
+                        <p className="text-lg font-bold" >{venue.capacity.toLocaleString()}</p>
+                        <p className="text-xs" >Capacity</p>
                       </div>
                       
                       <div className="text-center p-3 rounded-xl border transition-all duration-300"
-                        style={{ backgroundColor: '#0D6EFD' + '20', borderColor: '#0D6EFD' + '30' }}>
-                        <Calendar className="h-5 w-5 mx-auto mb-2" style={{ color: '#0D6EFD' }} />
-                        <p className="text-lg font-bold" style={{ color: '#fff' }}>{venue.totalEvents || 0}</p>
-                        <p className="text-xs" style={{ color: '#ABA8A9' }}>Events</p>
+                        >
+                        <Calendar className="h-5 w-5 mx-auto mb-2"  />
+                        <p className="text-lg font-bold" >{venue.totalEvents || 0}</p>
+                        <p className="text-xs" >Events</p>
                       </div>
                     </div>
 
                     {/* Revenue Display */}
                     <div className="relative overflow-hidden rounded-xl border p-4"
-                      style={{ backgroundColor: '#39FD48' + '10', borderColor: '#39FD48' + '30' }}>
+                      style={{ borderColor: '#39FD48' + '30' }}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
-                          <DollarSign className="h-5 w-5" style={{ color: '#39FD48' }} />
-                          <span className="text-sm font-medium" style={{ color: '#fff' }}>Monthly Revenue</span>
+                          <DollarSign className="h-5 w-5"  />
+                          <span className="text-sm font-medium">Monthly Revenue</span>
                         </div>
-                        <span className="text-lg font-bold" style={{ color: '#39FD48' }}>
+                        <span className="text-lg font-bold" >
                           LKR {(venue.monthlyRevenue || 0).toLocaleString()}
                         </span>
                       </div>
                     </div>
 
                     {/* Last Activity */}
-                    <div className="flex items-center text-xs" style={{ color: '#ABA8A9' }}>
+                    <div className="flex items-center text-xs" >
                       <Activity className="h-3 w-3 mr-2" style={{ color: '#0D6EFD' }} />
                       <span>Last event: {venue.lastEvent || 'Ready for bookings'}</span>
                     </div>
@@ -531,7 +531,7 @@ export default function VenueOwnerVenues() {
                         <Button 
                           
                           size="sm" 
-                          className="w-full text-white hover:bg-[#39FD48] hover:text-black transition-all duration-300" style={{ backgroundColor: '#0D6EFD' }}
+                          className="w-full text-white  hover:text-black transition-all duration-300" style={{ backgroundColor: '#0D6EFD' }}
                         >
                           <Edit className="h-4 w-4 mr-2" />
                           Edit
@@ -565,7 +565,7 @@ export default function VenueOwnerVenues() {
                   <div className="relative mb-8">
                     <motion.div
                       className="w-20 h-20 mx-auto rounded-full border-2 flex items-center justify-center"
-                      style={{ backgroundColor: '#0D6EFD' + '20', borderColor: '#39FD48' }}
+                      
                       animate={{ 
                         scale: [1, 1.1, 1]
                       }}
@@ -575,7 +575,7 @@ export default function VenueOwnerVenues() {
                         ease: "easeInOut"
                       }}
                     >
-                      <Building2 className="h-10 w-10" style={{ color: '#39FD48' }} />
+                      <Building2 className="h-10 w-10"  />
                     </motion.div>
                   </div>
                   
@@ -586,7 +586,7 @@ export default function VenueOwnerVenues() {
                     }
                   </h3>
                   
-                  <p className="mb-10 text-lg leading-relaxed" style={{ color: '#ABA8A9' }}>
+                  <p className="mb-10 text-lg leading-relaxed" >
                     {searchTerm || filterStatus !== 'all' 
                       ? 'Try adjusting your search criteria or filters to find what you\'re looking for' 
                       : 'Ready to build something extraordinary? Create your first venue and start your journey.'
@@ -596,7 +596,7 @@ export default function VenueOwnerVenues() {
                   {!searchTerm && filterStatus === 'all' && venues.length === 0 && (
                     <Link href="/venue-owner/venues/new">
                       <Button className="text-white font-bold px-10 py-4 rounded-2xl text-lg hover:opacity-90 transition-opacity shadow-lg"
-                        style={{ background: 'linear-gradient(135deg, #39FD48, #0D6EFD)' }}>
+                        >
                         <Plus className="h-6 w-6 mr-3" />
                         Create Your First Venue
                       </Button>
