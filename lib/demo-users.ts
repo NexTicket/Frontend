@@ -12,7 +12,11 @@ Demo Users to Create in Firebase Authentication:
    Email: organizer@nexticket.com
    Password: organizer123
    
-3. Customer User:
+3. Venue Owner User:
+   Email: venue@nexticket.com
+   Password: venue123
+   
+4. Customer User:
    Email: customer@nexticket.com
    Password: customer123
 
@@ -22,7 +26,8 @@ in Firestore with the appropriate roles based on email patterns.
 
 The role assignment logic is in components/auth/auth-provider.tsx:
 - admin@nexticket.com -> admin role
-- organizer@nexticket.com -> organizer role  
+- organizer@nexticket.com -> organizer role
+- venue@nexticket.com -> venue_owner role
 - customer@nexticket.com -> customer role
 */
 
@@ -36,7 +41,8 @@ import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 const auth = getAuth();
 const demoUsers = [
   { email: 'admin@nexticket.com', password: 'admin123' },
-  { email: 'organizer@nexticket.com', password: 'organizer123' }, 
+  { email: 'organizer@nexticket.com', password: 'organizer123' },
+  { email: 'venue@nexticket.com', password: 'venue123' },
   { email: 'customer@nexticket.com', password: 'customer123' }
 ];
 

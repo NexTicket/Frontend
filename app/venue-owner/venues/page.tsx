@@ -35,6 +35,7 @@ interface Venue {
   description?: string;
   images?: string[];
   featuredImage?: string;
+  amenities?: string[];
   status?: string;
   totalEvents?: number;
   monthlyRevenue?: number;
@@ -102,6 +103,7 @@ export default function VenueOwnerVenues() {
             description: venue.description || 'No description available',
             images: Array.isArray(venue.images) ? venue.images : (venue.image ? [venue.image] : []),
             featuredImage: venue.featuredImage || venue.image || (Array.isArray(venue.images) ? venue.images[0] : '') || '',
+            amenities: Array.isArray(venue.amenities) ? venue.amenities : [],
             status: 'active',
             totalEvents: 0,
             monthlyRevenue: 0,
@@ -166,6 +168,7 @@ export default function VenueOwnerVenues() {
             description: venue.description || 'No description available',
             images: Array.isArray(venue.images) ? venue.images : (venue.image ? [venue.image] : []),
             featuredImage: venue.featuredImage || venue.image || (Array.isArray(venue.images) ? venue.images[0] : '') || '',
+            amenities: Array.isArray(venue.amenities) ? venue.amenities : [],
             status: 'active',
             totalEvents: 0,
             monthlyRevenue: 0,
@@ -226,6 +229,19 @@ export default function VenueOwnerVenues() {
             </Link>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  // Show loading while venues are being fetched
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#191C24' }}>
+        <Loading
+          size="lg"
+          text="Loading Your Venues..."
+          className="text-white"
+        />
       </div>
     );
   }
@@ -365,15 +381,7 @@ export default function VenueOwnerVenues() {
           </motion.div>
 
           {/* Loading State */}
-          {loading ? (
-            <motion.div variants={itemVariants} className="flex items-center justify-center py-20">
-              <Loading
-                size="lg"
-                text="Loading Venues..."
-                className="text-white"
-              />
-            </motion.div>
-          ) : error ? (
+          {error ? (
             <motion.div variants={itemVariants} className="text-center py-20">
               <div className="backdrop-blur-xl border rounded-2xl p-12 max-w-md mx-auto shadow-xl bg-card border-border">
                 <motion.div
@@ -476,6 +484,37 @@ export default function VenueOwnerVenues() {
                     <p className="text-sm leading-relaxed line-clamp-2" >
                       {venue.description || 'Premium venue space with modern amenities and exceptional service.'}
                     </p>
+
+                    {/* Amenities */}
+                    {venue.amenities && venue.amenities.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {venue.amenities.slice(0, 4).map((amenity: string, idx: number) => (
+                          <span
+                            key={idx}
+                            className="px-2 py-1 rounded-full text-xs font-medium border"
+                            style={{
+                              backgroundColor: '#39FD48' + '20',
+                              borderColor: '#39FD48' + '50',
+                              color: '#39FD48'
+                            }}
+                          >
+                            {amenity}
+                          </span>
+                        ))}
+                        {venue.amenities.length > 4 && (
+                          <span
+                            className="px-2 py-1 rounded-full text-xs font-medium border"
+                            style={{
+                              backgroundColor: '#ABA8A9' + '20',
+                              borderColor: '#ABA8A9' + '50',
+                              color: '#ABA8A9'
+                            }}
+                          >
+                            +{venue.amenities.length - 4} more
+                          </span>
+                        )}
+                      </div>
+                    )}
 
                     {/* Stats Grid */}
                     <div className="grid grid-cols-2 gap-4">

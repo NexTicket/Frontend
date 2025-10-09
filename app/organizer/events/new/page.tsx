@@ -24,7 +24,6 @@ function NewEventPageInner() {
     startDate: "",
     endDate: "",
     category: "",
-    type: "", // Add event type field
     startDateDate: "",
     startDateTime: "",
     startHour: "",
@@ -46,10 +45,10 @@ function NewEventPageInner() {
     featuredImage?: string;
     seatMap?: Record<string, unknown>;
     description?: string;
+    type?: string;
     tenant?: {
       name: string;
     };
-    type?: string;
   };
 
   type SeatMapSection = {
@@ -82,25 +81,6 @@ function NewEventPageInner() {
   const [eventAdminEmail, setEventAdminEmail] = useState("");
   const [checkInEmails, setCheckInEmails] = useState<string[]>([""]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-
-  // Venue type mapping based on event type
-  const getVenueTypesForEventType = (eventType: string): string[] => {
-    switch (eventType) {
-      case 'MOVIE':
-        return ['MOVIE_THEATER'];
-      case 'EVENT':
-        return ['STADIUM_INDOOR', 'STADIUM_OUTDOOR', 'THEATRE', 'CONFERENCE_HALL', 'MUSIC_VENUE', 'OPEN_AREA'];
-      default:
-        return ['STADIUM_INDOOR', 'STADIUM_OUTDOOR', 'THEATRE', 'CONFERENCE_HALL', 'MUSIC_VENUE', 'MOVIE_THEATER', 'OPEN_AREA'];
-    }
-  };
-
-  // Filter venues based on selected event type
-  const filteredVenues = venues.filter(venue => {
-    if (!form.type) return true; // Show all if no event type selected
-    const allowedVenueTypes = getVenueTypesForEventType(form.type);
-    return venue.type && allowedVenueTypes.includes(venue.type);
-  });
 
   useEffect(() => {
     async function loadVenues() {
@@ -169,9 +149,9 @@ function NewEventPageInner() {
   const nextStep = () => {
     console.log('🎯 nextStep called:', { currentStep, form: form });
     if (currentStep === 1) {
-      const missing = !form.title.trim() || !form.category.trim() || !form.type.trim() || !form.startDateDate.trim() || !form.startHour.trim() || !form.startMinute.trim();
+      const missing = !form.title.trim() || !form.category.trim() || !form.startDateDate.trim() || !form.startHour.trim() || !form.startMinute.trim();
       if (missing) {
-        setError("Title, category, event type, start date and start time are required.");
+        setError("Title, category, start date and start time are required.");
         return;
       }
       if (form.endDateDate && form.endHour && form.endMinute) {
@@ -214,8 +194,8 @@ function NewEventPageInner() {
   const removePoster = () => setForm(prev => ({ ...prev, poster: "" }));
 
   const handleSubmit = async () => {
-    if (!form.title.trim() || !form.category.trim() || !form.type.trim() || !form.startDateDate.trim() || !form.startHour.trim() || !form.startMinute.trim()) {
-      setError("Title, category, event type, start date and start time are required.");
+    if (!form.title.trim() || !form.category.trim() || !form.startDateDate.trim() || !form.startHour.trim() || !form.startMinute.trim()) {
+      setError("Title, category, start date and start time are required.");
       return;
     }
     setSubmitting(true);
@@ -264,7 +244,7 @@ function NewEventPageInner() {
               return 'OTHER';
           }
         })(),
-        type: form.type,
+        type: 'EVENT',
         startDate: startDateIso,
         endDate: endDateIso,
         startTime,
@@ -385,23 +365,6 @@ function NewEventPageInner() {
                   <option value="Meetup" className="bg-background text-foreground">Meetup</option>
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: '#fff' }}>Event Type *</label>
-                <select 
-                  value={form.type} 
-                  onChange={e => onChange("type", e.target.value)} 
-                  className="w-full px-4 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2"
-                  style={{ 
-                    backgroundColor: '#191C24', 
-                    borderColor: greenBorder, 
-                    color: '#fff'
-                  }}
-                >
-                  <option value="" style={{ backgroundColor: '#191C24', color: '#fff' }}>Select event type</option>
-                  <option value="MOVIE" style={{ backgroundColor: '#191C24', color: '#fff' }}>Movie Screening</option>
-                  <option value="EVENT" style={{ backgroundColor: '#191C24', color: '#fff' }}>General Event</option>
-                </select>
-              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-2 text-foreground">Start Date *</label>
@@ -507,19 +470,14 @@ function NewEventPageInner() {
               <h3 className="text-2xl font-semibold" style={{ color: '#fff' }}>Venue Selection</h3>
               
               {/* Venue filtering info */}
-              {form.type && (
-                <div className="bg-blue-900/30 border border-blue-500/50 rounded-lg p-4">
-                  <div className="flex items-center space-x-2">
-                    <Building2 className="h-5 w-5 text-blue-400" />
-                    <span className="text-sm font-medium text-blue-300">Venue Filtering Active</span>
-                  </div>
-                  <p className="text-sm text-blue-200 mt-1">
-                    Showing venues suitable for <strong>{form.type === 'MOVIE' ? 'Movie Screenings' : 'General Events'}</strong>.
-                    {form.type === 'MOVIE' && ' Only movie theaters are displayed.'}
-                    {form.type === 'EVENT' && ' Conference halls, theaters, music venues, stadiums, and open areas are available.'}
+              {form.category && (
+                <div className="rounded-lg p-4" style={{ backgroundColor: '#191C24', borderColor: greenBorder, border: '1px solid' }}>
+                  <p className="text-sm" style={{ color: '#ABA8A9' }}>
+                    Showing venues suitable for <span className="font-semibold" style={{ color: '#fff' }}>{form.category}</span> events
                   </p>
                 </div>
               )}
+              
               {/* Venue cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {loadingVenues ? (
@@ -565,10 +523,11 @@ function NewEventPageInner() {
                             <Eye className="h-4 w-4 mr-2" />
                             View Details
                           </Button>
+
                         </div>
-                      </div>
-                    );
-                  })
+                      );
+                    });
+                  })()
                 )}
           </div>
 
@@ -576,7 +535,7 @@ function NewEventPageInner() {
               {form.venueId && (
                 <div className="rounded-xl border p-4 grid grid-cols-1 md:grid-cols-3 gap-4 bg-muted/30 border-primary/40">
                   {(() => {
-                    const v: VenueCard | undefined = filteredVenues.find((vv: VenueCard) => String(vv.id) === String(form.venueId));
+                    const v: VenueCard | undefined = venues.find((vv: VenueCard) => String(vv.id) === String(form.venueId));
                     const img = v?.featuredImage || v?.image || (v?.images?.[0] ?? '');
                     return (
                       <>
