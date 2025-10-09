@@ -57,10 +57,10 @@ export default function Home() {
   const featuredEvents = mockEvents.slice(0, 6);
   
   const categories = [
-    { name: 'Music', icon: Music, color: '#CBF83E', bgColor: '#CBF83E20' },
-    { name: 'Sports', icon: Trophy, color: '#0D6EFD', bgColor: '#0D6EFD20' },
-    { name: 'Theater', icon: Theater, color: '#39FD48', bgColor: '#39FD4820' },
-    { name: 'Comedy', icon: Heart, color: '#FFD60A', bgColor: '#FFD60A20' },
+    { name: 'Music', icon: Music, color: 'hsl(var(--primary))', bgColor: 'hsl(var(--primary) / 0.1)' },
+    { name: 'Sports', icon: Trophy, color: 'hsl(var(--secondary))', bgColor: 'hsl(var(--secondary) / 0.1)' },
+    { name: 'Theater', icon: Theater, color: 'hsl(var(--accent))', bgColor: 'hsl(var(--accent) / 0.1)' },
+    { name: 'Comedy', icon: Heart, color: 'hsl(var(--muted))', bgColor: 'hsl(var(--muted) / 0.1)' },
   ];
 
   const features = [
@@ -68,19 +68,19 @@ export default function Home() {
       icon: Shield,
       title: 'Secure Booking',
       description: 'Your tickets are protected with industry-standard security',
-      color: '#CBF83E'
+      color: 'hsl(var(--primary))'
     },
     {
       icon: Zap,
       title: 'Instant Confirmation',
       description: 'Get your tickets immediately after purchase',
-      color: '#0D6EFD'
+      color: 'hsl(var(--secondary))'
     },
     {
       icon: Clock,
       title: '24/7 Support',
       description: 'Our team is here to help whenever you need assistance',
-      color: '#39FD48'
+      color: 'hsl(var(--accent))'
     }
   ];
 
@@ -88,35 +88,35 @@ export default function Home() {
     {
       title: 'Happy Customers',
       value: '10K+',
-      icon: <Users size={24} style={{ color: '#CBF83E' }} />,
+      icon: <Users size={24} className="text-primary" />,
       description: 'Satisfied users'
     },
     {
       title: 'Events Hosted',
       value: '500+',
-      icon: <Calendar size={24} style={{ color: '#CBF83E' }} />,
+      icon: <Calendar size={24} className="text-primary" />,
       description: 'Successfully organized'
     },
     {
       title: 'Revenue Generated',
       value: 'LKR 2M+',
-      icon: <DollarSign size={24} style={{ color: '#CBF83E' }} />,
+      icon: <DollarSign size={24} className="text-primary" />,
       description: 'For our partners'
     },
     {
       title: 'Success Rate',
       value: '99.9%',
-      icon: <TrendingUp size={24} style={{ color: '#CBF83E' }} />,
+      icon: <TrendingUp size={24} className="text-primary" />,
       description: 'Event completion'
     }
   ];
 
   return (
-    <div className="min-h-screen" style={{ background: '#191C24' }}>
+    <div className="min-h-screen bg-background">
       {/* Background Elements */}
-      <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-20" style={{ backgroundColor: '#ABA8A9' }}></div>
-      <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-15" style={{ backgroundColor: '#D8DFEE' }}></div>
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl opacity-10" style={{ backgroundColor: '#ABA8A9' }}></div>
+      <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-20 bg-muted"></div>
+      <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-15 bg-muted"></div>
+      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl opacity-10 bg-muted"></div>
       
       {/* Content Container */}
       <div className="relative z-10">
@@ -135,16 +135,11 @@ export default function Home() {
                   <motion.div 
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="mb-8 p-6 backdrop-blur-xl border rounded-2xl shadow-xl mx-auto max-w-md" 
-                    style={{ 
-                      backgroundColor: '#191C24', 
-                      borderColor: '#39FD48' + '50',
-                      boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' 
-                    }}
+                    className="mb-8 p-6 backdrop-blur-xl border rounded-2xl shadow-xl mx-auto max-w-md bg-card border-border"
                   >
                     <div className="flex items-center justify-center space-x-3">
-                      <Activity className="h-6 w-6" style={{ color: '#CBF83E' }} />
-                      <p className="text-lg font-medium" style={{ color: '#fff' }}>
+                      <Activity className="h-6 w-6 text-primary" />
+                      <p className="text-lg font-medium text-foreground">
                         Welcome back, {userProfile.firstName || 'User'}!
                       </p>
                     </div>
@@ -155,8 +150,7 @@ export default function Home() {
                   initial={{ opacity: 0, y: 30 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, ease: "easeOut" }}
-                  className="text-4xl md:text-6xl lg:text-7xl font-bold mb-8"
-                  style={{ color: '#fff' }}
+                  className="text-4xl md:text-6xl lg:text-7xl font-bold mb-8 text-foreground"
                 >
                   Discover Amazing{' '}
                   <span style={{ 
@@ -186,13 +180,7 @@ export default function Home() {
                   transition={{ delay: 0.5, duration: 0.6 }}
                   className="max-w-2xl mx-auto mb-12"
                 >
-                  <div className="backdrop-blur-xl border rounded-2xl p-4 shadow-xl" 
-                    style={{ 
-                      backgroundColor: '#191C24', 
-                      borderColor: '#0D6EFD' + '30',
-                      boxShadow: '0 25px 50px -12px rgba(74, 144, 226, 0.1)' 
-                    }}
-                  >
+                  <div className="backdrop-blur-xl border rounded-2xl p-4 shadow-xl bg-card border-border">
                     <div className="flex flex-col sm:flex-row gap-4">
                       <div className="flex-1 relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5" style={{ color: '#ABA8A9' }} />
@@ -201,18 +189,12 @@ export default function Home() {
                           placeholder="Search events, artists, venues..."
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
-                          className="w-full pl-10 pr-4 py-3 rounded-xl border-0 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          style={{ 
-                            backgroundColor: '#191C24', 
-                            color: '#fff',
-                            border: '1px solid #39FD48' + '30'
-                          }}
+                          className="w-full pl-10 pr-4 py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground border-border placeholder:text-muted-foreground"
                         />
                       </div>
                       <Button 
                         size="lg" 
-                        className="px-8 py-3 text-white font-medium rounded-xl shadow-lg transition-all duration-200 hover:scale-105 hover:opacity-90"
-                        style={{ background: '#0D6EFD' }}
+                        className="px-8 py-3 font-medium rounded-xl shadow-lg transition-all duration-200 hover:scale-105 hover:opacity-90 bg-primary text-primary-foreground hover:bg-primary/90"
                       >
                         <Search className="mr-2 h-5 w-5" />
                         Search Events
@@ -231,11 +213,7 @@ export default function Home() {
                   <Button
                     size="lg"
                     asChild
-                    className="px-8 py-4 text-lg font-medium rounded-xl shadow-lg transition-all duration-200 group"
-                    style={{
-                      background: '#0D6EFD',
-                      color: '#FFFFFF'
-                    }}
+                    className="px-8 py-4 text-lg font-medium rounded-xl shadow-lg transition-all duration-200 group bg-primary text-primary-foreground"
                   >
                     <Link href="/events" className="flex items-center justify-center gap-2">
                       <span>Browse All Events</span>
@@ -270,20 +248,14 @@ export default function Home() {
                   key={index}
                   variants={itemVariants}
                   whileHover={{ scale: 1.02, y: -2 }}
-                  className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl hover:shadow-md transition-all duration-200"
-                  style={{ 
-                    backgroundColor: '#191C24', 
-                    borderColor: '#39FD48' + '50',
-                    boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' 
-                  }}
-                >
+                  className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl hover:shadow-md transition-all duration-200 bg-card border-border">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
-                      <p className="text-sm font-medium mb-1" style={{ color: '#fff' }}>{stat.title}</p>
-                      <div className="text-3xl font-bold mb-1" style={{ color: '#ABA8A9' }}>{stat.value}</div>
-                      <p className="text-xs" style={{ color: '#ABA8A9' }}>{stat.description}</p>
+                      <p className="text-sm font-medium mb-1 text-foreground">{stat.title}</p>
+                      <div className="text-3xl font-bold mb-1 text-primary">{stat.value}</div>
+                      <p className="text-xs text-muted-foreground">{stat.description}</p>
                     </div>
-                    <div className="rounded-lg p-3 ml-4" style={{ backgroundColor: '#D8DFEE' + '40' }}>
+                    <div className="rounded-lg p-3 ml-4 bg-primary/20">
                       {stat.icon}
                     </div>
                   </div>
@@ -308,18 +280,12 @@ export default function Home() {
                   <motion.div
                     key={index}
                     whileHover={{ scale: 1.05, y: -5 }}
-                    className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl hover:shadow-md transition-all duration-200 group"
-                    style={{ 
-                      backgroundColor: '#191C24', 
-                      borderColor: category.color + '30',
-                      boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' 
-                    }}
-                  >
+                    className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl hover:shadow-md transition-all duration-200 group bg-card border-border">
                     <Link href={`/events?category=${category.name.toLowerCase()}`}>
                       <div className="rounded-xl p-4 w-fit mx-auto mb-4 group-hover:scale-110 transition-transform" style={{ backgroundColor: category.bgColor }}>
                         <Icon className="h-8 w-8" style={{ color: category.color }} />
                       </div>
-                      <h3 className="text-lg font-semibold text-center" style={{ color: '#fff' }}>{category.name}</h3>
+                      <h3 className="text-lg font-semibold text-center text-foreground">{category.name}</h3>
                     </Link>
                   </motion.div>
                 );
@@ -350,16 +316,11 @@ export default function Home() {
               size="lg"
               variant="outline"
               asChild
-              className="px-8 py-4 text-lg font-medium rounded-xl transition-all duration-200 hover:shadow-lg flex items-center justify-center gap-2 group"
-              style={{
-                borderColor: '#39FD48',
-                color: '#39FD48',
-                backgroundColor: 'transparent'
-              }}
+              className="px-8 py-4 text-lg font-medium rounded-xl transition-all duration-200 hover:shadow-lg flex items-center justify-center gap-2 group border-primary text-primary bg-transparent hover:bg-primary/10"
               >
               <Link href="/events" className="flex items-center gap-2">
-                <span className="transition-colors duration-200 group-hover:text-[#CBF83E]">View All Events</span>
-                <ArrowRight className="h-5 w-5 transition-transform duration-200 group-hover:translate-x-1 group-hover:text-[#CBF83E]" />
+                <span className="transition-colors duration-200 group-hover:text-primary">View All Events</span>
+                <ArrowRight className="h-5 w-5 transition-transform duration-200 group-hover:translate-x-1 group-hover:text-primary" />
               </Link>
               </Button>
             </motion.div>
@@ -368,8 +329,8 @@ export default function Home() {
           {/* Features Section */}
           <section className="py-16 px-4 sm:px-6 lg:px-8">
             <motion.div variants={itemVariants} className="text-center mb-12">
-              <h2 className="text-3xl font-bold mb-4" style={{ color: '#fff' }}>Why Choose NexTicket?</h2>
-              <p className="text-xl" style={{ color: '#ABA8A9' }}>
+              <h2 className="text-3xl font-bold mb-4 text-foreground">Why Choose NexTicket?</h2>
+              <p className="text-xl text-muted-foreground">
                 The best way to discover and book event tickets
               </p>
             </motion.div>
@@ -381,18 +342,12 @@ export default function Home() {
                   <motion.div 
                     key={index} 
                     whileHover={{ scale: 1.02, y: -5 }}
-                    className="text-center backdrop-blur-xl border rounded-2xl p-8 shadow-xl hover:shadow-md transition-all duration-200"
-                    style={{ 
-                      backgroundColor: '#191C24', 
-                      borderColor: feature.color + '30',
-                      boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' 
-                    }}
-                  >
+                    className="text-center backdrop-blur-xl border rounded-2xl p-8 shadow-xl hover:shadow-md transition-all duration-200 bg-card border-border">
                     <div className="rounded-xl p-4 w-fit mx-auto mb-6" style={{ backgroundColor: feature.color + '20' }}>
                       <Icon className="h-8 w-8" style={{ color: feature.color }} />
                     </div>
-                    <h3 className="text-xl font-semibold mb-3" style={{ color: '#fff' }}>{feature.title}</h3>
-                    <p style={{ color: '#ABA8A9' }}>{feature.description}</p>
+                    <h3 className="text-xl font-semibold mb-3 text-foreground">{feature.title}</h3>
+                    <p className="text-muted-foreground">{feature.description}</p>
                   </motion.div>
                 );
               })}
@@ -404,20 +359,9 @@ export default function Home() {
             <motion.div 
               variants={itemVariants} 
               whileHover={{ scale: 1.01, y: -2 }}
-              className="backdrop-blur-xl border rounded-3xl p-12 shadow-xl text-center relative overflow-hidden" 
-              style={{ 
-                backgroundColor: '#191C24', 
-                borderColor: '#0D6EFD' + '50',
-                boxShadow: '0 25px 50px -12px rgba(13, 110, 253, 0.2)' 
-              }}
-            >
+              className="backdrop-blur-xl border rounded-3xl p-12 shadow-xl text-center relative overflow-hidden bg-card border-border">
               {/* Background gradient overlay */}
-              <div 
-                className="absolute inset-0 opacity-5 rounded-3xl"
-                style={{ 
-                  background: 'linear-gradient(135deg, #CBF83E, #39FD48, #0D6EFD)' 
-                }}
-              />
+              <div className="absolute inset-0 opacity-5 rounded-3xl bg-gradient-to-br from-primary to-secondary"></div>
               
               {/* Content */}
               <div className="relative z-10">
@@ -428,23 +372,18 @@ export default function Home() {
                   className="mb-8"
                 >
                   <div className="flex items-center justify-center mb-6">
-                    <div className="rounded-xl p-3" style={{ backgroundColor: '#0D6EFD' + '20' }}>
-                      <ArrowRight className="h-8 w-8" style={{ color: '#CBF83E' }} />
+                    <div className="rounded-xl p-3 bg-primary/20">
+                      <ArrowRight className="h-8 w-8 text-primary" />
                     </div>
                   </div>
-                  <h2 className="text-3xl md:text-4xl font-bold mb-6" style={{ color: '#fff' }}>
+                  <h2 className="text-3xl md:text-4xl font-bold mb-6 text-foreground">
                     Ready to Find Your Next{' '}
-                    <span style={{ 
-                      background: 'linear-gradient(135deg, #CBF83E, #39FD48)',
-                      WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent',
-                      backgroundClip: 'text'
-                    }}>
+                    <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
                       Adventure
                     </span>
                     ?
                   </h2>
-                  <p className="text-xl mb-8" style={{ color: '#ABA8A9' }}>
+                  <p className="text-xl mb-8 text-muted-foreground">
                     Join thousands of event-goers who trust NexTicket for their entertainment needs
                   </p>
                 </motion.div>
@@ -458,12 +397,7 @@ export default function Home() {
                   <Button 
                     size="lg" 
                     asChild
-                    className="px-8 py-4 text-lg font-medium rounded-xl shadow-lg transition-all duration-200 group hover:scale-105"
-                    style={{ 
-                      background: '#0D6EFD',
-                      color: '#FFFFFF'
-                    }}
-                  >
+                    className="px-8 py-4 text-lg font-medium rounded-xl shadow-lg transition-all duration-200 group hover:scale-105 bg-primary text-primary-foreground hover:bg-primary/90">
                     <Link href="/events" className="flex items-center justify-center gap-2">
                       <span>Start Exploring</span>
                       <ArrowRight className="ml-2 h-5 w-5 transition-transform duration-200 group-hover:translate-x-1" />
@@ -473,23 +407,7 @@ export default function Home() {
                     size="lg" 
                     variant="outline" 
                     asChild
-                    className="px-8 py-4 text-lg font-medium rounded-xl transition-all duration-200 hover:scale-105 group"
-                    style={{ 
-                      borderColor: '#39FD48',
-                      color: '#39FD48',
-                      backgroundColor: 'transparent'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#39FD48' + '10';
-                      e.currentTarget.style.borderColor = '#CBF83E';
-                      e.currentTarget.style.color = '#CBF83E';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                      e.currentTarget.style.borderColor = '#39FD48';
-                      e.currentTarget.style.color = '#39FD48';
-                    }}
-                  >
+                    className="px-8 py-4 text-lg font-medium rounded-xl transition-all duration-200 hover:scale-105 group border-primary text-primary bg-transparent hover:bg-primary/10 hover:text-primary">
                     <Link href="/auth/signup" className="flex items-center gap-2">
                       <span>Create Account</span>
                     </Link>
