@@ -5,9 +5,17 @@ interface LockSeatsRequest {
 }
 
 interface LockSeatsResponse {
-  success: boolean;
+  success?: boolean;
   message?: string;
   locked_seats?: string[];
+  order_id?: string;
+  user_id?: string;
+  seat_ids?: string[];
+  event_id?: number;
+  expires_in_seconds?: number;
+  expires_at?: string;
+  payment_intent_id?: string;
+  client_secret?: string;
 }
 
 interface UserLockedSeatsResponse {
@@ -87,6 +95,8 @@ export async function getUserLockedSeats(): Promise<UserLockedSeatsResponse> {
   }
 }
 
+
+
 export async function lockSeats({
   event_id,
   seat_ids,
@@ -116,7 +126,7 @@ export async function lockSeats({
     }
     
     const token = await user.getIdToken();
-    
+
     const response = await fetch('http://localhost:5000/ticket_service/api/ticket-locking/lock-seats', {
       method: 'POST',
       headers: {

@@ -430,8 +430,6 @@ export default function CheckoutPage() {
                 {/* Payment Form */}
                 <Elements stripe={stripePromise}>
                   <PaymentForm 
-                    orderId={orderId}
-                    total={total}
                     onPaymentSuccess={handlePaymentSuccess}
                     onPaymentError={handlePaymentError}
                   />

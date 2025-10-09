@@ -53,7 +53,7 @@ export function BookingSummary({
   checkoutUrl = "/checkout",
   className = "",
   eventId,
-  bulkTicketId = "1"
+  bulkTicketId = "3"
 }: BookingSummaryProps) {
   const [isLocking, setIsLocking] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
@@ -72,14 +72,27 @@ export function BookingSummary({
     try {
       const seatIds = selectedSeatsData.map(seat => `${seat.section}${seat.row}${seat.number}`);
       console.log('Locking seats:', seatIds);
-      await lockSeats({
-        event_id: 1, // Hardcoded to 1 for now
+      const response = await lockSeats({
+        event_id: eventId || 1, // Use provided eventId or default to 1
         seat_ids: seatIds,
         bulk_ticket_id: bulkTicketId
       });
 
-      // Proceed to checkout after successful seat locking
-      window.location.href = checkoutUrl;
+      // Store the order information in sessionStorage to use in checkout
+      if (response.order_id && response.client_secret) {
+        sessionStorage.setItem('checkoutData', JSON.stringify({
+          orderId: response.order_id,
+          clientSecret: response.client_secret,
+          paymentIntentId: response.payment_intent_id,
+          total: (totalPrice + serviceFee).toFixed(2),
+          expiresAt: response.expires_at
+        }));
+        
+        // Proceed to checkout after successful seat locking
+        window.location.href = checkoutUrl;
+      } else {
+        throw new Error('Invalid response from server');
+      }
     } catch (error) {
       console.error('Failed to lock seats:', error);
       alert('Failed to lock seats. Please try again.');

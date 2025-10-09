@@ -1,16 +1,21 @@
 "use client"
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { Button } from '@/components/ui/button';
 import { Lock } from 'lucide-react';
-import { createPaymentIntent, completeOrder, updateOrderStatus } from '@/lib/api';
 
 interface PaymentFormProps {
-  orderId: number;
-  total: number;
   onPaymentSuccess: () => void;
   onPaymentError: (error: string) => void;
+}
+
+interface CheckoutData {
+  orderId: string;
+  clientSecret: string;
+  paymentIntentId?: string;
+  total: string;
+  expiresAt?: string;
 }
 
 const cardElementOptions = {
@@ -30,10 +35,27 @@ const cardElementOptions = {
   },
 };
 
-export default function PaymentForm({ orderId, total, onPaymentSuccess, onPaymentError }: PaymentFormProps) {
+export default function PaymentForm({ onPaymentSuccess, onPaymentError }: PaymentFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const [processing, setProcessing] = useState(false);
+  const [checkoutData, setCheckoutData] = useState<CheckoutData | null>(null);
+
+  // Load checkout data from sessionStorage
+  useEffect(() => {
+    const storedData = sessionStorage.getItem('checkoutData');
+    if (storedData) {
+      try {
+        const parsedData = JSON.parse(storedData) as CheckoutData;
+        setCheckoutData(parsedData);
+      } catch (error) {
+        console.error('Failed to parse checkout data:', error);
+        onPaymentError('Payment information is missing or invalid. Please try again.');
+      }
+    } else {
+      onPaymentError('No payment information found. Please select seats again.');
+    }
+  }, [onPaymentError]);
 
   const handlePayment = async () => {
     if (!stripe || !elements) {
@@ -41,43 +63,33 @@ export default function PaymentForm({ orderId, total, onPaymentSuccess, onPaymen
       return;
     }
 
+    if (!checkoutData || !checkoutData.clientSecret || !checkoutData.orderId) {
+      onPaymentError('Payment information is missing. Please try again.');
+      return;
+    }
+
     setProcessing(true);
 
     try {
-      // Update order status to pending
-      await updateOrderStatus(orderId, 'pending');
-
-      // Create payment intent
-      const { client_secret } = await createPaymentIntent(total, orderId);
-
       // Get card element
       const cardElement = elements.getElement(CardElement);
       if (!cardElement) {
         throw new Error('Card element not found');
       }
 
-      // Confirm payment
-      const { error, paymentIntent } = await stripe.confirmCardPayment(client_secret, {
+      // Confirm payment using the client_secret from checkout data
+      const { error, paymentIntent } = await stripe.confirmCardPayment(checkoutData.clientSecret, {
         payment_method: {
           card: cardElement,
           billing_details: {
-            // Billing details here from form data
+            // You can add billing details here if needed
           },
         },
       });
 
-      if (error) {
-        console.error('Payment failed:', error);
-        await updateOrderStatus(orderId, 'failed');
-        onPaymentError(error.message || 'Payment failed');
-      } else if (paymentIntent.status === 'succeeded') {
-        // Complete the order
-        await completeOrder(orderId, paymentIntent.id);
-        onPaymentSuccess();
-      }
+      
     } catch (error) {
       console.error('Payment error:', error);
-      await updateOrderStatus(orderId, 'failed');
       onPaymentError(error instanceof Error ? error.message : 'Payment failed');
     } finally {
       setProcessing(false);
@@ -102,7 +114,7 @@ export default function PaymentForm({ orderId, total, onPaymentSuccess, onPaymen
         onClick={handlePayment}
         className="w-full text-white hover:opacity-90 transition-opacity" 
         size="lg"
-        disabled={processing || !stripe}
+        disabled={processing || !stripe || !checkoutData}
         style={{ background: '#0D6EFD' }}
       >
         {processing ? (
@@ -113,7 +125,7 @@ export default function PaymentForm({ orderId, total, onPaymentSuccess, onPaymen
         ) : (
           <>
             <Lock className="h-4 w-4 mr-2" />
-            Complete Purchase - LKR {total}
+            Complete Purchase - LKR {checkoutData?.total || '0.00'}
           </>
         )}
       </Button>
