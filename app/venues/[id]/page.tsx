@@ -329,7 +329,7 @@ export default function VenueDetailPage({ params }: VenueDetailPageProps) {
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center" 
-                    style={{ background: 'linear-gradient(135deg, #0D6EFD, #39FD48)' }}>
+                    >
                     <Building2 className="h-24 w-24 text-white opacity-80" />
                   </div>
                 )}
@@ -351,7 +351,7 @@ export default function VenueDetailPage({ params }: VenueDetailPageProps) {
                     className="backdrop-blur-md hover:bg-white/20 rounded-full"
                     style={{ backgroundColor: 'rgba(25, 28, 36, 0.8)' }}
                   >
-                    <Share2 className="h-4 w-4 text-white" />
+                    <Share2 className="h-4 w-4 text-foreground" />
                   </Button>
                 </div>
               </div>
@@ -365,7 +365,7 @@ export default function VenueDetailPage({ params }: VenueDetailPageProps) {
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ duration: 0.6, delay: 0.2 }}
                       className="text-4xl md:text-5xl font-bold mb-3"
-                      style={{ color: '#fff' }}
+                      
                     >
                       {venue.name || 'Unnamed Venue'}
                     </motion.h1>
@@ -375,9 +375,9 @@ export default function VenueDetailPage({ params }: VenueDetailPageProps) {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.3 }}
                       className="flex items-center mb-3"
-                      style={{ color: '#ABA8A9' }}
+                      
                     >
-                      <MapPin className="h-5 w-5 mr-2" style={{ color: '#39FD48' }} />
+                      <MapPin className="h-5 w-5 mr-2"  />
                       {venue.location || 'Location not specified'}
                     </motion.div>
                     
@@ -386,7 +386,7 @@ export default function VenueDetailPage({ params }: VenueDetailPageProps) {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.4 }}
                       className="flex items-center space-x-6 text-sm mb-4"
-                      style={{ color: '#ABA8A9' }}
+                      
                     >
                       <div className="flex items-center">
                         <Users className="h-4 w-4 mr-1" style={{ color: '#0D6EFD' }} />
@@ -409,9 +409,9 @@ export default function VenueDetailPage({ params }: VenueDetailPageProps) {
                         transition={{ delay: 0.5 }}
                         className="inline-flex items-center px-4 py-2 rounded-xl border"
                         style={{ 
-                          backgroundColor: '#0D6EFD' + '20', 
+                           
                           borderColor: '#0D6EFD' + '30',
-                          color: '#fff'
+                          
                         }}
                       >
                         <Building2 className="h-4 w-4 mr-2" style={{ color: '#0D6EFD' }} />

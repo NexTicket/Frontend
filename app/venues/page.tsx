@@ -58,7 +58,7 @@ export default function VenuesPage() {
         
         if (err instanceof Error) {
           if (err.message.includes('fetch')) {
-            errorMessage += 'Unable to connect to the server. Make sure the backend is running on http://localhost:4000';
+            errorMessage += 'Unable to connect to the server. Make sure the API Gateway is running on http://localhost:5050';
           } else {
             errorMessage += err.message;
           }
