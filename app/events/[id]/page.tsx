@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, use } from 'react';
+import React,{ useState, use, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,7 @@ import {
   Twitter
 } from 'lucide-react';
 import { mockEvents, mockVenues } from '@/lib/mock-data';
+import { fetchEventById } from '@/lib/api';
 
 interface EventDetailPageProps {
   params: Promise<{
@@ -30,15 +31,47 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
   const [isLiked, setIsLiked] = useState(false);
   const [selectedTicketType, setSelectedTicketType] = useState('standard');
   const [activeTab, setActiveTab] = useState('summary');
+  const [loadedEvent, setLoadedEvent] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   // Unwrap params using React.use()
   const { id } = use(params);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await fetchEventById(id);
+        // Accept several possible shapes
+        const evt = (data?.data) || data;
+        setLoadedEvent(evt);
+      } catch (e: any) {
+        console.error('Failed to fetch event by id', e);
+        setError(e?.message || 'Failed to load event');
+        setLoadedEvent(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (id) load();
+  }, [id]);
   
-  const event = mockEvents.find(e => e.id === id);
-  const venue = event ? mockVenues.find(v => v.id === event.venueId) : null;
+  // Fallback to mock if API fails
+  const event = loadedEvent || mockEvents.find(e => String(e.id) === String(id));
+  const venue = event ? (event.venue || mockVenues.find((v: any) => String(v.id) === String(event.venueId))) : null;
 
   // Check if this is a movie
-  const isMovie = event && event.tags.includes('movie');
+  const isMovie = event && Array.isArray(event.tags) && event.tags.includes('movie');
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center text-muted-foreground">Loading event...</div>
+      </div>
+    );
+  }
 
   if (!event) {
     return (
@@ -60,23 +93,23 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
     {
       id: 'general',
       name: 'General Admission',
-      price: event.price * 300, // Convert to LKR (approx 1 USD = 300 LKR)
+      price: (event.price ? event.price : 100) * 300, // Convert to LKR (approx 1 USD = 300 LKR)
       description: 'Standard entry to the event',
-      available: event.availableTickets
+      available: event.availableTickets ?? 0
     },
     {
       id: 'vip',
       name: 'VIP Pass',
-      price: event.price * 300 * 2,
+      price: (event.price ? event.price : 100) * 300 * 2,
       description: 'Premium access with exclusive perks',
-      available: Math.floor(event.availableTickets * 0.1)
+      available: Math.floor((event.availableTickets ?? 0) * 0.1)
     },
     {
       id: 'student',
       name: 'Student Discount',
-      price: Math.floor(event.price * 300 * 0.8),
+      price: Math.floor((event.price ? event.price : 100) * 300 * 0.8),
       description: 'Special pricing for students with valid ID',
-      available: Math.floor(event.availableTickets * 0.3)
+      available: Math.floor((event.availableTickets ?? 0) * 0.3)
     }
   ];
 
@@ -101,7 +134,7 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                 {/* Movie Poster */}
                 <div className="flex-shrink-0">
                   <Image 
-                    src={event.image} 
+                    src={event.image || '/placeholder.png'} 
                     alt={event.title}
                     width={320}
                     height={480}
@@ -117,7 +150,7 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                   {/* Title and Language aligned with top of poster */}
                   <h1 className="text-5xl font-bold mb-2 uppercase">{event.title}</h1>
                   <p className="text-xl text-gray-300 mb-8 uppercase tracking-wide">
-                    {event.title.includes('Sinhala') || event.title.includes('සිංහල') ? 'SINHALA' : 'ENGLISH'}
+                    {String(event.title || '').includes('Sinhala') || String(event.title || '').includes('සිංහල') ? 'SINHALA' : 'ENGLISH'}
                   </p>
                   
                   {/* Play Button */}
@@ -132,10 +165,10 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                     <span className="px-3 py-1 border border-gray-600 rounded text-sm uppercase">
                       {event.category}
                     </span>
-                    {event.tags
-                      .filter(tag => tag !== 'movie')
+                    {Array.isArray(event.tags) && event.tags
+                      .filter((tag: string) => tag !== 'movie')
                       .slice(0, 2)
-                      .map(tag => (
+                      .map((tag: string) => (
                         <span key={tag} className="px-3 py-1 border border-gray-600 rounded text-sm uppercase">
                           {tag}
                         </span>
@@ -147,16 +180,11 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                   <div className="flex items-center gap-6 mb-6 text-gray-300">
                     <div className="flex items-center gap-2">
                       <Calendar className="h-5 w-5" />
-                      <span>{new Date(event.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                      <span>{new Date(event.startDate || event.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Clock className="h-5 w-5" />
-                      <span>
-                        {event.tags.includes('action') ? '2 hrs 30 mins' : 
-                         event.tags.includes('horror') ? '1 hr 45 mins' :
-                         event.tags.includes('comedy') ? '2 hrs 10 mins' :
-                         '2 hrs 20 mins'}
-                      </span>
+                      <span>{event.startTime || event.time}</span>
                     </div>
                   </div>
 
@@ -329,7 +357,7 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                               { label: 'Rating', value: 'R' },
                               {
                                 label: 'Language',
-                                value: event.title.includes('Sinhala') || event.title.includes('සිංහල') ? 'Sinhala' : 'English'
+                                value: String(event.title || '').includes('Sinhala') || String(event.title || '').includes('සිංහල') ? 'Sinhala' : 'English'
                               }
                             ].map((detail, i) => (
                               <div 
@@ -484,7 +512,7 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                     <div className="mb-6">
                       <div className="flex gap-3 mb-4">
                         <Image 
-                          src={event.image} 
+                          src={event.image || '/placeholder.png'} 
                           alt={event.title}
                           width={60}
                           height={90}
@@ -492,9 +520,9 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                         />
                         <div className="flex-1">
                           <h4 className="font-medium text-white text-sm">{event.title}</h4>
-                          <p className="text-gray-400 text-xs">{event.venue}</p>
+                          <p className="text-gray-400 text-xs">{event.venue?.name || event.venue || 'TBA'}</p>
                           <p className="text-gray-400 text-xs">
-                            {new Date(event.date).toLocaleDateString()} • {event.time}
+                            {new Date(event.startDate || event.date).toLocaleDateString()} • {event.startTime || event.time}
                           </p>
                         </div>
                       </div>
@@ -505,8 +533,8 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-400">Ticket ({selectedTicketType})</span>
                         <span className="text-white">
-                          LKR {(selectedTicketType === 'premium' ? Math.floor(event.price * 300 * 1.5) : 
-                            selectedTicketType === 'vip' ? event.price * 300 * 2 : event.price * 300).toLocaleString()}
+                          LKR {(selectedTicketType === 'premium' ? Math.floor((event.price ? event.price : 100) * 300 * 1.5) : 
+                            selectedTicketType === 'vip' ? (event.price ? event.price : 100) * 300 * 2 : (event.price ? event.price : 100) * 300).toLocaleString()}
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">
@@ -521,8 +549,8 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                         <div className="flex justify-between font-semibold">
                           <span className="text-white">Total Amount</span>
                           <span className="text-blue-400">
-                            LKR {((selectedTicketType === 'premium' ? Math.floor(event.price * 300 * 1.5) : 
-                              selectedTicketType === 'vip' ? event.price * 300 * 2 : event.price * 300) + 1500).toLocaleString()}
+                            LKR {((selectedTicketType === 'premium' ? Math.floor((event.price ? event.price : 100) * 300 * 1.5) : 
+                              selectedTicketType === 'vip' ? (event.price ? event.price : 100) * 300 * 2 : (event.price ? event.price : 100) * 300) + 1500).toLocaleString()}
                           </span>
                         </div>
                       </div>
@@ -574,7 +602,7 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
               {/* Event Image */}
               <div className="aspect-video bg-gradient-to-br from-blue-600/20 to-blue-600/10 rounded-lg mb-8 flex items-center justify-center animate-slideInFromTop overflow-hidden" style={{ animationDelay: '0.2s' }}>
                 <Image 
-                  src={event.image} 
+                  src={event.image || '/placeholder.png'} 
                   alt={event.title} 
                   width={800}
                   height={450}
@@ -590,7 +618,7 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                       {event.category}
                     </span>
                     <div className="flex items-center space-x-2">
-                      {event.tags.map((tag, index) => (
+                      {Array.isArray(event.tags) && event.tags.map((tag: string, index: number) => (
                         <span 
                           key={tag} 
                           className="text-xs text-gray-400 transition-all duration-300 hover:text-blue-400 hover:scale-110"
@@ -627,7 +655,7 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                   </div>
                   <div className="flex items-center transition-all duration-300 hover:text-blue-400">
                     <Users className="h-4 w-4 mr-1" />
-                    <span className="text-sm">{event.organizer}</span>
+                    <span className="text-sm">{event.organizer || 'Organizer'}</span>
                   </div>
                 </div>
 
@@ -645,7 +673,7 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                     <div>
                       <p className="font-medium">Date</p>
                       <p className="text-gray-400">
-                        {new Date(event.date).toLocaleDateString('en-US', {
+                        {new Date(event.startDate || event.date).toLocaleDateString('en-US', {
                           weekday: 'long',
                           year: 'numeric',
                           month: 'long',
@@ -659,7 +687,7 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                     <Clock className="h-5 w-5 text-blue-400 mr-3 transition-all duration-300 hover:scale-110" />
                     <div>
                       <p className="font-medium">Time</p>
-                      <p className="text-gray-400">{event.time}</p>
+                      <p className="text-gray-400">{event.startTime || event.time}</p>
                     </div>
                   </div>
 
@@ -667,12 +695,7 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                     <MapPin className="h-5 w-5 text-blue-400 mr-3 transition-all duration-300 hover:scale-110" />
                     <div>
                       <p className="font-medium">Venue</p>
-                      <p className="text-gray-400">{event.venue}</p>
-                      {venue && (
-                        <p className="text-sm text-gray-400">
-                          {venue.address}, {venue.city}
-                        </p>
-                      )}
+                      <p className="text-gray-400">{event.venue?.name || event.venue || 'TBA'}</p>
                     </div>
                   </div>
 
@@ -681,7 +704,7 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                     <div>
                       <p className="font-medium">Capacity</p>
                       <p className="text-gray-400">
-                        {event.availableTickets} of {event.capacity} available
+                        {(event.availableTickets ?? 0)} of {(event.capacity ?? 0)} available
                       </p>
                     </div>
                   </div>
@@ -689,7 +712,7 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
 
                 {venue && (
                   <div className="mt-6 pt-6 border-t border-gray-600 animate-fadeIn" style={{ animationDelay: '1.2s' }}>
-                    <Link href={`/venues/${venue.id}`}>
+                    <Link href={`/venues/${venue.id || venue._id || 'unknown'}`}>
                       <Button variant="outline" size="sm" className="transition-all duration-300 hover:scale-105 hover:border-blue-500">
                         View Venue Details
                       </Button>
@@ -702,18 +725,7 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
               {venue && (
                 <div className="bg-[#23232b] rounded-lg border border-gray-700 p-6 animate-slideInFromRight transition-all duration-500 hover:border-blue-500/30" style={{ animationDelay: '1.3s' }}>
                   <h3 className="text-xl font-semibold mb-4">About the Venue</h3>
-                  <p className="text-gray-400 mb-4">{venue.description}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {venue.amenities.map((amenity, index) => (
-                      <span 
-                        key={amenity} 
-                        className="px-2 py-1 bg-gray-700 text-gray-300 text-sm rounded transition-all duration-300 hover:bg-blue-600/20 hover:text-blue-400 hover:scale-105 animate-fadeIn"
-                        style={{ animationDelay: `${1.4 + index * 0.1}s` }}
-                      >
-                        {amenity}
-                      </span>
-                    ))}
-                  </div>
+                  <p className="text-gray-400 mb-4">{venue.description || 'No description provided.'}</p>
                 </div>
               )}
             </div>

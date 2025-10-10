@@ -52,6 +52,13 @@ export async function publicFetch(url: string, options: RequestInit = {}) {
   });
 }
 
+export const fetchVenueSeatMap = async (id: number | string) => {
+  const url = getApiUrl(`/venues/${id}/seats`);
+  const res = await publicFetch(url);
+  if (!res.ok) throw new Error("Failed to fetch venue seat map");
+  return res.json();
+};
+
 export async function fetchVenues() {
   // Use publicFetch since venues should be accessible to everyone
   const url = getVenueServiceUrl('/venues');
@@ -174,13 +181,19 @@ export async function uploadVenueImages(id: string, imageFiles: File[]) {
 }
 
 export async function fetchEvents() {
-  const res = await secureFetch(getVenueServiceUrl('/events/'));
+  const res = await publicFetch(getApiUrl('/events/'));
   if (!res.ok) throw new Error("Failed to fetch events");
   return res.json();
 }
 
+export async function fetchEventsByVenueId(venueId: number | string) {
+  const res = await publicFetch(getApiUrl(`/events/venue/${venueId}`));
+  if (!res.ok) throw new Error("Failed to fetch events for venue");
+  return res.json();
+}
+
 export async function fetchEventById(id: string) {
-  const res = await secureFetch(getVenueServiceUrl(`/events/${id}`));
+  const res = await secureFetch(getApiUrl(`/events/${id}`));
   if (!res.ok) throw new Error("Failed to fetch event");
   return res.json();
 }
