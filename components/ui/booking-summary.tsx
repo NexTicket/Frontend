@@ -8,6 +8,8 @@ import {
   ShoppingCart
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { lockSeats } from '@/lib/api_ticket';
+import { useState, useEffect } from 'react';
 
 interface Seat {
   id: string;
@@ -27,6 +29,8 @@ interface BookingSummaryProps {
   serviceFee?: number;
   checkoutUrl?: string;
   className?: string;
+  eventId?: number;
+  bulkTicketId?: string;
 }
 
 const itemVariants = {
@@ -47,8 +51,61 @@ export function BookingSummary({
   onClearAllSeats,
   serviceFee = 5.00,
   checkoutUrl = "/checkout",
-  className = ""
+  className = "",
+  eventId,
+  bulkTicketId = "3"
 }: BookingSummaryProps) {
+  const [isLocking, setIsLocking] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  const handleProceedToCheckout = async () => {
+    if (selectedSeatsData.length === 0) {
+      console.error('No seats selected');
+      return;
+    }
+
+    setIsLocking(true);
+    try {
+      const seatIds = selectedSeatsData.map(seat => `${seat.section}${seat.row}${seat.number}`);
+      console.log('Locking seats:', seatIds);
+      const response = await lockSeats({
+        event_id: eventId || 1, // Use provided eventId or default to 1
+        seat_ids: seatIds,
+        bulk_ticket_id: bulkTicketId
+      });
+
+      // Store the order information in sessionStorage to use in checkout
+      if (response.order_id && response.client_secret) {
+        sessionStorage.setItem('checkoutData', JSON.stringify({
+          orderId: response.order_id,
+          clientSecret: response.client_secret,
+          paymentIntentId: response.payment_intent_id,
+          total: (totalPrice + serviceFee).toFixed(2),
+          expiresAt: response.expires_at
+        }));
+        
+        // Proceed to checkout after successful seat locking
+        window.location.href = checkoutUrl;
+      } else {
+        throw new Error('Invalid response from server');
+      }
+    } catch (error) {
+      console.error('Failed to lock seats:', error);
+      alert('Failed to lock seats. Please try again.');
+    } finally {
+      setIsLocking(false);
+    }
+  };
+
+  // Prevent hydration mismatch by not rendering until client-side
+  if (!isMounted) {
+    return null;
+  }
+
   return (
     <motion.div 
       variants={itemVariants} 
@@ -121,15 +178,16 @@ export function BookingSummary({
             </div>
 
             {/* Checkout Button */}
-            <Link href={checkoutUrl}>
-              <Button 
-                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" 
-                size="lg"
-              >
-                <ShoppingCart className="mr-2 h-5 w-5" />
-                Proceed to Checkout
-              </Button>
-            </Link>
+            <Button 
+              onClick={handleProceedToCheckout}
+              disabled={isLocking}
+              className="w-full text-white hover:opacity-90 transition-opacity disabled:opacity-50" 
+              size="lg"
+              style={{ background: '#0D6EFD' }}
+            >
+              <ShoppingCart className="mr-2 h-5 w-5" />
+              {isLocking ? 'Locking Seats...' : 'Proceed to Checkout'}
+            </Button>
           </div>
         ) : (
           /* Empty State */

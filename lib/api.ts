@@ -21,9 +21,14 @@ function getVenueServiceUrl(endpoint: string): string {
   const trimmed = rawBase.replace(/\/$/, '');
   
   // For venue service, we assume the endpoint already includes the correct path
+  // If the base URL already ends with /api, use it as is
+  // If not, add /api to the base (to match backend API structure)
+  const base = trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
+  
+  // Ensure endpoint starts with /
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   
-  return `${trimmed}${cleanEndpoint}`;
+  return `${base}${cleanEndpoint}`;
 }
 
 // Utility function to construct user service URLs
@@ -197,7 +202,7 @@ export async function uploadVenueImages(id: string, imageFiles: File[]) {
   formData.append('images', firstImage); // Use 'images' to match the route
   
   console.log('📤 FormData created with image field name: images');
-  console.log('📤 Uploading to URL:', getApiUrl(`/venues/${id}/images`));
+  console.log('📤 Uploading to URL:', getVenueServiceUrl(`/venues/${id}/images`));
   
   const res = await secureFetch(getVenueServiceUrl(`/api/venues/${id}/images`), {
     method: 'POST',
@@ -407,7 +412,7 @@ export async function bootstrapAdmin(firebaseUid: string, email: string) {
 }
 
 export async function deleteVenue(id: string) {
-  const res = await secureFetch(getApiUrl(`/venues/deletevenue/${id}`), {
+  const res = await secureFetch(getVenueServiceUrl(`/venues/deletevenue/${id}`), {
     method: 'DELETE'
   });
   if (!res.ok) throw new Error("Failed to delete venue");

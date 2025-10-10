@@ -1,6 +1,6 @@
 "use client"
 
-import React,{ useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { 
@@ -14,8 +14,15 @@ import {
   Check,
   ShoppingCart
 } from 'lucide-react';
-import { mockEvents, mockSeats } from '@/lib/mock-data';
+import { mockEvents } from '@/lib/mock-data';
+import { getUserLockedSeats } from '@/lib/api_ticket';
 import { motion } from 'framer-motion';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements } from '@stripe/react-stripe-js';
+import PaymentForm from '@/components/checkout/PaymentForm';
+
+// Initialize Stripe
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 // Animation variants for smooth transitions
 const containerVariants = {
@@ -44,23 +51,117 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState('card');
   const [processing, setProcessing] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [selectedSeats, setSelectedSeats] = useState<Array<{
+    id: string;
+    section: string;
+    row: string;
+    number: number;
+    price: number;
+  }>>([]);
+  const [bulkTicketInfo, setBulkTicketInfo] = useState<{
+    bulk_ticket_id: number;
+    price_per_seat: number;
+    seat_type: string;
+  } | null>(null);
   
-  // Mock selected seats and event (in a real app, this would come from state/context)
-  const selectedSeats = mockSeats.filter(s => s.isSelected).slice(0, 2);
+  // Default event data
   const event = mockEvents[0];
+  const orderId = 1; // This should come from your order creation logic
   
-  const subtotal = selectedSeats.reduce((sum, seat) => sum + seat.price, 0);
+  // Calculate subtotal based on fetched seats and bulk_ticket_info
+  const pricePerSeat = bulkTicketInfo?.price_per_seat || 75; // Default to 75 if no bulk price
+  const subtotal = selectedSeats.length * pricePerSeat;
   const serviceFee = 5;
   const total = subtotal + serviceFee;
 
-  const handlePayment = async () => {
-    setProcessing(true);
+  // Fetch user's locked seats when the component mounts
+  useEffect(() => {
+    async function fetchLockedSeats() {
+      try {
+        setLoading(true);
+        const response = await getUserLockedSeats();
+        console.log('API response:', response);
+        
+        // Handle the actual response structure from your backend
+        if (response && response.seat_ids && response.seat_ids.length > 0) {
+          // Extract bulk ticket info if available
+          if (response.bulk_ticket_info?.additionalProp1) {
+            const bulkInfo = response.bulk_ticket_info.additionalProp1;
+            setBulkTicketInfo({
+              bulk_ticket_id: parseInt(response.cart_id, 10) || 1,
+              price_per_seat: bulkInfo?.price_per_ticket || 75,
+              seat_type: bulkInfo?.seat_type || 'Standard'
+            });
+            console.log('Bulk ticket info:', response.bulk_ticket_info);
+          }
+          
+          // Transform seat_ids into seat format
+          const seatsFromResponse = response.seat_ids.map((seatId: string, index: number) => {
+            // Parse seat_id format
+            let section = '';
+            let row = '';
+            let number = 0;
+            
+            // Try to match patterns like "Orchestra A7" or just "A7"
+            if (seatId.includes(' ')) {
+              // Format like "Orchestra A7"
+              const parts = seatId.split(' ');
+              section = parts[0];
+              
+              if (parts.length > 1) {
+                // Extract row and number from the second part (e.g., "A7")
+                const rowNumMatch = parts[1].match(/([A-Za-z]+)([0-9]+)$/);
+                if (rowNumMatch && rowNumMatch.length > 2) {
+                  row = rowNumMatch[1];
+                  number = parseInt(rowNumMatch[2], 10);
+                }
+              }
+            } else {
+              // Format like "A7" (no space)
+              section = 'Orchestra'; // Default section
+              const rowNumMatch = seatId.match(/([A-Za-z]+)([0-9]+)$/);
+              if (rowNumMatch && rowNumMatch.length > 2) {
+                row = rowNumMatch[1];
+                number = parseInt(rowNumMatch[2], 10);
+              }
+            }
+            
+            // Get price from bulk_ticket_info if available, otherwise use default
+            const price = response.bulk_ticket_info?.additionalProp1?.price_per_ticket || 75;
+            
+            return {
+              id: `${response.cart_id}-${index}`,
+              section,
+              row,
+              number,
+              price
+            };
+          });
+          
+          setSelectedSeats(seatsFromResponse);
+        } else {
+          console.error('Failed to get locked seats - invalid response format:', response);
+        }
+      } catch (error) {
+        console.error('Error fetching locked seats:', error instanceof Error ? error.message : 'Unknown error');
+        // Optionally set an error state here
+      } finally {
+        setLoading(false);
+      }
+    }
     
-    // Simulate payment processing
-    setTimeout(() => {
-      setProcessing(false);
-      setOrderComplete(true);
-    }, 2000);
+    fetchLockedSeats();
+  }, []);
+
+  const handlePaymentSuccess = () => {
+    setOrderComplete(true);
+    setPaymentError(null);
+  };
+
+  const handlePaymentError = (error: string) => {
+    setPaymentError(error);
   };
 
   if (orderComplete) {
@@ -168,83 +269,7 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              {/* Payment Method */}
-              <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl bg-card border-border">
-                <h3 className="text-lg font-semibold mb-4 text-foreground">Payment Method</h3>
-                
-                <div className="space-y-3 mb-6">
-                  <div className="flex items-center space-x-3">
-                    <input
-                      type="radio"
-                      id="card"
-                      name="payment"
-                      value="card"
-                      checked={paymentMethod === 'card'}
-                      onChange={(e) => setPaymentMethod(e.target.value)}
-                      className="h-4 w-4 focus:ring-2 accent-primary"
-                    />
-                    <label htmlFor="card" className="flex items-center space-x-2 text-muted-foreground">
-                      <CreditCard className="h-4 w-4 text-primary" />
-                      <span>Credit or Debit Card</span>
-                    </label>
-                  </div>
-                  
-                  <div className="flex items-center space-x-3">
-                    <input
-                      type="radio"
-                      id="paypal"
-                      name="payment"
-                      value="paypal"
-                      checked={paymentMethod === 'paypal'}
-                      onChange={(e) => setPaymentMethod(e.target.value)}
-                      className="h-4 w-4 focus:ring-2 accent-primary"
-                    />
-                    <label htmlFor="paypal" className="flex items-center space-x-2 text-muted-foreground">
-                      <div className="w-4 h-4 rounded-sm bg-blue-600"></div>
-                      <span>PayPal</span>
-                    </label>
-                  </div>
-                </div>
 
-                {paymentMethod === 'card' && (
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-2 text-muted-foreground">Card Number</label>
-                      <input
-                        type="text"
-                        className="w-full px-3 py-2 border rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 bg-background text-foreground border-border focus:ring-primary/50 placeholder:text-muted-foreground"
-                        placeholder="1234 5678 9012 3456"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium mb-2 text-muted-foreground">Expiry Date</label>
-                        <input
-                          type="text"
-                          className="w-full px-3 py-2 border rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 bg-background text-foreground border-border focus:ring-primary/50 placeholder:text-muted-foreground"
-                          placeholder="MM/YY"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-2 text-muted-foreground">CVV</label>
-                        <input
-                          type="text"
-                          className="w-full px-3 py-2 border rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 bg-background text-foreground border-border focus:ring-primary/50 placeholder:text-muted-foreground"
-                          placeholder="123"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2 text-muted-foreground">Name on Card</label>
-                      <input
-                        type="text"
-                        className="w-full px-3 py-2 border rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 bg-background text-foreground border-border focus:ring-primary/50 placeholder:text-muted-foreground"
-                        placeholder="John Doe"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
 
               {/* Billing Address */}
               <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl bg-card border-border">
@@ -290,8 +315,8 @@ export default function CheckoutPage() {
                   <h4 className="font-medium mb-2 text-foreground">{event.title}</h4>
                   <div className="space-y-1 text-sm text-muted-foreground">
                     <div className="flex items-center">
-                      <Calendar className="h-4 w-4 mr-2 text-primary" />
-                      {new Date(event.date).toLocaleDateString()}
+                      <Calendar className="h-4 w-4 mr-2" style={{ color: '#0D6EFD' }} />
+                      {event.date}
                     </div>
                     <div className="flex items-center">
                       <Clock className="h-4 w-4 mr-2 text-primary" />
@@ -308,59 +333,62 @@ export default function CheckoutPage() {
                 <div className="border-b pb-4 mb-4 border-border">
                   <h4 className="font-medium mb-2 text-foreground">Selected Seats</h4>
                   <div className="space-y-2">
-                    {selectedSeats.map(seat => (
-                      <div key={seat.id} className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">{seat.section} {seat.row}{seat.number}</span>
-                        <span className="text-primary font-medium">LKR {seat.price}</span>
-                      </div>
-                    ))}
+                    {loading ? (
+                      <div style={{ color: '#ABA8A9' }}>Loading your seats...</div>
+                    ) : selectedSeats.length > 0 ? (
+                      selectedSeats.map(seat => (
+                        <div key={seat.id} className="flex items-center justify-between text-sm">
+                          <span style={{ color: '#ABA8A9' }}>
+                            {/* Only show section name once, then row and number */}
+                            {seat.section === 'Orchestra' ? '' : `${seat.section} `}{seat.row}{seat.number}
+                          </span>
+                          <span style={{ color: '#CBF83E' }}>LKR {pricePerSeat}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div style={{ color: '#ABA8A9' }}>No seats selected</div>
+                    )}
                   </div>
                 </div>
 
                 {/* Price Breakdown */}
                 <div className="space-y-2 mb-6">
+                  {bulkTicketInfo && (
+                    <div className="flex items-center justify-between">
+                      <span style={{ color: '#ABA8A9' }}>Seat Type</span>
+                      <span style={{ color: '#fff' }}>{bulkTicketInfo.seat_type}</span>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Subtotal</span>
-                    <span className="text-foreground">LKR {subtotal}</span>
+                    <span style={{ color: '#ABA8A9' }}>Subtotal</span>
+                    <span style={{ color: '#fff' }}>{loading ? 'Calculating...' : `LKR ${subtotal}`}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Service fee</span>
                     <span className="text-muted-foreground">LKR {serviceFee}</span>
                   </div>
-                  <div className="flex items-center justify-between font-medium text-lg border-t pt-2 border-border">
-                    <span className="text-foreground">Total</span>
-                    <span className="text-primary font-semibold">LKR {total}</span>
+                  <div className="flex items-center justify-between font-medium text-lg border-t pt-2" style={{ borderColor: '#0D6EFD' + '30' }}>
+                    <span style={{ color: '#fff' }}>Total</span>
+                    <span style={{ color: '#CBF83E' }}>{loading ? 'Calculating...' : `LKR ${total}`}</span>
                   </div>
                 </div>
 
-                {/* Payment Button */}
-                <Button 
-                  onClick={handlePayment}
-                  className="w-full text-white hover:opacity-90 transition-opacity" 
-                  size="lg"
-                  disabled={processing}
-                  style={{ background: '#0D6EFD' }}
-                >
-                  {processing ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      
-                      Complete Purchase
-                    </>
-                  )}
-                </Button>
-
-                {/* Security Note */}
-                <div className="mt-4 p-3 rounded-lg" style={{ backgroundColor: '#39FD48' + '10' }}>
-                  <div className="flex items-center text-sm" style={{ color: '#ABA8A9' }}>
-                    <Lock className="h-4 w-4 mr-2" style={{ color: '#39FD48' }} />
-                    <span>Your payment information is secure and encrypted</span>
+                {/* Payment Error Display */}
+                {paymentError && (
+                  <div className="p-3 rounded-lg" style={{ backgroundColor: '#ef4444' + '20', borderColor: '#ef4444' + '50' }}>
+                    <p className="text-sm" style={{ color: '#ef4444' }}>
+                      {paymentError}
+                    </p>
                   </div>
-                </div>
+                )}
+
+                {/* Payment Form */}
+                <Elements stripe={stripePromise}>
+                  <PaymentForm 
+                    onPaymentSuccess={handlePaymentSuccess}
+                    onPaymentError={handlePaymentError}
+                  />
+                </Elements>
               </div>
             </motion.div>
           </div>
