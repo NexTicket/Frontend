@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { Button } from '@/components/ui/button';
-import { Lock } from 'lucide-react';
+import { Lock, Clock } from 'lucide-react';
 
 interface PaymentFormProps {
   onPaymentSuccess: () => void;
@@ -40,14 +40,24 @@ export default function PaymentForm({ onPaymentSuccess, onPaymentError }: Paymen
   const elements = useElements();
   const [processing, setProcessing] = useState(false);
   const [checkoutData, setCheckoutData] = useState<CheckoutData | null>(null);
+  const [countdown, setCountdown] = useState<string>('5:00');
+  const [timeLeft, setTimeLeft] = useState<number>(5 * 60); // 5 minutes in seconds
 
-  // Load checkout data from sessionStorage
+  // Load checkout data from sessionStorage and start countdown
   useEffect(() => {
     const storedData = sessionStorage.getItem('checkoutData');
     if (storedData) {
       try {
         const parsedData = JSON.parse(storedData) as CheckoutData;
         setCheckoutData(parsedData);
+        
+        // Calculate time remaining if expiresAt is available
+        if (parsedData.expiresAt) {
+          const expiryTime = new Date(parsedData.expiresAt).getTime();
+          const now = new Date().getTime();
+          const initialTimeLeft = Math.max(0, Math.floor((expiryTime - now) / 1000));
+          setTimeLeft(initialTimeLeft);
+        }
       } catch (error) {
         console.error('Failed to parse checkout data:', error);
         onPaymentError('Payment information is missing or invalid. Please try again.');
@@ -57,6 +67,33 @@ export default function PaymentForm({ onPaymentSuccess, onPaymentError }: Paymen
     }
   }, [onPaymentError]);
 
+  // Countdown timer
+  useEffect(() => {
+    if (timeLeft <= 0) {
+      onPaymentError('Time expired. Please select seats again.');
+      return;
+    }
+
+    const intervalId = setInterval(() => {
+      setTimeLeft(prevTime => {
+        const newTime = prevTime - 1;
+        if (newTime <= 0) {
+          clearInterval(intervalId);
+          onPaymentError('Time expired. Please select seats again.');
+          return 0;
+        }
+        return newTime;
+      });
+
+      // Format time for display
+      const minutes = Math.floor(timeLeft / 60);
+      const seconds = timeLeft % 60;
+      setCountdown(`${minutes}:${seconds < 10 ? '0' : ''}${seconds}`);
+    }, 1000);
+
+    return () => clearInterval(intervalId);
+  }, [timeLeft, onPaymentError]);
+
   const handlePayment = async () => {
     if (!stripe || !elements) {
       onPaymentError('Stripe has not loaded yet');
@@ -65,6 +102,12 @@ export default function PaymentForm({ onPaymentSuccess, onPaymentError }: Paymen
 
     if (!checkoutData || !checkoutData.clientSecret || !checkoutData.orderId) {
       onPaymentError('Payment information is missing. Please try again.');
+      return;
+    }
+
+    // Check if time expired
+    if (timeLeft <= 0) {
+      onPaymentError('Time expired. Please select seats again.');
       return;
     }
 
@@ -87,7 +130,19 @@ export default function PaymentForm({ onPaymentSuccess, onPaymentError }: Paymen
         },
       });
 
-      
+      if (error) {
+        console.error('Payment failed:', error);
+        onPaymentError(error.message || 'Payment failed');
+      } else if (paymentIntent.status === 'succeeded') {
+        // Clear checkout data from session storage
+        sessionStorage.removeItem('checkoutData');
+        
+        // Call the success callback
+        onPaymentSuccess();
+        
+        // Redirect to home page after successful payment
+        window.location.href = '/';
+      }
     } catch (error) {
       console.error('Payment error:', error);
       onPaymentError(error instanceof Error ? error.message : 'Payment failed');
@@ -129,6 +184,16 @@ export default function PaymentForm({ onPaymentSuccess, onPaymentError }: Paymen
           </>
         )}
       </Button>
+      
+      {/* Countdown Timer */}
+      <div className="p-3 rounded-lg mb-2" style={{ backgroundColor: '#0D6EFD' + '10' }}>
+        <div className="flex items-center justify-center text-sm">
+          <Clock className="h-4 w-4 mr-2" style={{ color: '#0D6EFD' }} />
+          <span style={{ color: timeLeft < 60 ? '#ef4444' : '#ABA8A9' }}>
+            Complete order within <span className="font-bold">{countdown}</span>
+          </span>
+        </div>
+      </div>
 
       {/* Security Note */}
       <div className="p-3 rounded-lg" style={{ backgroundColor: '#39FD48' + '10' }}>
