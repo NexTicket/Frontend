@@ -3,8 +3,8 @@
 import { useAuth } from '@/components/auth/auth-provider';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import axios from 'axios';
 import { Loading } from '@/components/ui/loading';
+import { fetchEventsByOrganizer } from '@/lib/api';
 
 export default function OrganizerLayout({ children }: { children: React.ReactNode }) {
   const { firebaseUser, userProfile, isLoading } = useAuth();
@@ -25,15 +25,14 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
         router.replace('/');
       } else if (userProfile && userProfile.role === 'organizer') {
         // Fetch events for this organizer from event_and_venue_service
-        const fetchOrganizerEvents = async () => {
+        const fetchOrganizerEventsData = async () => {
           setEventsLoading(true);
           try {
-            // Adjust the endpoint to match your event_and_venue_service controller/routes
-            // Example: /api/events/organizer/:organizerId
-            const response = await axios.get(
-              `${process.env.NEXT_PUBLIC_API_URL}/events/organizer/${userProfile.uid}`
-            );
-             const events = Array.isArray(response.data?.data) ? response.data.data : [];
+            // Use the API function that routes through API Gateway
+            const response = await fetchEventsByOrganizer(userProfile.uid);
+            const events = Array.isArray(response.data?.data) ? response.data.data : 
+                          Array.isArray(response.data) ? response.data : 
+                          Array.isArray(response) ? response : [];
             setEvents(events);
           } catch (error) {
             setEvents([]);
@@ -42,7 +41,7 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
             setEventsLoading(false);
           }
         };
-        fetchOrganizerEvents();
+        fetchOrganizerEventsData();
       }
     }
   }, [firebaseUser, userProfile, isLoading, router]);

@@ -1,7 +1,8 @@
 "use client"
 
-import React,{ useState } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { 
   ArrowLeft, 
@@ -15,23 +16,74 @@ import {
   Eye,
   Settings
 } from 'lucide-react';
-import { mockEvents, mockSeats } from '@/lib/mock-data';
+import { fetchEventById, fetchVenueSeatMap } from '@/lib/api';
+import { Loading } from '@/components/ui/loading';
 
 interface EventViewPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default function EventViewPage({ params }: EventViewPageProps) {
-  const event = mockEvents.find(e => e.id === params.id);
-  const eventSeats = mockSeats.filter(seat => seat.section !== ""); // Get all seats for this event
+  const router = useRouter();
+  const unwrappedParams = use(params);
+  const [event, setEvent] = useState<any>(null);
+  const [seatMap, setSeatMap] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  if (!event) {
+  useEffect(() => {
+    const loadEventData = async () => {
+      setLoading(true);
+      setError(null);
+      
+      try {
+        console.log('🔍 Fetching event with ID:', unwrappedParams.id);
+        
+        // Fetch event details
+        const eventResponse = await fetchEventById(unwrappedParams.id);
+        const eventData = eventResponse?.data || eventResponse;
+        console.log('✅ Event data fetched:', eventData);
+        setEvent(eventData);
+
+        // Fetch venue seat map if venue exists
+        // if (eventData?.venueId) {
+        //   try {
+        //     const seatMapResponse = await fetchVenueSeatMap(eventData.venueId);
+        //     const seatMapData = seatMapResponse?.data || seatMapResponse;
+        //     console.log('✅ Seat map fetched:', seatMapData);
+        //     setSeatMap(seatMapData);
+        //   } catch (seatMapError) {
+        //     // console.warn('⚠️ Could not load seat map:', seatMapError);
+        //     // Continue without seat map
+        //   }
+        // }
+      } catch (err: any) {
+        console.error('❌ Failed to load event:', err);
+        setError(err.message || 'Failed to load event');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadEventData();
+  }, [unwrappedParams.id]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loading size="lg" text="Loading event details..." />
+      </div>
+    );
+  }
+
+  if (error || !event) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-4">Event Not Found</h1>
+          <p className="text-muted-foreground mb-4">{error || 'The event you are looking for does not exist.'}</p>
           <Link href="/organizer/dashboard">
             <Button>Back to Dashboard</Button>
           </Link>
@@ -40,23 +92,11 @@ export default function EventViewPage({ params }: EventViewPageProps) {
     );
   }
 
-  // Group seats by section and row for display
-  const groupedSeats = eventSeats.reduce((acc, seat) => {
-    if (!acc[seat.section]) {
-      acc[seat.section] = {};
-    }
-    if (!acc[seat.section][seat.row]) {
-      acc[seat.section][seat.row] = [];
-    }
-    acc[seat.section][seat.row].push(seat);
-    return acc;
-  }, {} as Record<string, Record<string, typeof eventSeats>>);
-
-  // Calculate stats
-  const totalSeats = eventSeats.length;
-  const availableSeats = eventSeats.filter(seat => seat.isAvailable).length;
-  const soldSeats = totalSeats - availableSeats;
-  const revenue = eventSeats.filter(seat => !seat.isAvailable).reduce((sum, seat) => sum + seat.price, 0);
+  // Calculate stats from real data (simplified for now - can be enhanced later)
+  const totalSeats = seatMap?.capacity || 0;
+  const availableSeats = 0; // Will need ticket service integration for actual sold seats
+  const soldSeats = 0; // Will need ticket service integration
+  const revenue = 0; // Will need order/payment service integration
 
   return (
     <div className="min-h-screen bg-background">
@@ -70,7 +110,7 @@ export default function EventViewPage({ params }: EventViewPageProps) {
             </Link>
           </div>
           <div className="flex items-center space-x-2">
-            <Link href={`/organizer/events/${params.id}/edit`}>
+            <Link href={`/organizer/events/${unwrappedParams.id}/edit`}>
               <Button>
                 <Edit className="h-4 w-4 mr-2" />
                 Edit Event
@@ -83,9 +123,16 @@ export default function EventViewPage({ params }: EventViewPageProps) {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
           <div className="lg:col-span-2">
             <div className="bg-card rounded-lg border p-6">
-              <div className="aspect-video bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg mb-6 flex items-center justify-center">
-                <Calendar className="h-16 w-16 text-primary" />
-              </div>
+              {/* Event Image */}
+              {event.image ? (
+                <div className="aspect-video bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg mb-6 overflow-hidden">
+                  <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
+                </div>
+              ) : (
+                <div className="aspect-video bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg mb-6 flex items-center justify-center">
+                  <Calendar className="h-16 w-16 text-primary" />
+                </div>
+              )}
               
               <h1 className="text-3xl font-bold mb-4">{event.title}</h1>
               <p className="text-muted-foreground mb-6">{event.description}</p>
@@ -94,24 +141,44 @@ export default function EventViewPage({ params }: EventViewPageProps) {
                 <div className="flex items-center space-x-3">
                   <Calendar className="h-5 w-5 text-primary" />
                   <div>
-                    <p className="font-medium">Date</p>
+                    <p className="font-medium">Start Date</p>
                     <p className="text-sm text-muted-foreground">
-                      {new Date(event.date).toLocaleDateString()}
+                      {new Date(event.startDate).toLocaleDateString()}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-3">
                   <Clock className="h-5 w-5 text-primary" />
                   <div>
-                    <p className="font-medium">Time</p>
-                    <p className="text-sm text-muted-foreground">{event.time}</p>
+                    <p className="font-medium">Start Time</p>
+                    <p className="text-sm text-muted-foreground">{event.startTime || 'TBD'}</p>
                   </div>
                 </div>
+                {event.endDate && (
+                  <div className="flex items-center space-x-3">
+                    <Calendar className="h-5 w-5 text-primary" />
+                    <div>
+                      <p className="font-medium">End Date</p>
+                      <p className="text-sm text-muted-foreground">
+                        {new Date(event.endDate).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {event.endTime && (
+                  <div className="flex items-center space-x-3">
+                    <Clock className="h-5 w-5 text-primary" />
+                    <div>
+                      <p className="font-medium">End Time</p>
+                      <p className="text-sm text-muted-foreground">{event.endTime}</p>
+                    </div>
+                  </div>
+                )}
                 <div className="flex items-center space-x-3">
                   <MapPin className="h-5 w-5 text-primary" />
                   <div>
                     <p className="font-medium">Venue</p>
-                    <p className="text-sm text-muted-foreground">{event.venue}</p>
+                    <p className="text-sm text-muted-foreground">{event.venue?.name || 'TBD'}</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-3">
@@ -121,16 +188,25 @@ export default function EventViewPage({ params }: EventViewPageProps) {
                     <p className="text-sm text-muted-foreground">{event.category}</p>
                   </div>
                 </div>
-              </div>
-
-              <div className="border-t pt-4">
-                <h3 className="font-semibold mb-2">Tags</h3>
-                <div className="flex flex-wrap gap-2">
-                  {event.tags.map((tag, index) => (
-                    <span key={index} className="px-2 py-1 bg-primary/10 text-primary rounded-md text-sm">
-                      {tag}
-                    </span>
-                  ))}
+                <div className="flex items-center space-x-3">
+                  <Tag className="h-5 w-5 text-primary" />
+                  <div>
+                    <p className="font-medium">Type</p>
+                    <p className="text-sm text-muted-foreground">{event.type}</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <Users className="h-5 w-5 text-primary" />
+                  <div>
+                    <p className="font-medium">Status</p>
+                    <p className={`text-sm font-medium ${
+                      event.status === 'APPROVED' ? 'text-green-600' :
+                      event.status === 'PENDING' ? 'text-yellow-600' :
+                      'text-red-600'
+                    }`}>
+                      {event.status}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -175,13 +251,13 @@ export default function EventViewPage({ params }: EventViewPageProps) {
             <div className="bg-card rounded-lg border p-6">
               <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
               <div className="space-y-2">
-                <Link href={`/organizer/events/${params.id}/edit`}>
+                <Link href={`/organizer/events/${unwrappedParams.id}/edit`}>
                   <Button className="w-full justify-start" variant="outline">
                     <Edit className="h-4 w-4 mr-2" />
                     Edit Event Details
                   </Button>
                 </Link>
-                <Link href={`/organizer/events/${params.id}/seating-edit`}>
+                <Link href={`/organizer/events/${unwrappedParams.id}/seating-edit`}>
                   <Button className="w-full justify-start" variant="outline">
                     <Settings className="h-4 w-4 mr-2" />
                     Edit Seating Layout
@@ -196,91 +272,77 @@ export default function EventViewPage({ params }: EventViewPageProps) {
           </div>
         </div>
 
-        {/* Seating Arrangement View */}
-        <div className="bg-card rounded-lg border p-6">
-          <h2 className="text-xl font-semibold mb-6">Seating Arrangement</h2>
-          
-          {/* Stage */}
-          <div className="bg-gradient-to-r from-primary/20 to-primary/10 rounded-lg p-4 mb-8 text-center">
-            <h3 className="text-lg font-semibold text-primary">STAGE</h3>
-          </div>
-
-          {/* Legend */}
-          <div className="flex items-center justify-center space-x-8 mb-8">
-            <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 bg-green-500 rounded"></div>
-              <span className="text-sm text-muted-foreground">Available</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 bg-red-500 rounded"></div>
-              <span className="text-sm text-muted-foreground">Sold</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 bg-yellow-500 rounded"></div>
-              <span className="text-sm text-muted-foreground">VIP</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-6 h-4 bg-purple-500 rounded"></div>
-              <span className="text-sm text-muted-foreground">Box Seats</span>
-            </div>
-          </div>
-
-          {/* Seating Sections */}
-          <div className="space-y-8">
-            {Object.entries(groupedSeats).map(([section, rows]) => (
-              <div key={section} className="border rounded-lg p-4">
-                <h3 className="text-lg font-semibold mb-4 text-center">{section}</h3>
-                <div className="space-y-2">
-                  {Object.entries(rows).map(([row, rowSeats]) => (
-                    <div key={row} className="flex items-center justify-center space-x-1">
-                      <span className="text-sm text-muted-foreground w-8 text-center">{row}</span>
-                      {rowSeats.map(seat => {
-                        let seatClass = "w-8 h-8 rounded text-xs font-medium flex items-center justify-center ";
-                        
-                        // Determine seat type and color
-                        if (section.includes("VIP")) {
-                          seatClass += seat.isAvailable ? "bg-yellow-500 text-white" : "bg-yellow-700 text-white";
-                        } else if (section.includes("Box")) {
-                          seatClass += seat.isAvailable ? "bg-purple-500 text-white w-12" : "bg-purple-700 text-white w-12";
-                        } else {
-                          seatClass += seat.isAvailable ? "bg-green-500 text-white" : "bg-red-500 text-white";
-                        }
-
-                        return (
-                          <div
-                            key={seat.id}
-                            className={seatClass}
-                            title={`${section} ${row}${seat.number} - $${seat.price} - ${seat.isAvailable ? 'Available' : 'Sold'}`}
-                          >
-                            {seat.number}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ))}
+        {/* Venue & Seating Information */}
+        {seatMap ? (
+          <div className="bg-card rounded-lg border p-6">
+            <h2 className="text-xl font-semibold mb-6">Venue & Seating Information</h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div>
+                <h3 className="font-medium mb-2">Venue Details</h3>
+                <div className="space-y-2 text-sm">
+                  <p><span className="text-muted-foreground">Name:</span> {seatMap.name || event.venue?.name || 'N/A'}</p>
+                  <p><span className="text-muted-foreground">Location:</span> {seatMap.location || event.venue?.location || 'N/A'}</p>
+                  <p><span className="text-muted-foreground">Total Capacity:</span> {seatMap.capacity || 'N/A'}</p>
+                  {seatMap.description && (
+                    <p><span className="text-muted-foreground">Description:</span> {seatMap.description}</p>
+                  )}
                 </div>
               </div>
-            ))}
-          </div>
+              
+              <div>
+                <h3 className="font-medium mb-2">Seat Map Info</h3>
+                <div className="space-y-2 text-sm">
+                  <p className="text-muted-foreground">
+                    The venue has a configured seating layout. Customers can select their seats during ticket booking.
+                  </p>
+                  <Link href={`/events/${event.id}`}>
+                    <Button variant="outline" size="sm" className="mt-2">
+                      <Eye className="h-3 w-3 mr-2" />
+                      View Public Event Page
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </div>
 
-          <div className="mt-8 p-4 bg-muted rounded-lg">
-            <h4 className="font-semibold mb-2">Pricing Information</h4>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-              <div>
-                <span className="font-medium">Regular Seats: </span>
-                <span className="text-muted-foreground">$50 - $100</span>
-              </div>
-              <div>
-                <span className="font-medium">VIP Seats: </span>
-                <span className="text-muted-foreground">$150 - $200</span>
-              </div>
-              <div>
-                <span className="font-medium">Box Seats: </span>
-                <span className="text-muted-foreground">$300 - $500</span>
+            {/* Seat Map Preview */}
+            <div className="border-t pt-6">
+              <h3 className="font-medium mb-4">Seating Layout Preview</h3>
+              <div className="bg-muted/30 rounded-lg p-8 text-center">
+                <p className="text-muted-foreground mb-4">
+                  Interactive seat selection is available on the public booking page
+                </p>
+                <div className="flex items-center justify-center space-x-4">
+                  <Link href={`/events/${event.id}`}>
+                    <Button>
+                      <Eye className="h-4 w-4 mr-2" />
+                      Preview Event Page
+                    </Button>
+                  </Link>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="bg-card rounded-lg border p-6">
+            <h2 className="text-xl font-semibold mb-4">Seating Information</h2>
+            <div className="text-center py-8">
+              <MapPin className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <p className="text-muted-foreground mb-4">
+                No seating layout configured for this event's venue yet.
+              </p>
+              {event.venue?.id && (
+                <Link href={`/organizer/venues/${event.venue.id}/edit`}>
+                  <Button variant="outline">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Configure Venue Seating
+                  </Button>
+                </Link>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
