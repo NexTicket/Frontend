@@ -14,6 +14,20 @@ function getEventServiceUrl(endpoint: string): string {
 function getUserServiceUrl(endpoint: string): string {
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   return `${API_GATEWAY_URL}/user_service${cleanEndpoint}`;
+// Utility function to construct venue service URLs (these might not need /api)
+function getVenueServiceUrl(endpoint: string): string {
+  const rawBase = process.env.NEXT_PUBLIC_EVENT_VENUE_SERVICE_URL || process.env.NEXT_PUBLIC_API_URL || '';
+  const trimmed = rawBase.replace(/\/$/, '');
+  
+  // For venue service, we assume the endpoint already includes the correct path
+  // If the base URL already ends with /api, use it as is
+  // If not, add /api to the base (to match backend API structure)
+  const base = trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
+  
+  // Ensure endpoint starts with /
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  
+  return `${base}${cleanEndpoint}`;
 }
 
 // Utility function to construct Ticket Service URLs through API Gateway
