@@ -3,10 +3,12 @@
 import React,{ useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Calendar, Filter, MapPin, Clock, Users, Star, Ticket } from 'lucide-react';
+import { Calendar, Filter, Search } from 'lucide-react';
 import { fetchEvents } from '@/lib/api';
 import Image from 'next/image';
 import { useRef } from 'react';
+import { Loading } from '@/components/ui/loading';
+import { ErrorDisplay } from '@/components/ui/error-display';
 
 interface Event {
   id: number;
@@ -87,17 +89,31 @@ export default function EventsPage() {
   const handlePrev = () => setCarouselIndex((prev) => (prev === 0 ? Math.max(0, featuredEvents.length - 1) : prev - 1));
   const handleNext = () => setCarouselIndex((prev) => (prev === Math.max(0, featuredEvents.length - 1) ? 0 : prev + 1));
 
-  // Scroll to center the selected poster
+  // Auto-play carousel
   useEffect(() => {
-    if (carouselRef.current && featuredEvents.length > 0) {
-      const container = carouselRef.current;
-      const child = container.children[carouselIndex] as HTMLElement;
-      if (child) {
-        const offset = child.offsetLeft - (container.offsetWidth / 2) + (child.offsetWidth / 2);
-        container.scrollTo({ left: offset, behavior: 'smooth' });
-      }
-    }
-  }, [carouselIndex, featuredEvents.length]);
+    if (featuredEvents.length <= 1) return;
+
+    const interval = setInterval(() => {
+      setCarouselIndex((prev) => (prev + 1) % featuredEvents.length);
+    }, 6000); // Change slide every 6 seconds
+
+    return () => clearInterval(interval);
+  }, [featuredEvents.length]);
+
+  // Pause auto-play on hover
+  const [isHovered, setIsHovered] = useState(false);
+
+  useEffect(() => {
+    if (featuredEvents.length <= 1) return;
+
+    if (isHovered) return; // Pause when hovered
+
+    const interval = setInterval(() => {
+      setCarouselIndex((prev) => (prev + 1) % featuredEvents.length);
+    }, 6000);
+
+    return () => clearInterval(interval);
+  }, [carouselIndex, featuredEvents.length, isHovered]);
 
   const filteredEvents = currentEvents
     .filter(event => 
@@ -116,11 +132,11 @@ export default function EventsPage() {
     });
 
   // Helper function to format date
-  const formatEventDate = (startDate: string, startTime?: string) => {
-    const date = new Date(startDate);
-    const dateStr = date.toLocaleDateString();
-    return startTime ? `${dateStr} at ${startTime}` : dateStr;
-  };
+  // const formatEventDate = (startDate: string, startTime?: string) => {
+  //   const date = new Date(startDate);
+  //   const dateStr = date.toLocaleDateString();
+  //   return startTime ? `${dateStr} at ${startTime}` : dateStr;
+  // };
 
   // Helper function to get placeholder image
   const getEventImage = (event: Event) => {
@@ -128,28 +144,41 @@ export default function EventsPage() {
   };
 
   if (loading) {
+    // Commented out original loading implementation
+    // return (
+    //   <div className="min-h-screen bg-[#18181c] text-white flex items-center justify-center">
+    //     <div className="text-center">
+    //       <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+    //       <h2 className="text-2xl font-bold mb-2">Loading Events...</h2>
+    //       <p className="text-gray-400">Fetching the latest events for you</p>
+    //     </div>
+    //   </div>
+    // );
+
+    // Using new global Loading component
     return (
       <div className="min-h-screen bg-[#18181c] text-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <h2 className="text-2xl font-bold mb-2">Loading Events...</h2>
-          <p className="text-gray-400">Fetching the latest events for you</p>
-        </div>
+        <Loading
+          type="wave"
+          size="lg"
+          text="Loading Events..."
+          className="text-white"
+        />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#18181c] text-white flex items-center justify-center">
-        <div className="text-center">
-          <Calendar className="h-16 w-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold mb-2">Failed to Load Events</h2>
-          <p className="text-gray-400 mb-4">{error}</p>
-          <Button onClick={() => window.location.reload()} className="bg-blue-600 hover:bg-blue-700">
-            Try Again
-          </Button>
-        </div>
+      <div className="min-h-screen bg-[#18181c] text-white flex items-center justify-center p-4">
+        <ErrorDisplay
+          type="error"
+          title="Failed to Load Events"
+          message={error}
+          variant="card"
+          onRetry={() => window.location.reload()}
+          className="max-w-md"
+        />
       </div>
     );
   }
@@ -170,320 +199,259 @@ export default function EventsPage() {
     <div className="min-h-screen bg-[#18181c] text-white">
       {/* Hero Section with Background */}
       <div className="relative w-full h-[500px] flex items-center justify-center overflow-hidden">
-        {/* Background image (use first featured event as bg) */}
-        <Image src={getEventImage(featuredEvents[carouselIndex])} alt="Hero Background" fill className="object-cover brightness-50" priority />
-        {/* Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/60 to-black/90 z-10" />
+        {/* Background image with smooth transition */}
+        <div className="absolute inset-0 transition-all duration-1000 ease-in-out">
+          <Image
+            src={getEventImage(featuredEvents[carouselIndex])}
+            alt="Hero Background"
+            fill
+            className="object-cover brightness-50 scale-105 transition-transform duration-1000 ease-in-out"
+            priority
+          />
+        </div>
+        {/* Enhanced Overlay with better gradient */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/90 z-10" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/20 via-transparent to-black/20 z-10" />
+
         {/* Carousel */}
-        <div className="relative z-20 w-full max-w-5xl mx-auto flex items-center justify-center h-full">
-          {/* Left Arrow */}
-          <button onClick={handlePrev} className="absolute left-0 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 rounded-full p-3 z-30"><span className="text-3xl">&#8592;</span></button>
-          {/* Posters Row */}
-          <div ref={carouselRef} className="flex gap-6 overflow-hidden px-16 w-full items-center justify-center">
+        <div
+          className="relative z-20 w-full max-w-7xl mx-auto flex items-center justify-center h-full px-8"
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
+          {/* Posters Row with improved spacing */}
+          <div ref={carouselRef} className="flex gap-8 overflow-hidden px-20 w-full items-center justify-center">
             {featuredEvents.map((event, idx) => {
               // Center poster is large, sides are smaller and faded
               const isActive = idx === carouselIndex;
+              const distance = Math.abs(idx - carouselIndex);
+              const scale = isActive ? 1.1 : distance === 1 ? 0.95 : 0.85;
+              const opacity = isActive ? 1 : distance === 1 ? 0.7 : 0.4;
+
               return (
                 <div
                   key={event.id}
-                  className={`relative flex-shrink-0 transition-all duration-500 ${isActive ? 'scale-110 z-20' : 'scale-90 opacity-60 z-10'} cursor-pointer`}
-                  style={{width: isActive ? 260 : 180, height: isActive ? 390 : 270, scrollSnapAlign: 'center'}}
+                  className={`relative flex-shrink-0 transition-all duration-500 ease-in-out cursor-pointer transform-gpu ${isActive ? 'drop-shadow-2xl' : ''}`}
+                  style={{
+                    width: isActive ? 280 : 200,
+                    height: isActive ? 420 : 300,
+                    transform: `scale(${scale})`,
+                    opacity: opacity,
+                    zIndex: isActive ? 30 : 20 - distance,
+                    scrollSnapAlign: 'center',
+                    filter: isActive ? 'drop-shadow(0 25px 50px rgba(168, 85, 247, 0.4))' : 'none'
+                  }}
                   onClick={() => setCarouselIndex(idx)}
                 >
-                  <Image src={getEventImage(event)} alt={event.title} fill className="object-cover rounded-xl shadow-2xl" />
-                  {/* Overlay details only for active */}
+                  <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl hover:shadow-blue-500/20 transition-all duration-300 ease-in-out">
+                    <Image
+                      src={getEventImage(event)}
+                      alt={event.title}
+                      fill
+                      className="object-cover transition-transform duration-500 ease-in-out hover:scale-105"
+                    />
+                    {/* Subtle border glow for active item */}
+                    {isActive && (
+                      <div className="absolute inset-0 rounded-2xl border-2 border-blue-400/50 shadow-lg shadow-blue-400/20"></div>
+                    )}
+                  </div>
+
+                  {/* Simplified Overlay - just title for active */}
                   {isActive && (
-                    <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/90 via-black/60 to-transparent rounded-b-xl flex flex-col gap-3">
-                      <h2 className="text-3xl font-bold mb-1">{event.title}</h2>
-                      <div className="flex items-center gap-3 mb-1">
-                        <span className="text-yellow-400 font-bold">8.5</span>
-                        <span className="text-xs text-gray-300">(2019)</span>
-                        <span className="text-xs text-gray-300">{event.category}</span>
-                        <span className="text-xs text-gray-300">{event.category}</span>
-                      </div>
-                      <p className="text-gray-200 text-sm line-clamp-2 mb-2">{event.description}</p>
-                      <div className="flex gap-2">
-                        <Link href={`/events/${event.id}`}><Button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded">Buy a Ticket</Button></Link>
-                      </div>
+                    <div className="absolute bottom-6 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent rounded-b-2xl">
+                      <h2 className="text-2xl font-bold text-white text-center drop-shadow-lg">{event.title}</h2>
                     </div>
                   )}
                 </div>
               );
             })}
           </div>
-          {/* Right Arrow */}
-          <button onClick={handleNext} className="absolute right-0 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 rounded-full p-3 z-30"><span className="text-3xl">&#8594;</span></button>
+        </div>
+
+        {/* Carousel Indicators */}
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-3 z-30">
+          {featuredEvents.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => setCarouselIndex(idx)}
+              className={`transition-all duration-500 rounded-full ${
+                idx === carouselIndex
+                  ? 'w-8 h-3 bg-gradient-to-r from-blue-500 to-purple-500 scale-125 shadow-lg shadow-blue-500/50'
+                  : 'w-3 h-3 bg-white/40 hover:bg-white/70 hover:scale-110'
+              }`}
+            />
+          ))}
+        </div>
+
+        {/* Auto-play indicator */}
+        {!isHovered && featuredEvents.length > 1 && (
+          <div className="absolute top-6 right-6 z-30">
+            <div className="bg-black/40 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-2">
+              <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+              <span className="text-white text-xs font-medium">Auto</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Filter/Search Bar - Horizontal Layout */}
+      <div className="max-w-6xl mx-auto mt-10 mb-8">
+        <div className="bg-[#23232b] rounded-xl p-6 shadow-lg">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder={`Search ${activeTab === 'movies' ? 'movies' : 'events'}...`}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 rounded bg-[#18181c] border border-[#333] text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* Event Type Filter */}
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="px-4 py-2 rounded bg-[#18181c] border border-[#333] text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">
+                {activeTab === 'movies' ? 'All Genres' : 'All Event Types'}
+              </option>
+              {(activeTab === 'movies' ? movieCategories : categories.slice(1)).map(category => (
+                <option key={category} value={category}>{category}</option>
+              ))}
+            </select>
+
+            {/* Sort By Filter */}
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="px-4 py-2 rounded bg-[#18181c] border border-[#333] text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="date">{activeTab === 'movies' ? 'Show Time' : 'Event Date'}</option>
+              <option value="price">{activeTab === 'movies' ? 'Ticket Price' : 'Price'}</option>
+            </select>
+
+            {/* Clear Filters */}
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSearchTerm('');
+                setSelectedCategory('all');
+                setSortBy('date');
+              }}
+              className="border-white text-white hover:bg-white/10"
+            >
+              <Filter className="mr-2 h-4 w-4" />Clear Filters
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Filter/Search Bar - Vertical Layout */}
-      <div className="max-w-6xl mx-auto mt-10 mb-8 flex gap-6">
-        {/* Sidebar Filters */}
-        <div className="w-80 bg-[#23232b] rounded-xl p-6 space-y-6 shadow-lg h-fit">
-          <div className="space-y-4">
-            <input
-              type="text"
-              placeholder={`Search ${activeTab === 'movies' ? 'movies' : 'events'}...`}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-4 py-2 rounded bg-[#18181c] border border-[#333] text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-blue-400">
-                {activeTab === 'movies' ? 'Genre' : 'Event Type'}
-              </label>
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full px-4 py-2 rounded bg-[#18181c] border border-[#333] text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">
-                  {activeTab === 'movies' ? 'All Genres' : 'All Event Types'}
-                </option>
-                {(activeTab === 'movies' ? movieCategories : categories.slice(1)).map(category => (
-                  <option key={category} value={category}>{category}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-blue-400">Sort By</label>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="w-full px-4 py-2 rounded bg-[#18181c] border border-[#333] text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="date">{activeTab === 'movies' ? 'Show Time' : 'Event Date'}</option>
-                <option value="price">{activeTab === 'movies' ? 'Ticket Price' : 'Price'}</option>
-              </select>
-            </div>
-
-            <div className="space-y-3">
-              <label className="text-sm font-medium text-blue-400">
-                {activeTab === 'movies' ? 'Show Times' : 'Event Dates'}
-              </label>
-              <div className="space-y-2">
-                <label className="flex items-center space-x-2">
-                  <input type="checkbox" className="rounded border-gray-300" />
-                  <span className="text-sm">Today</span>
-                </label>
-                <label className="flex items-center space-x-2">
-                  <input type="checkbox" className="rounded border-gray-300" />
-                  <span className="text-sm">Tomorrow</span>
-                </label>
-                <label className="flex items-center space-x-2">
-                  <input type="checkbox" className="rounded border-gray-300" />
-                  <span className="text-sm">Weekend</span>
-                </label>
-                {activeTab === 'movies' && (
-                  <>
-                    <label className="flex items-center space-x-2">
-                      <input type="checkbox" className="rounded border-gray-300" />
-                      <span className="text-sm">Matinee (Before 6 PM)</span>
-                    </label>
-                    <label className="flex items-center space-x-2">
-                      <input type="checkbox" className="rounded border-gray-300" />
-                      <span className="text-sm">Evening (After 6 PM)</span>
-                    </label>
-                  </>
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <label className="text-sm font-medium text-blue-400">
-                {activeTab === 'movies' ? 'Ticket Price' : 'Price Range'}
-              </label>
-              {activeTab === 'movies' ? (
-                <div className="space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    <button className="px-3 py-2 text-xs border border-gray-600 rounded hover:bg-blue-600 hover:border-blue-600 transition-colors">$10 - $15</button>
-                    <button className="px-3 py-2 text-xs border border-gray-600 rounded hover:bg-blue-600 hover:border-blue-600 transition-colors">$16 - $20</button>
-                  </div>
-                  <button className="px-3 py-2 text-xs border border-gray-600 rounded hover:bg-blue-600 hover:border-blue-600 transition-colors w-full">Premium ($21+)</button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    <button className="px-3 py-2 text-xs border border-gray-600 rounded hover:bg-blue-600 hover:border-blue-600 transition-colors">$0 - $50</button>
-                    <button className="px-3 py-2 text-xs border border-gray-600 rounded hover:bg-blue-600 hover:border-blue-600 transition-colors">$51 - $200</button>
-                  </div>
-                  <button className="px-3 py-2 text-xs border border-gray-600 rounded hover:bg-blue-600 hover:border-blue-600 transition-colors w-full">Premium ($201+)</button>
-                </div>
-              )}
-            </div>
-
-            {activeTab === 'movies' && (
-              <div className="space-y-3">
-                <label className="text-sm font-medium text-blue-400">Theater Features</label>
-                <div className="space-y-2">
-                  <label className="flex items-center space-x-2">
-                    <input type="checkbox" className="rounded border-gray-300" />
-                    <span className="text-sm">IMAX</span>
-                  </label>
-                  <label className="flex items-center space-x-2">
-                    <input type="checkbox" className="rounded border-gray-300" />
-                    <span className="text-sm">3D</span>
-                  </label>
-                  <label className="flex items-center space-x-2">
-                    <input type="checkbox" className="rounded border-gray-300" />
-                    <span className="text-sm">Dolby Atmos</span>
-                  </label>
-                  <label className="flex items-center space-x-2">
-                    <input type="checkbox" className="rounded border-gray-300" />
-                    <span className="text-sm">Reclining Seats</span>
-                  </label>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'events' && (
-              <div className="space-y-3">
-                <label className="text-sm font-medium text-blue-400">Event Features</label>
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <input type="checkbox" className="rounded border-gray-300" />
-                    <span className="text-sm">Outdoor Venue</span>
-                  </div>
-                  <label className="flex items-center space-x-2">
-                    <input type="checkbox" className="rounded border-gray-300" />
-                    <span className="text-sm">Food & Drinks</span>
-                  </label>
-                  <label className="flex items-center space-x-2">
-                    <input type="checkbox" className="rounded border-gray-300" />
-                    <span className="text-sm">VIP Access</span>
-                  </label>
-                  <label className="flex items-center space-x-2">
-                    <input type="checkbox" className="rounded border-gray-300" />
-                    <span className="text-sm">Meet & Greet</span>
-                  </label>
-                </div>
-              </div>
-            )}
-
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setSearchTerm('');
-                  setSelectedCategory('all');
-                  setSortBy('date');
-                }}
-                className="flex-1 border-white text-white hover:bg-white/10"
-              >
-                <Filter className="mr-2 h-4 w-4" />Clear
-              </Button>
-              <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white">
-                {activeTab === 'movies' ? 'Movie Pass' : 'Event Pass'}
-              </Button>
-            </div>
+      {/* Main Content */}
+      <div className="max-w-6xl mx-auto">
+        {/* Tab Navigation */}
+        <div className="mb-8">
+          <div className="flex space-x-1 bg-[#23232b] rounded-lg p-1 w-fit">
+            <button
+              onClick={() => {
+                setActiveTab('movies');
+                setSelectedCategory('all'); // Reset category when switching tabs
+              }}
+              className={`px-6 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                activeTab === 'movies'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'text-gray-400 hover:text-white hover:bg-[#2a2a32]'
+              }`}
+            >
+              Movies
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab('events');
+                setSelectedCategory('all'); // Reset category when switching tabs
+              }}
+              className={`px-6 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                activeTab === 'events'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'text-gray-400 hover:text-white hover:bg-[#2a2a32]'
+              }`}
+            >
+              Events
+            </button>
           </div>
         </div>
 
-        {/* Main Content */}
-        <div className="flex-1">
-          {/* Tab Navigation */}
-          <div className="mb-8">
-            <div className="flex space-x-1 bg-[#23232b] rounded-lg p-1 w-fit">
-              <button
-                onClick={() => {
-                  setActiveTab('movies');
-                  setSelectedCategory('all'); // Reset category when switching tabs
-                }}
-                className={`px-6 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
-                  activeTab === 'movies'
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-gray-400 hover:text-white hover:bg-[#2a2a32]'
-                }`}
-              >
-                Movies
-              </button>
-              <button
-                onClick={() => {
-                  setActiveTab('events');
-                  setSelectedCategory('all'); // Reset category when switching tabs
-                }}
-                className={`px-6 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
-                  activeTab === 'events'
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-gray-400 hover:text-white hover:bg-[#2a2a32]'
-                }`}
-              >
-                Events
-              </button>
-            </div>
-          </div>
-
-          {/* Featured Section */}
-          <div className="mb-12">
-            <h2 className="text-2xl font-bold mb-6">Featured {activeTab === 'movies' ? 'Movies' : 'Events'}</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-              {currentEvents.slice(0, 4).map(event => (
-                <div key={event.id} className="bg-[#23232b] rounded-xl overflow-hidden shadow-lg hover:scale-105 hover:shadow-2xl transition-all duration-300 ease-in-out relative group">
-                  <div className="relative w-full h-64 overflow-hidden">
-                    <Image src={getEventImage(event)} alt={event.title} fill className="object-cover group-hover:scale-110 transition-transform duration-500 ease-in-out" />
-                    <span className="absolute top-2 left-2 bg-blue-600 text-white text-xs px-2 py-1 rounded shadow-md">Featured</span>
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                    
-                    {/* Hover Content */}
-                    <div className="absolute bottom-0 left-0 right-0 p-6 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                      <h3 className="text-xl font-semibold mb-2 text-white">{event.title}</h3>
-                      <div className="flex items-center gap-3 text-sm text-gray-300 mb-3">
-                        <span>{event.category}</span>
-                        <span className="text-yellow-400">8.5</span>
-                      </div>
-                      <p className="text-gray-200 text-sm line-clamp-2 mb-4">{event.description}</p>
-                      <Link href={`/events/${event.id}`}>
-                        <Button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded w-full">
-                          Buy a Ticket
-                        </Button>
-                      </Link>
+        {/* Featured Section */}
+        <div className="mb-12">
+          <h2 className="text-2xl font-bold mb-6">Featured {activeTab === 'movies' ? 'Movies' : 'Events'}</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+            {currentEvents.slice(0, 4).map(event => (
+              <div key={event.id} className="bg-[#23232b] rounded-xl overflow-hidden shadow-lg hover:scale-105 hover:shadow-2xl transition-all duration-300 ease-in-out relative group">
+                <div className="relative w-full h-64 overflow-hidden">
+                  <Image src={getEventImage(event)} alt={event.title} fill className="object-cover group-hover:scale-110 transition-transform duration-500 ease-in-out" />
+                  <span className="absolute top-2 left-2 bg-blue-600 text-white text-xs px-2 py-1 rounded shadow-md">Featured</span>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  
+                  {/* Hover Content */}
+                  <div className="absolute bottom-0 left-0 right-0 p-6 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+                    <h3 className="text-xl font-semibold mb-2 text-white">{event.title}</h3>
+                    <div className="flex items-center gap-3 text-sm text-gray-300 mb-3">
+                      <span className="bg-blue-600/80 px-2 py-1 rounded text-white font-medium">{event.category}</span>
+                      <span className="text-yellow-400 font-bold">8.5</span>
                     </div>
+                    <p className="text-gray-200 text-sm line-clamp-2 mb-4">{event.description}</p>
+                    <Link href={`/events/${event.id}`}>
+                      <Button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded w-full transition-colors duration-300">
+                        Buy a Ticket
+                      </Button>
+                    </Link>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* All Events Section */}
-          <div>
-            <h2 className="text-2xl font-bold mb-6">All {activeTab === 'movies' ? 'Movies' : 'Events'}</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-              {filteredEvents.map(event => (
-                <div key={event.id} className="bg-[#23232b] rounded-xl overflow-hidden shadow-lg hover:scale-105 hover:shadow-2xl transition-all duration-300 ease-in-out relative group">
-                  <div className="relative w-full h-64 overflow-hidden">
-                    <Image src={getEventImage(event)} alt={event.title} fill className="object-cover group-hover:scale-110 transition-transform duration-500 ease-in-out" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                    
-                    {/* Hover Content */}
-                    <div className="absolute bottom-0 left-0 right-0 p-6 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                      <h3 className="text-xl font-semibold mb-2 text-white">{event.title}</h3>
-                      <div className="flex items-center gap-3 text-sm text-gray-300 mb-3">
-                        <span>{event.category}</span>
-                        <span className="text-yellow-400">8.5</span>
-                      </div>
-                      <p className="text-gray-200 text-sm line-clamp-2 mb-4">{event.description}</p>
-                      <Link href={`/events/${event.id}`}>
-                        <Button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded w-full">
-                          Buy a Ticket
-                        </Button>
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            {filteredEvents.length === 0 && (
-              <div className="text-center py-12">
-                <Calendar className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-xl font-semibold mb-2">No events found</h3>
-                <p className="text-muted-foreground">
-                  Try adjusting your search criteria or check back later.
-                </p>
               </div>
-            )}
+            ))}
           </div>
+        </div>
+
+        {/* All Events Section */}
+        <div>
+          <h2 className="text-2xl font-bold mb-6">All {activeTab === 'movies' ? 'Movies' : 'Events'}</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+            {filteredEvents.map(event => (
+              <div key={event.id} className="bg-[#23232b] rounded-xl overflow-hidden shadow-lg hover:scale-105 hover:shadow-2xl transition-all duration-300 ease-in-out relative group">
+                <div className="relative w-full h-64 overflow-hidden">
+                  <Image src={getEventImage(event)} alt={event.title} fill className="object-cover group-hover:scale-110 transition-transform duration-500 ease-in-out" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  
+                  {/* Hover Content */}
+                  <div className="absolute bottom-0 left-0 right-0 p-6 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+                    <h3 className="text-xl font-semibold mb-2 text-white">{event.title}</h3>
+                    <div className="flex items-center gap-3 text-sm text-gray-300 mb-3">
+                      <span className="bg-blue-600/80 px-2 py-1 rounded text-white font-medium">{event.category}</span>
+                      <span className="text-yellow-400 font-bold">8.5</span>
+                    </div>
+                    <p className="text-gray-200 text-sm line-clamp-2 mb-4">{event.description}</p>
+                    <Link href={`/events/${event.id}`}>
+                      <Button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded w-full">
+                        Buy a Ticket
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          {filteredEvents.length === 0 && (
+            <div className="text-center py-12">
+              <Calendar className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-xl font-semibold mb-2">No events found</h3>
+              <p className="text-muted-foreground">
+                Try adjusting your search criteria or check back later.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>

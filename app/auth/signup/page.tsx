@@ -74,7 +74,7 @@ export default function SignupPage() {
           router.push('/organizer/dashboard');
           break;
         case 'customer':
-          router.push('/dashboard');
+          router.push('/events');
           break;
         default:
           router.push('/auth/signin');
@@ -221,17 +221,17 @@ export default function SignupPage() {
   // Show loading state while auth is initializing
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#191C24' }}>
-        <div className="backdrop-blur-xl border rounded-3xl p-8 shadow-xl text-center max-w-md w-full mx-4" style={{ backgroundColor: '#191C24', borderColor: '#ABA8A9' + '30' }}>
-          <h2 className="text-xl font-bold text-white mb-4">Loading...</h2>
-          <div className="w-10 h-10 border-4 border-gray-300 border-t-4 rounded-full mx-auto animate-spin" style={{ borderTopColor: '#0D6EFD' }}></div>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="backdrop-blur-xl border rounded-3xl p-8 shadow-xl text-center max-w-md w-full mx-4 bg-card border-border">
+          <h2 className="text-xl font-bold text-foreground mb-4">Loading...</h2>
+          <div className="w-10 h-10 border-4 border-muted border-t-primary rounded-full mx-auto animate-spin"></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen relative" style={{ background: '#191C24' }}>
+    <div className="min-h-screen relative bg-background">
       {/* Background Image */}
       <div 
         className="absolute inset-0 z-0"
@@ -247,9 +247,9 @@ export default function SignupPage() {
 
       {/* Background Elements */}
       <div className="absolute inset-0 z-1">
-        <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-20" style={{ backgroundColor: '#ABA8A9' }}></div>
-        <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-15" style={{ backgroundColor: '#0D6EFD' }}></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl opacity-10" style={{ backgroundColor: '#0D6EFD' }}></div>
+        <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-20 bg-muted"></div>
+        <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-15 bg-primary"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl opacity-10 bg-primary"></div>
       </div>
 
       <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 min-h-screen">
@@ -267,8 +267,7 @@ export default function SignupPage() {
               transition={{ duration: 0.3 }}
             >
               <motion.div 
-                className="absolute -inset-4 rounded-3xl blur-2xl opacity-30 transition-opacity duration-300 group-hover:opacity-50" 
-                style={{ backgroundColor: '#0D6EFD' }}
+                className="absolute -inset-4 rounded-3xl blur-2xl opacity-30 transition-opacity duration-300 group-hover:opacity-50 bg-primary"
                 animate={{ 
                   rotate: [0, 5, -5, 0],
                   scale: [1, 1.02, 0.98, 1]
@@ -280,8 +279,7 @@ export default function SignupPage() {
                 }}
               ></motion.div>
               <motion.div 
-                className="relative backdrop-blur-xl border rounded-3xl p-8 text-center shadow-2xl transition-all duration-300 group-hover:shadow-3xl" 
-                style={{ backgroundColor: '#191C24' + '80', borderColor: '#0D6EFD' + '30' }}
+                className="relative backdrop-blur-xl border rounded-3xl p-8 text-center shadow-2xl transition-all duration-300 group-hover:shadow-3xl bg-card/80 border-primary/30"
                 whileHover={{ borderColor: '#0D6EFD' + '60' }}
               >
                 <motion.div 

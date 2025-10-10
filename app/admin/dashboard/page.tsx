@@ -1,9 +1,11 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/auth/auth-provider';
 import { motion } from 'framer-motion';
+import { Loading } from '@/components/ui/loading';
 import {
   TrendingUp,
   TrendingDown,
@@ -15,49 +17,24 @@ import {
   Star,
   AlertTriangle,
   RefreshCw,
-  Settings,
-  Plus,
-  Bell,
   Download,
-  LogOut,
-  ArrowLeft,
-  BarChart3,
-  PieChart,
-  LineChart,
   Eye,
   Edit,
-  Trash2,
   MoreVertical,
-  PersonStanding
+  PersonStanding,
+  BarChart3
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   AreaChart,
   Area,
-  BarChart,
-  Bar,
-  LineChart as RechartsLineChart,
-  Line,
-  PieChart as RechartsPieChart,
-  Pie,
-  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer
 } from 'recharts';
-import { format, subDays, startOfWeek, endOfWeek } from 'date-fns';
-import RouteGuard from '@/components/auth/routeGuard';
 import { fetchEvents, approveEvent, rejectEvent } from '@/lib/api';
-
-// Theme to match organizer dashboard
-const darkBg = "#181A20";
-const blueHeader = "#1877F2";
-const cardBg = "#23262F";
-const greenBorder = "#CBF83E" + '50';
-const cardShadow = "0 2px 16px 0 rgba(57,253,72,0.08)";
 
 // Animation variants for smooth transitions
 const containerVariants = {
@@ -93,23 +70,15 @@ const revenueData = [
   { name: 'Jul', revenue: 74000, tickets: 210, events: 22 }
 ];
 
-const categoryData = [
-  { name: 'Concerts', value: 35, color: '#8884d8' },
-  { name: 'Sports', value: 25, color: '#82ca9d' },
-  { name: 'Theater', value: 20, color: '#ffc658' },
-  { name: 'Comedy', value: 12, color: '#ff7300' },
-  { name: 'Other', value: 8, color: '#00ff88' }
-];
+// const categoryData = [
+//   { name: 'Concerts', value: 35, color: 'hsl(var(--chart-1))' },
+//   { name: 'Sports', value: 25, color: 'hsl(var(--chart-2))' },
+//   { name: 'Theater', value: 20, color: 'hsl(var(--chart-3))' },
+//   { name: 'Comedy', value: 12, color: 'hsl(var(--chart-4))' },
+//   { name: 'Other', value: 8, color: 'hsl(var(--chart-5))' }
+// ];
 
-const weeklyData = [
-  { day: 'Mon', sales: 45, users: 12 },
-  { day: 'Tue', sales: 52, users: 19 },
-  { day: 'Wed', sales: 48, users: 15 },
-  { day: 'Thu', sales: 61, users: 25 },
-  { day: 'Fri', sales: 58, users: 22 },
-  { day: 'Sat', sales: 67, users: 31 },
-  { day: 'Sun', sales: 74, users: 28 }
-];
+
 
 const recentActivities = [
   { id: 1, user: 'John Doe', action: 'Purchased ticket', event: 'Rock Concert 2025', time: '2 min ago', avatar: '/Images/profile-avatar-account-icon.png' },
@@ -136,7 +105,7 @@ interface StatCardProps {
   subtitle?: string;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ title, value, icon, trend, color, subtitle }) => {
+const StatCard: React.FC<StatCardProps> = ({ title, value, icon, trend, subtitle }) => {
   const TrendIcon = trend && trend > 0 ? TrendingUp : TrendingDown;
   const trendColor = trend && trend > 0 ? 'text-green-500' : 'text-red-500';
 
@@ -144,15 +113,14 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, trend, color, s
     <motion.div
       variants={itemVariants}
       whileHover={{ scale: 1.02, y: -2 }}
-      className=" backdrop-blur-xl border rounded-2xl  p-4 shadow-xl hover:shadow-md transition-all duration-200 "
-      style={{ backgroundColor: '#191C24' , borderColor: '#39FD48' + '50',boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}
+      className="backdrop-blur-xl border rounded-2xl p-4 shadow-xl hover:shadow-2xl transition-all duration-200 bg-card"
     >
       <div className="flex items-center justify-between">
         <div className="flex-1">
-          <p className="text-sm font-medium mb-1" style={{ color: '#fff' }}>{title}</p>
-          <div className="text-2xl font-bold mb-1" style={{ color: '#ABA8A9' }}>{value}</div>
+          <p className="text-sm font-medium mb-1 text-card-foreground">{title}</p>
+          <div className="text-2xl font-bold mb-1 text-foreground">{value}</div>
           {subtitle && (
-            <p className="text-xs" style={{ color: '#ABA8A9' }}>{subtitle}</p>
+            <p className="text-xs text-muted-foreground">{subtitle}</p>
           )}
           {trend && (
             <div className="flex items-center mt-2">
@@ -163,7 +131,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, trend, color, s
             </div>
           )}
         </div>
-        <div className="rounded-lg p-3 ml-4" style={{ backgroundColor: '#D8DFEE' + '40' }}>
+        <div className="rounded-lg p-3 ml-4 bg-primary/10">
           {icon}
         </div>
       </div>
@@ -186,10 +154,9 @@ export default function AdminDashboard() {
     const loadPendingEvents = async () => {
       setLoadingEvents(true);
       try {
-        const response = await fetchEvents();
+        const response = await fetchEvents('PENDING');
         const events = response?.data || response || [];
-        const pending = events.filter((event: any) => event.status === 'PENDING');
-        setPendingEvents(pending);
+        setPendingEvents(events);
       } catch (error) {
         console.error('Failed to load pending events:', error);
       } finally {
@@ -206,10 +173,9 @@ export default function AdminDashboard() {
     try {
       await approveEvent(eventId);
       // Refresh pending events
-      const response = await fetchEvents();
+      const response = await fetchEvents('PENDING');
       const events = response?.data || response || [];
-      const pending = events.filter((event: any) => event.status === 'PENDING');
-      setPendingEvents(pending);
+      setPendingEvents(events);
     } catch (error) {
       console.error('Failed to approve event:', error);
     }
@@ -219,10 +185,9 @@ export default function AdminDashboard() {
     try {
       await rejectEvent(eventId);
       // Refresh pending events
-      const response = await fetchEvents();
+      const response = await fetchEvents('PENDING');
       const events = response?.data || response || [];
-      const pending = events.filter((event: any) => event.status === 'PENDING');
-      setPendingEvents(pending);
+      setPendingEvents(events);
     } catch (error) {
       console.error('Failed to reject event:', error);
     }
@@ -254,11 +219,11 @@ export default function AdminDashboard() {
   // Show loading if auth is still loading
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: darkBg }}>
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-lg font-semibold" style={{ color: '#fff' }}>Loading admin dashboard...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loading
+          size="lg"
+          text="Loading admin dashboard..."
+        />
       </div>
     );
   }
@@ -266,19 +231,18 @@ export default function AdminDashboard() {
   // Show access denied if not authenticated or not admin
   if (!firebaseUser || !userProfile || userProfile.role !== 'admin') {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: darkBg }}>
-        <div className="backdrop-blur-xl border rounded-3xl p-8 shadow-2xl text-center max-w-md" style={{ backgroundColor: cardBg, borderColor: greenBorder + '30', boxShadow: cardShadow }}>
-          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6" style={{ background: '#FF5722' + '20' }}>
-            <AlertTriangle className="h-8 w-8" style={{ color: '#FF5722' }} />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="backdrop-blur-xl border rounded-3xl p-8 shadow-2xl text-center max-w-md bg-card">
+          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 bg-destructive/20">
+            <AlertTriangle className="h-8 w-8 text-destructive" />
           </div>
-          <h1 className="text-2xl font-bold mb-4" style={{ color: '#fff' }}>Access Denied</h1>
-          <p className="mb-6" style={{ color: '#ABA8A9' }}>
+          <h1 className="text-2xl font-bold mb-4 text-card-foreground">Access Denied</h1>
+          <p className="mb-6 text-muted-foreground">
             You need admin privileges to access this page.
           </p>
           <Button 
             onClick={() => router.push('/auth/signin')}
-            className="text-white hover:opacity-90 transition-opacity"
-            style={{ background: blueHeader }}
+            className="text-primary-foreground hover:opacity-90 transition-opacity bg-primary"
           >
             Sign In
           </Button>
@@ -291,59 +255,59 @@ export default function AdminDashboard() {
     {
       title: 'Total Users',
       value: '2,847',
-      icon: <Users size={24} style={{ color: '#CBF83E' }} />,
+      icon: <Users size={24} className="text-primary" />,
       trend: 12.5,
-      color: '#000',
+      color: 'foreground',
       subtitle: '145 new this week'
     },
     {
       title: 'Active Events',
       value: '186',
-      icon: <Calendar size={24} style={{ color: '#CBF83E' }} />,
+      icon: <Calendar size={24} className="text-primary" />,
       trend: 8.2,
-      color: '#000',
+      color: 'foreground',
       subtitle: '23 ending soon'
     },
     {
       title: 'Monthly Revenue',
       value: 'LKR 847K',
-      icon: <DollarSign size={24} style={{ color: '#CBF83E' }} />,
+      icon: <DollarSign size={24} className="text-primary" />,
       trend: 15.8,
-      color: '#CBF83E',
+      color: 'primary',
       subtitle: 'Target: LKR 1M'
     },
     {
       title: 'Tickets Sold',
       value: '12,493',
-      icon: <Activity size={24} style={{ color: '#CBF83E' }} />,
+      icon: <Activity size={24} className="text-primary" />,
       trend: 23.1,
-      color: '#CBF83E',
+      color: 'primary',
       subtitle: '1,847 today'
     },
     {
       title: 'Active Venues',
       value: '67',
-      icon: <MapPin size={24} style={{ color: '#CBF83E' }} />,
+      icon: <MapPin size={24} className="text-primary" />,
       trend: 5.4,
-      color: '#CBF83E',
+      color: 'primary',
       subtitle: '12 pending approval'
     },
     {
       title: 'Avg. Rating',
       value: '4.8',
-      icon: <Star size={24} style={{ color: '#CBF83E' }} />,
+      icon: <Star size={24} className="text-primary" />,
       trend: 2.1,
-      color: '#CBF83E',
+      color: 'primary',
       subtitle: 'From 2,847 reviews'
     }
   ];
 
   return (
-    <div className="min-h-screen" style={{ background: darkBg }}>
+    <div className="min-h-screen bg-background">
       {/* Simple Background Elements */}
-      <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-20" style={{ backgroundColor: '#ABA8A9' }}></div>
-      <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-15" style={{ backgroundColor: '#D8DFEE' }}></div>
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl opacity-10" style={{ backgroundColor: '#ABA8A9' }}></div>
+      <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-20 bg-muted"></div>
+      <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-15 bg-muted"></div>
+      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl opacity-10 bg-muted"></div>
       
       {/* Content Container */}
       <div className="relative z-10 pt-8 px-8">
@@ -355,15 +319,14 @@ export default function AdminDashboard() {
         >
           {/* Clean Header */}
           <motion.div variants={itemVariants} className="mb-12">
-            <div className=" rounded-2xl p-6 shadow-lg" style={{ backgroundColor: blueHeader, borderColor: greenBorder, boxShadow: cardShadow }}>
+            <div className="rounded-2xl p-6 shadow-lg bg-primary border-primary">
               <div className="flex items-center justify-between">
                 <div>
                   <motion.h1 
                     initial={{ opacity: 0, x: -30 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.6, ease: "easeOut" }}
-                    className="text-3xl font-bold mb-2"
-                    style={{ color: '#fff' }}
+                    className="text-3xl font-bold mb-2 text-primary-foreground"
                   >
                     Admin Dashboard
                   </motion.h1>
@@ -371,8 +334,7 @@ export default function AdminDashboard() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2, duration: 0.5 }}
-                    className="text-lg font-normal"
-                    style={{ color: '#fff' }}
+                    className="text-lg font-normal text-primary-foreground"
                   >
                     Welcome back, {userProfile?.firstName || 'Admin'}! 
                   </motion.p>
@@ -385,8 +347,7 @@ export default function AdminDashboard() {
                   {/* <Button 
                     onClick={handleRefresh}
                     disabled={refreshing}
-                    className="px-6 py-3 text-white font-medium rounded-xl hover:opacity-90 transition-opacity shadow-md"
-                    style={{ background: 'linear-gradient(135deg, #0D6EFD, #1565C0)' }}
+                    className="px-6 py-3 text-primary-foreground font-medium rounded-xl hover:opacity-90 transition-opacity shadow-md bg-primary"
                   >
                     <RefreshCw className={`h-5 w-5 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
                     Refresh
@@ -398,23 +359,19 @@ export default function AdminDashboard() {
 
           {/* System Alert
           <motion.div variants={itemVariants} className="mb-8">
-            <div className="bg-white border rounded-xl p-4 shadow-sm" style={{ borderColor: '#FFC107' + '50' }}>
+            <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
               <div className="flex items-center">
-                <div className="rounded-full p-2 mr-3" style={{ backgroundColor: '#FFD60A' + '20' }}>
-                  <AlertTriangle className="h-5 w-5" style={{ color: '#FF5722' }} />
+                <div className="rounded-full p-2 mr-3 bg-destructive/20">
+                  <AlertTriangle className="h-5 w-5 text-destructive" />
                 </div>
                 <div className="flex-1">
-                  <h4 className="font-semibold text-sm" style={{ color: '#FF5722' }}>System Maintenance Notice</h4>
-                  <p className="text-sm" style={{ color: '#666' }}>Scheduled maintenance on July 25, 2025 from 2:00 AM - 4:00 AM LKT</p>
+                  <h4 className="font-semibold text-sm text-destructive">System Maintenance Notice</h4>
+                  <p className="text-sm text-muted-foreground">Scheduled maintenance on July 25, 2025 from 2:00 AM - 4:00 AM LKT</p>
                 </div>
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  className="text-sm"
-                  style={{ 
-                    borderColor: '#FFC107',
-                    color: '#FF5722',
-                  }}
+                  className="text-sm border-border text-destructive"
                 >
                   Review
                 </Button>
@@ -427,32 +384,31 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <Button 
                 onClick={() => router.push('/admin/users')}
-                className=" h-10 backdrop-blur-xl border text-lg rounded-2xl p-8 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}
-                
+                className="h-10 backdrop-blur-xl border text-lg rounded-2xl p-8 shadow-xl bg-card hover:bg-card/80 text-card-foreground"
               >
-                <Users className="h-8 w-8 mr-3" style={{ color: '#CBF83E' }} />
+                <Users className="h-8 w-8 mr-3 text-primary" />
                 Manage Users
               </Button>
               <Button 
                 onClick={() => router.push('/admin/events')}
-                className=" h-10 backdrop-blur-xl border text-lg rounded-2xl p-8 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}
+                className="h-10 backdrop-blur-xl border text-lg rounded-2xl p-8 shadow-xl bg-card hover:bg-card/80 text-card-foreground"
               >
-                <Calendar className="h-8 w-8 mr-3" style={{ color: '#CBF83E' }}/>
+                <Calendar className="h-8 w-8 mr-3 text-primary"/>
                 Manage Events
               </Button>
               <Button 
                 onClick={() => router.push('/admin/staff')}
-                className=" h-10 backdrop-blur-xl text-lg border rounded-2xl p-8 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}
+                className="h-10 backdrop-blur-xl text-lg border rounded-2xl p-8 shadow-xl bg-card hover:bg-card/80 text-card-foreground"
               >
-                <PersonStanding className="h-8 w-8 mr-3" style={{ color: '#CBF83E' }} />
+                <PersonStanding className="h-8 w-8 mr-3 text-primary" />
                 Manage Staff
               </Button>
               <Button 
                 onClick={handleRefresh}
                 disabled={refreshing}
-                className=" h-10 backdrop-blur-xl text-lg border rounded-2xl p-8 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}
+                className="h-10 backdrop-blur-xl text-lg border rounded-2xl p-8 shadow-xl bg-card hover:bg-card/80 text-card-foreground"
               >
-                <RefreshCw className={`h-8 w-8 mr-3 ${refreshing ? 'animate-spin' : ''}`} style={{ color: '#CBF83E' }} />
+                <RefreshCw className={`h-8 w-8 mr-3 text-primary ${refreshing ? 'animate-spin' : ''}`} />
                 System Refresh
               </Button>
             </div>
@@ -469,21 +425,20 @@ export default function AdminDashboard() {
 
           {/* Pending Events Section */}
           <motion.div variants={itemVariants} className="mb-16">
-            <div className="backdrop-blur-xl border rounded-2xl p-8 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
+            <div className="backdrop-blur-xl border rounded-2xl p-8 shadow-xl bg-card text-card-foreground">
               <div className="flex items-center justify-between mb-8">
-                <h3 className="text-3xl font-bold" style={{ color: '#fff' }}>Pending Event Approvals</h3>
+                <h3 className="text-3xl font-bold text-foreground">Pending Event Approvals</h3>
                 <div className="flex items-center space-x-4">
-                  <div className="text-sm font-medium" style={{ color: '#fff' }}>
+                  <div className="text-sm font-medium text-foreground">
                     {loadingEvents ? 'Loading...' : `${pendingEvents.length} events pending`}
                   </div>
                   <Button 
                     onClick={() => window.location.reload()}
                     variant="outline" 
                     size="sm" 
-                    className="transition-all duration-200 hover:shadow-md"
-                    style={{ borderColor: greenBorder, color: '#fff', backgroundColor: 'transparent' }}
+                    className="transition-all duration-200 hover:shadow-md border-border text-foreground bg-transparent hover:bg-accent"
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#1f222a';
+                      e.currentTarget.style.backgroundColor = 'hsl(var(--accent))';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.backgroundColor = 'transparent';
@@ -497,33 +452,35 @@ export default function AdminDashboard() {
               
               {loadingEvents ? (
                 <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                  <p className="mt-4 text-sm" style={{ color: '#fff' }}>Loading pending events...</p>
+                  <Loading
+                    size="md"
+                    text="Loading pending events..."
+                  />
                 </div>
               ) : pendingEvents.length === 0 ? (
                 <div className="text-center py-8">
-                  <Calendar className="h-12 w-12 mx-auto mb-4" style={{ color: '#CBF83E' }} />
-                  <p className="text-lg font-semibold" style={{ color: '#fff' }}>No Pending Events</p>
-                  <p className="text-sm" style={{ color: '#ABA8A9' }}>All events have been reviewed</p>
+                  <Calendar className="h-12 w-12 mx-auto mb-4 text-primary" />
+                  <p className="text-lg font-semibold text-foreground">No Pending Events</p>
+                  <p className="text-sm text-muted-foreground">All events have been reviewed</p>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {pendingEvents.map((event) => (
-                    <div key={event.id} className="rounded-2xl border p-6 bg-background shadow-md" style={{ backgroundColor: darkBg, borderColor: greenBorder }}>
+                    <div key={event.id} className="rounded-2xl border p-6 bg-card shadow-md">
                       <div className="flex flex-col lg:flex-row lg:items-center justify-between">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center space-x-3 mb-2">
-                            <h4 className="text-xl font-semibold text-white truncate">{event.title}</h4>
+                            <h4 className="text-xl font-semibold text-foreground truncate">{event.title}</h4>
                             <span className="text-xs rounded-full bg-yellow-100 text-yellow-800 px-3 py-1 font-medium">
                               PENDING
                             </span>
                           </div>
-                          <p className="text-sm text-muted-foreground mb-3" style={{ color: '#ABA8A9' }}>{event.description}</p>
+                          <p className="text-sm text-muted-foreground mb-3">{event.description}</p>
                           <div className="flex flex-wrap gap-3">
-                            <span className="text-xs rounded-full bg-primary/10 text-primary px-3 py-1" style={{ color: '#CBF83E', backgroundColor: greenBorder + '20' }}>
+                            <span className="text-xs rounded-full bg-primary/10 text-primary px-3 py-1">
                               {event.category}
                             </span>
-                            <span className="text-xs rounded-full bg-secondary/10 text-secondary px-3 py-1" style={{ color: '#fff', backgroundColor: '#2a2d34' }}>
+                            <span className="text-xs rounded-full bg-secondary/10 text-secondary px-3 py-1">
                               {event.startDate ? new Date(event.startDate).toLocaleDateString() : 'No date'}
                             </span>
                             {event.venue?.name && (
@@ -566,12 +523,12 @@ export default function AdminDashboard() {
           <motion.div variants={itemVariants} className="mb-16">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {/* Analytics Chart */}
-              <div className="lg:col-span-2 backdrop-blur-xl  border rounded-2xl p-8 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
+              <div className="lg:col-span-2 backdrop-blur-xl border rounded-2xl p-8 shadow-xl bg-card text-card-foreground">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-bold" style={{ color: '#fff' }}>Revenue Analytics</h3>
+                  <h3 className="text-2xl font-bold text-foreground">Revenue Analytics</h3>
                   <div className="flex items-center space-x-2">
-                    <BarChart3 className="h-5 w-5" style={{ color: '#fff' }} />
-                    <span className="text-sm font-medium" style={{ color: '#fff' }}>Monthly View</span>
+                    <BarChart3 className="h-5 w-5 text-foreground" />
+                    <span className="text-sm font-medium text-foreground">Monthly View</span>
                   </div>
                 </div>
                 <div className="h-80">
@@ -579,50 +536,49 @@ export default function AdminDashboard() {
                     <AreaChart data={revenueData} >
                       <defs>
                         <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor='0D6EFD' stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor='#fff' stopOpacity={0}/>
+                          <stop offset="5%" stopColor='hsl(var(--primary))' stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor='hsl(var(--background))' stopOpacity={0}/>
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#808080" />
-                      <XAxis dataKey="name" style={{ fill: '#fff' }} />
-                      <YAxis style={{ fill: '#fff' }} />
-                      <Tooltip contentStyle={{ backgroundColor: '#0f1115', border: `1px solid ${greenBorder}`, color: '#fff' }} />
-                      <Area type="monotone" dataKey="revenue" stroke='#0D6EFD' fillOpacity={1} fill="url(#colorRevenue)" strokeWidth={2}/>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted))" />
+                      <XAxis dataKey="name" style={{ fill: 'hsl(var(--foreground))' }} />
+                      <YAxis style={{ fill: 'hsl(var(--foreground))' }} />
+                      <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))' }} />
+                      <Area type="monotone" dataKey="revenue" stroke='hsl(var(--primary))' fillOpacity={1} fill="url(#colorRevenue)" strokeWidth={2}/>
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
               </div>
 
               {/* Recent Activities */}
-              <div className="backdrop-blur-xl border rounded-2xl p-8 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
+              <div className="backdrop-blur-xl border rounded-2xl p-8 shadow-xl bg-card text-card-foreground">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-bold" style={{ color: '#fff' }}>Live Activities</h3>
+                  <h3 className="text-2xl font-bold text-foreground">Live Activities</h3>
                   <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
                 </div>
                 <div className="space-y-4">
                   {recentActivities.slice(0, 6).map((activity, index) => (
-                    <div key={activity.id} className="flex items-start space-x-4 p-3 rounded-xl transition-colors duration-200 hover:bg-blue-50/20">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: greenBorder + '20' }}>
-                        <Activity className="h-4 w-4" style={{ color: '#CBF83E' }} />
+                    <div key={activity.id} className="flex items-start space-x-4 p-3 rounded-xl transition-colors duration-200 hover:bg-accent/20">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-primary/10">
+                        <Activity className="h-4 w-4 text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold truncate" style={{ color: '#fff' }}>{activity.user}</p>
-                        <p className="text-xs truncate" style={{ color: '#fff' }}>{activity.action}</p>
+                        <p className="text-sm font-semibold truncate text-foreground">{activity.user}</p>
+                        <p className="text-xs truncate text-foreground">{activity.action}</p>
                         {activity.event && (
-                          <p className="text-xs font-medium truncate" style={{ color: '#0D6EFD' }}>{activity.event}</p>
+                          <p className="text-xs font-medium truncate text-blue-600">{activity.event}</p>
                         )}
-                        <p className="text-xs mt-1 " style={{ color: '#ABA8A9' }}>{activity.time}</p>
+                        <p className="text-xs mt-1 text-muted-foreground">{activity.time}</p>
                       </div>
                     </div>
                   ))}
                 </div>
                 <Button 
                   variant="outline" 
-                  className="w-full mt-4 transition-all duration-200 hover:shadow-md"
+                  className="w-full mt-4 transition-all duration-200 hover:shadow-md bg-blue-600 hover:bg-blue-700 text-white border-border"
                   onClick={() => setActivityDialogOpen(true)}
-                  style={{ borderColor: greenBorder, color: '#fff', backgroundColor: '#0D6EFD' }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#1f222a';
+                    e.currentTarget.style.backgroundColor = 'hsl(var(--accent))';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.backgroundColor = 'transparent';
@@ -636,17 +592,16 @@ export default function AdminDashboard() {
 
           {/* Top Events Performance */}
           <motion.div variants={itemVariants} className="mb-16">
-            <div className="backdrop-blur-xl border rounded-2xl p-8 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
+            <div className="backdrop-blur-xl border rounded-2xl p-8 shadow-xl bg-card text-card-foreground">
               <div className="flex items-center justify-between mb-8">
-                <h3 className="text-3xl font-bold" style={{ color: '#fff' }}>Top Performing Events</h3>
+                <h3 className="text-3xl font-bold text-foreground">Top Performing Events</h3>
                 <div className="flex items-center space-x-4">
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className="transition-all duration-200 hover:shadow-md"
-                    style={{ borderColor: greenBorder, color: '#fff', backgroundColor: 'transparent' }}
+                    className="transition-all duration-200 hover:shadow-md border-border text-foreground bg-transparent hover:bg-accent"
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#1f222a';
+                      e.currentTarget.style.backgroundColor = 'hsl(var(--accent))';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.backgroundColor = 'transparent';
@@ -668,28 +623,25 @@ export default function AdminDashboard() {
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr style={{ borderBottom: `1px solid ${greenBorder}30` }}>
-                      <th className="text-left py-4 px-6 font-semibold" style={{ color: '#fff' }}>Event Name</th>
-                      <th className="text-left py-4 px-6 font-semibold" style={{ color: '#fff' }}>Tickets Sold</th>
-                      <th className="text-left py-4 px-6 font-semibold" style={{ color: '#fff' }}>Revenue</th>
-                      <th className="text-left py-4 px-6 text-purple-800 font-semibold" style={{ color: '#fff' }}>Growth</th>
-                      <th className="text-left py-4 px-6 text-purple-800 font-semibold" style={{ color: '#fff' }}>Actions</th>
+                    <tr className="border-b border-border">
+                      <th className="text-left py-4 px-6 font-semibold text-foreground">Event Name</th>
+                      <th className="text-left py-4 px-6 font-semibold text-foreground">Tickets Sold</th>
+                      <th className="text-left py-4 px-6 font-semibold text-foreground">Revenue</th>
+                      <th className="text-left py-4 px-6 font-semibold text-foreground">Growth</th>
+                      <th className="text-left py-4 px-6 font-semibold text-foreground">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {topEvents.map((event, index) => (
-                      <tr key={event.id} className="border-b transition-colors duration-200" style={{ borderColor: greenBorder + '20', backgroundColor: 'transparent' }} 
-                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#1f222a'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-                      >
+                      <tr key={event.id} className="border-b border-border transition-colors duration-200 hover:bg-accent/20"> 
                         <td className="py-4 px-6">
-                          <div className="font-semibold" style={{ color: '#fff' }}>{event.name}</div>
+                          <div className="font-semibold text-foreground">{event.name}</div>
                         </td>
                         <td className="py-4 px-6">
-                          <div className="font-medium" style={{ color: '#CBF83E' }}>{event.tickets.toLocaleString()}</div>
+                          <div className="font-medium text-primary">{event.tickets.toLocaleString()}</div>
                         </td>
                         <td className="py-4 px-6">
-                          <div className="font-bold" style={{ color: '#fff' }}>LKR {event.revenue.toLocaleString()}</div>
+                          <div className="font-bold text-foreground">LKR {event.revenue.toLocaleString()}</div>
                         </td>
                         <td className="py-4 px-6">
                           <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${

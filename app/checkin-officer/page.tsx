@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/components/auth/auth-provider';
 import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { Loading } from '@/components/ui/loading';
 import { 
   QrCode,
   Users, 
@@ -17,16 +19,36 @@ import {
   Download,
   Scan,
   User,
-  Clock4
+  Clock4,
+  ArrowLeft,
+  Settings
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { fetchMyCheckinEvents } from '@/lib/api';
+import RouteGuard from '@/components/auth/routeGuard';
 
-// Theme to match admin dashboard
-const darkBg = "#181A20";
-const blueHeader = "#1877F2";
-const cardBg = "#23262F";
-const greenBorder = "#CBF83E" + '50';
-const cardShadow = "0 2px 16px 0 rgba(57,253,72,0.08)";
+// Animation variants
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      delayChildren: 0.2,
+      staggerChildren: 0.1
+    }
+  }
+};
+
+const itemVariants = {
+  hidden: { y: 20, opacity: 0 },
+  visible: {
+    y: 0,
+    opacity: 1,
+    transition: {
+      duration: 0.5
+    }
+  }
+};
 
 interface AssignedEvent {
   id: string;
@@ -167,13 +189,90 @@ export default function CheckinOfficerDashboard() {
   const { userProfile, firebaseUser, isLoading } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'overview' | 'events' | 'checkin' | 'attendees'>('overview');
-  const [selectedEvent, setSelectedEvent] = useState<string>('2'); // Default to active event
+  const [selectedEvent, setSelectedEvent] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [scannerActive, setScannerActive] = useState(false);
   const [scannerModalOpen, setScannerModalOpen] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [assignedEvents, setAssignedEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch assigned events for checkin officer
+  useEffect(() => {
+    const loadAssignedEvents = async () => {
+      if (!userProfile || userProfile.role !== 'checkin_officer') return;
+      
+      setLoading(true);
+      try {
+        console.log('🎯 Fetching assigned events for checkin officer:', userProfile.uid);
+        const response = await fetchMyCheckinEvents();
+        const events = response?.data || response || [];
+        setAssignedEvents(events);
+        console.log('📊 Loaded assigned events:', events);
+        
+        // Set default selected event to the first active event
+        const activeEvent = events.find((e: any) => {
+          const eventDate = new Date(e.startDate);
+          const now = new Date();
+          return eventDate.toDateString() === now.toDateString();
+        });
+        if (activeEvent) {
+          setSelectedEvent(activeEvent.id.toString());
+        } else if (events.length > 0) {
+          setSelectedEvent(events[0].id.toString());
+        }
+      } catch (error) {
+        console.error('❌ Failed to load assigned events:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadAssignedEvents();
+  }, [userProfile]);
+
+  // Calculate stats from real data
+  const totalEvents = assignedEvents.length;
+  const activeEvents = assignedEvents.filter(e => {
+    const eventDate = new Date(e.startDate);
+    const now = new Date();
+    return eventDate.toDateString() === now.toDateString();
+  }).length;
+  const completedEvents = assignedEvents.filter(e => {
+    const eventDate = new Date(e.startDate);
+    const now = new Date();
+    return eventDate < now;
+  }).length;
+
+  // Get event status
+  const getEventStatus = (event: any) => {
+    const eventDate = new Date(event.startDate);
+    const now = new Date();
+    
+    if (eventDate.toDateString() === now.toDateString()) {
+      return 'active';
+    } else if (eventDate > now) {
+      return 'pending';
+    } else {
+      return 'completed';
+    }
+  };
+
+  // Format date and time
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const formatTime = (timeString: string) => {
+    if (!timeString) return 'Time TBD';
+    return timeString;
+  };
 
   // Helper to open the scanner modal
   const openScannerModal = () => {
@@ -248,16 +347,12 @@ export default function CheckinOfficerDashboard() {
     }
   };
 
-  // Redirect if not authenticated or not checkin officer
+  // Redirect if not authenticated
   useEffect(() => {
     if (!isLoading && !firebaseUser) {
       router.push('/auth/signin');
     }
-    // Add role check here when authentication is implemented
-    // if (userProfile && userProfile.role !== 'checkin_officer') {
-    //   router.push('/dashboard');
-    // }
-  }, [isLoading, firebaseUser, userProfile, router]);
+  }, [isLoading, firebaseUser, router]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -277,8 +372,8 @@ export default function CheckinOfficerDashboard() {
     }
   };
 
-  const selectedEventData = mockAssignedEvents.find(e => e.id === selectedEvent);
-  
+  const selectedEventData = assignedEvents.find(e => e.id.toString() === selectedEvent);
+
   const filteredAttendees = mockAttendees.filter(attendee => {
     const matchesSearch = attendee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          attendee.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -294,8 +389,20 @@ export default function CheckinOfficerDashboard() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: darkBg }}>
-        <div className="text-lg" style={{ color: '#fff' }}>Loading...</div>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-lg text-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  // Check if user is authorized
+  if (!userProfile || userProfile.role !== 'checkin_officer') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="text-lg mb-4 text-foreground">Access Denied</div>
+          <p className="text-muted-foreground">You don't have permission to access this page.</p>
+        </div>
       </div>
     );
   }
@@ -324,20 +431,20 @@ export default function CheckinOfficerDashboard() {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: darkBg }}>
+    <div className="min-h-screen bg-background">
       {/* Subtle Background Elements */}
-      <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-20" style={{ backgroundColor: '#ABA8A9' }}></div>
-      <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-15" style={{ backgroundColor: '#D8DFEE' }}></div>
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl opacity-10" style={{ backgroundColor: '#ABA8A9' }}></div>
+      <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-20 bg-muted"></div>
+      <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-15 bg-muted"></div>
+      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl opacity-10 bg-muted"></div>
 
       {/* Header */}
       <div className="relative z-10">
         <div className="max-w-7xl mx-auto px-6 pt-8">
-          <div className="rounded-2xl p-6 shadow-lg" style={{ backgroundColor: blueHeader, borderColor: greenBorder, boxShadow: cardShadow }}>
+          <div className="rounded-2xl p-6 shadow-lg bg-primary border-border">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold mb-2" style={{ color: '#fff' }}>Check-in Dashboard</h1>
-                <p className="text-lg" style={{ color: '#fff' }}>Scan tickets and manage event check-ins</p>
+                <h1 className="text-3xl font-bold mb-2 text-primary-foreground">Check-in Dashboard</h1>
+                <p className="text-lg text-primary-foreground">Scan tickets and manage event check-ins</p>
               </div>
             </div>
           </div>
@@ -347,74 +454,71 @@ export default function CheckinOfficerDashboard() {
       <div className="max-w-7xl mx-auto p-6">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl transition-all duration-300" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
+          <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl transition-all duration-300 bg-card border-border">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm mb-1" style={{ color: '#fff' }}>Today&apos;s Check-ins</p>
-                <p className="text-3xl font-bold" style={{ color: '#CBF83E' }}>{todayCheckins}</p>
+                <p className="text-sm mb-1 text-foreground">Today&apos;s Check-ins</p>
+                <p className="text-3xl font-bold text-green-500">{todayCheckins}</p>
               </div>
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: '#D8DFEE' + '40' }}>
-                <CheckCircle2 className="w-6 h-6" style={{ color: '#CBF83E' }} />
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-green-500/20">
+                <CheckCircle2 className="w-6 h-6 text-green-500" />
               </div>
             </div>
           </div>
 
-          <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl transition-all duration-300" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
+          <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl transition-all duration-300 bg-card border-border">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm mb-1" style={{ color: '#fff' }}>Total Check-ins</p>
-                <p className="text-3xl font-bold" style={{ color: '#CBF83E' }}>{totalCheckins}</p>
+                <p className="text-sm mb-1 text-foreground">Total Check-ins</p>
+                <p className="text-3xl font-bold text-green-500">{totalCheckins}</p>
               </div>
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: '#D8DFEE' + '40' }}>
-                <TrendingUp className="w-6 h-6" style={{ color: '#CBF83E' }} />
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-green-500/20">
+                <TrendingUp className="w-6 h-6 text-green-500" />
               </div>
             </div>
           </div>
 
-          <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl transition-all duration-300" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
+          <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl transition-all duration-300 bg-card border-border">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm mb-1" style={{ color: '#fff' }}>Assigned Events</p>
-                <p className="text-3xl font-bold" style={{ color: '#CBF83E' }}>{mockAssignedEvents.length}</p>
+                <p className="text-sm mb-1 text-foreground">Assigned Events</p>
+                <p className="text-3xl font-bold text-green-500">{totalEvents}</p>
               </div>
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: '#D8DFEE' + '40' }}>
-                <Calendar className="w-6 h-6" style={{ color: '#CBF83E' }} />
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-green-500/20">
+                <Calendar className="w-6 h-6 text-green-500" />
               </div>
             </div>
           </div>
 
-          <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl transition-all duration-300" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
+          <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl transition-all duration-300 bg-card border-border">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm mb-1" style={{ color: '#fff' }}>Active Events</p>
-                <p className="text-3xl font-bold" style={{ color: '#CBF83E' }}>
-                  {mockAssignedEvents.filter(e => e.status === 'active').length}
+                <p className="text-sm mb-1 text-foreground">Active Events</p>
+                <p className="text-3xl font-bold text-green-500">
+                  {activeEvents}
                 </p>
               </div>
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: '#D8DFEE' + '40' }}>
-                <Activity className="w-6 h-6" style={{ color: '#CBF83E' }} />
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-green-500/20">
+                <Activity className="w-6 h-6 text-green-500" />
               </div>
             </div>
           </div>
         </div>
 
         {/* Navigation Tabs */}
-  <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl mb-8" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
+  <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl mb-8 bg-card border-border">
           <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => setActiveTab('overview')}
                 className={`px-6 py-3 rounded-xl font-medium transition-all duration-200 ${
                   activeTab === 'overview'
-                    ? 'text-white'
-                    : ''
+                    ? 'text-primary-foreground bg-primary'
+                    : 'text-foreground'
                 }`}
-                style={activeTab === 'overview' 
-                  ? { backgroundColor: '#0D6EFD' }
-                  : { color: '#fff' }}
               >
                 <div className="flex items-center space-x-2">
-                  <TrendingUp className="w-4 h-4" style={{ color: '#fff' }} />
+                  <TrendingUp className="w-4 h-4" />
                   <span>Overview</span>
                 </div>
               </button>
@@ -422,15 +526,12 @@ export default function CheckinOfficerDashboard() {
                 onClick={() => setActiveTab('events')}
                 className={`px-6 py-3 rounded-xl font-medium transition-all duration-200 ${
                   activeTab === 'events'
-                    ? 'text-white'
-                    : ''
+                    ? 'text-primary-foreground bg-primary'
+                    : 'text-foreground hover:bg-muted/50'
                 }`}
-                style={activeTab === 'events' 
-                  ? { backgroundColor: '#0D6EFD' }
-                  : { color: '#fff' }}
               >
                 <div className="flex items-center space-x-2">
-                  <Calendar className="w-4 h-4" style={{ color: '#fff' }} />
+                  <Calendar className="w-4 h-4" />
                   <span>My Events</span>
                 </div>
               </button>
@@ -438,15 +539,12 @@ export default function CheckinOfficerDashboard() {
                 onClick={() => setActiveTab('attendees')}
                 className={`px-6 py-3 rounded-xl font-medium transition-all duration-200 ${
                   activeTab === 'attendees'
-                    ? 'text-white'
-                    : ''
+                    ? 'text-primary-foreground bg-primary'
+                    : 'text-foreground'
                 }`}
-                style={activeTab === 'attendees' 
-                  ? { backgroundColor: '#0D6EFD' }
-                  : { color: '#fff' }}
               >
                 <div className="flex items-center space-x-2">
-                  <Users className="w-4 h-4" style={{ color: '#fff' }} />
+                  <Users className="w-4 h-4" />
                   <span>Attendees</span>
                 </div>
               </button>
@@ -457,10 +555,9 @@ export default function CheckinOfficerDashboard() {
                 <select
                   value={selectedEvent}
                   onChange={(e) => setSelectedEvent(e.target.value)}
-                  className="appearance-none rounded-lg px-4 py-2 pr-8"
-                  style={{ backgroundColor: darkBg, border: `1px solid ${greenBorder}`, color: '#fff' }}
+                  className="appearance-none rounded-lg px-4 py-2 pr-8 bg-background border border-border text-foreground"
                 >
-                  {mockAssignedEvents.map(event => (
+                  {assignedEvents.map(event => (
                     <option key={event.id} value={event.id}>{event.title}</option>
                   ))}
                 </select>
@@ -473,36 +570,34 @@ export default function CheckinOfficerDashboard() {
         {activeTab === 'overview' && (
           <div className="space-y-6">
             {/* Recent Activity */}
-            <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold" style={{ color: '#fff' }}>Recent Check-ins</h3>
-                <Button 
+            <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl bg-card border-border">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-foreground">Recent Check-ins</h3>
+                <Button
                   variant="outline"
                   size="sm"
-                  className="transition-all duration-200 hover:shadow-md"
-                  style={{ borderColor: greenBorder, color: '#fff', backgroundColor: 'transparent' }}
+                  className="text-xs border-primary text-foreground hover:bg-primary/10"
                 >
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Refresh
+                  View All
                 </Button>
               </div>
               <div className="space-y-4">
                 {mockRecentCheckins.slice(0, 5).map((record) => (
-                  <div key={record.id} className="flex items-center space-x-4 p-4 rounded-lg transition-colors duration-200" style={{ backgroundColor: '#1f222a' }}>
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: greenBorder + '20' }}>
-                      <CheckCircle2 className="w-5 h-5" style={{ color: '#CBF83E' }} />
+                  <div key={record.id} className="flex items-center space-x-4 p-4 rounded-lg transition-colors duration-200 bg-muted/30">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center bg-primary/20">
+                      <CheckCircle2 className="w-5 h-5 text-primary" />
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium" style={{ color: '#fff' }}>{record.attendeeName}</p>
-                          <p className="text-xs" style={{ color: '#ABA8A9' }}>{record.ticketId} • {record.eventTitle}</p>
+                          <p className="text-sm font-medium text-foreground">{record.attendeeName}</p>
+                          <p className="text-xs text-muted-foreground">{record.ticketId} • {record.eventTitle}</p>
                         </div>
                         <div className="text-right">
-                          <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium`} style={{ color: '#CBF83E', backgroundColor: greenBorder + '20' }}>
+                          <span className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-primary/20 text-primary">
                             {record.ticketType}
                           </span>
-                          <p className="text-xs mt-1" style={{ color: '#ABA8A9' }}>
+                          <p className="text-xs mt-1 text-muted-foreground">
                             {new Date(record.checkedInAt).toLocaleTimeString()}
                           </p>
                         </div>
@@ -515,16 +610,15 @@ export default function CheckinOfficerDashboard() {
 
             {/* Quick Actions */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl transition-all duration-300" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
+              <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl transition-all duration-300 bg-card border-border">
                 <div className="text-center">
-                  <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: greenBorder + '20' }}>
-                    <QrCode className="w-8 h-8" style={{ color: '#CBF83E' }} />
+                  <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 bg-primary/20">
+                    <QrCode className="w-8 h-8 text-primary" />
                   </div>
-                  <h3 className="text-lg font-medium mb-2" style={{ color: '#fff' }}>Quick Scan</h3>
-                  <p className="text-sm mb-4" style={{ color: '#ABA8A9' }}>Start scanning tickets for active events</p>
+                  <h3 className="text-lg font-medium mb-2 text-foreground">Quick Scan</h3>
+                  <p className="text-sm mb-4 text-muted-foreground">Start scanning tickets for active events</p>
                   <Button 
-                    className="w-full text-white"
-                    style={{ background: '#0D6EFD' }}
+                    className="w-full text-white bg-blue-600 hover:bg-blue-700"
                     onClick={openScannerModal}
                   >
                     Start Scanning
@@ -532,17 +626,16 @@ export default function CheckinOfficerDashboard() {
                 </div>
               </div>
 
-              <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl transition-all duration-300" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
+              <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl transition-all duration-300 bg-card border-border">
                 <div className="text-center">
-                  <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: greenBorder + '20' }}>
-                    <Users className="w-8 h-8" style={{ color: '#CBF83E' }} />
+                  <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 bg-primary/20">
+                    <Users className="w-8 h-8 text-primary" />
                   </div>
-                  <h3 className="text-lg font-medium mb-2" style={{ color: '#fff' }}>View Attendees</h3>
-                  <p className="text-sm mb-4" style={{ color: '#ABA8A9' }}>Browse attendee list and check-in status</p>
+                  <h3 className="text-lg font-medium mb-2 text-foreground">View Attendees</h3>
+                  <p className="text-sm mb-4 text-muted-foreground">Browse attendee list and check-in status</p>
                   <Button 
                     variant="outline" 
-                    className="w-full transition-all duration-200 hover:shadow-md"
-                    style={{ borderColor: greenBorder, color: '#fff', backgroundColor: 'transparent' }}
+                    className="w-full transition-all duration-200 hover:shadow-md border-primary text-foreground hover:bg-primary/10"
                     onClick={() => setActiveTab('attendees')}
                   >
                     View List
@@ -550,17 +643,16 @@ export default function CheckinOfficerDashboard() {
                 </div>
               </div>
 
-              <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl transition-all duration-300" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
+              <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl transition-all duration-300 bg-card border-border">
                 <div className="text-center">
-                  <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: greenBorder + '20' }}>
-                    <Download className="w-8 h-8" style={{ color: '#CBF83E' }} />
+                  <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 bg-primary/20">
+                    <Download className="w-8 h-8 text-primary" />
                   </div>
-                  <h3 className="text-lg font-medium mb-2" style={{ color: '#fff' }}>Export Data</h3>
-                  <p className="text-sm mb-4" style={{ color: '#ABA8A9' }}>Download check-in reports and logs</p>
+                  <h3 className="text-lg font-medium mb-2 text-foreground">Export Data</h3>
+                  <p className="text-sm mb-4 text-muted-foreground">Download check-in reports and logs</p>
                   <Button 
                     variant="outline" 
-                    className="w-full transition-all duration-200 hover:shadow-md"
-                    style={{ borderColor: greenBorder, color: '#fff', backgroundColor: 'transparent' }}
+                    className="w-full transition-all duration-200 hover:shadow-md border-primary text-foreground hover:bg-primary/10"
                   >
                     Export
                   </Button>
@@ -572,136 +664,146 @@ export default function CheckinOfficerDashboard() {
 
         {activeTab === 'events' && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {mockAssignedEvents.map((event) => (
-              <div key={event.id} className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl transition-all duration-300" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h3 className="text-lg font-medium mb-1" style={{ color: '#fff' }}>{event.title}</h3>
-                    <p className="text-sm" style={{ color: '#ABA8A9' }}>{event.organizer}</p>
-                  </div>
-                  <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(event.status)}`}>
-                    {event.status}
-                  </span>
-                </div>
-
-                <div className="space-y-3 mb-6">
-                  <div className="flex items-center space-x-2 text-sm" style={{ color: '#ABA8A9' }}>
-                    <Calendar className="w-4 h-4" style={{ color: '#fff' }} />
-                    <span>{new Date(event.date).toLocaleDateString()} at {event.time}</span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-sm" style={{ color: '#ABA8A9' }}>
-                    <MapPin className="w-4 h-4" style={{ color: '#fff' }} />
-                    <span>{event.venue}</span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-sm" style={{ color: '#ABA8A9' }}>
-                    <Users className="w-4 h-4" style={{ color: '#fff' }} />
-                    <span>{event.checkedIn} / {event.totalTickets} checked in</span>
-                  </div>
-                </div>
-
-                <div className="mb-4">
-                  <div className="flex justify-between text-sm mb-1" style={{ color: '#ABA8A9' }}>
-                    <span>Check-in Progress</span>
-                    <span>{Math.round((event.checkedIn / event.totalTickets) * 100)}%</span>
-                  </div>
-                  <div className="w-full rounded-full h-2" style={{ backgroundColor: '#1f222a' }}>
-                    <div 
-                      className="h-2 rounded-full" 
-                      style={{ backgroundColor: '#0D6EFD', width: `${(event.checkedIn / event.totalTickets) * 100}%` }}
-                    ></div>
-                  </div>
-                </div>
-
-                <div className="mb-4 p-3 rounded-lg" style={{ backgroundColor: '#1f222a' }}>
-                  <div className="text-sm" style={{ color: '#ABA8A9' }}>My Check-ins</div>
-                  <div className="text-2xl font-bold" style={{ color: '#CBF83E' }}>{event.myCheckins}</div>
-                </div>
-
-                <div className="flex space-x-2">
-                  {event.status === 'active' ? (
-                    <button
-                      type="button"
-                      onClick={openScannerModal}
-                      className="flex-1 flex items-center justify-center h-10 px-4 py-2 rounded-md font-medium text-white shadow-md transition-all duration-200"
-                      style={{ background: '#0D6EFD' }}
-                    >
-                      <Scan className="w-4 h-4 mr-1" />
-                      Check-in
-                    </button>
-                  ) : (
-                    <button
-                      className="flex-1 flex items-center justify-center h-10 px-4 py-2 rounded-md font-medium text-white shadow-md opacity-50 cursor-not-allowed"
-                      style={{ background: '#0D6EFD' }}
-                      disabled
-                    >
-                      <Scan className="w-4 h-4 mr-1" />
-                      Check-in
-                    </button>
-                  )}
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    className="transition-all duration-200 hover:shadow-md"
-                    style={{ borderColor: greenBorder, color: '#fff', backgroundColor: 'transparent' }}
-                    onClick={() => {
-                      setSelectedEvent(event.id);
-                      setActiveTab('attendees');
-                    }}
-                  >
-                    <Eye className="w-4 h-4" />
-                  </Button>
-                </div>
+            {loading ? (
+              <div className="col-span-full text-center py-8">
+                <Loading
+                  size="lg"
+                  text="Loading your assigned events..."
+                />
               </div>
-            ))}
+            ) : assignedEvents.length === 0 ? (
+              <div className="col-span-full text-center py-8">
+                <Calendar className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-muted-foreground">No assigned events found.</p>
+              </div>
+            ) : (
+              assignedEvents.map((event) => (
+                <div key={event.id} className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl transition-all duration-300 bg-card border-border">
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <h3 className="text-lg font-medium mb-1 text-foreground">{event.name}</h3>
+                      <p className="text-sm text-muted-foreground">{event.organizer?.name || 'Unknown Organizer'}</p>
+                    </div>
+                    <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(getEventStatus(event))}`}>
+                      {getEventStatus(event)}
+                    </span>
+                  </div>
+
+                  <div className="space-y-3 mb-6">
+                    <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                      <Calendar className="w-4 h-4 text-primary-foreground" />
+                      <span>{formatDate(event.startDate)} at {formatTime(event.startTime)}</span>
+                    </div>
+                    <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                      <MapPin className="w-4 h-4 text-primary-foreground" />
+                      <span>{event.venue?.name || 'Venue TBD'}</span>
+                    </div>
+                    <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                      <Users className="w-4 h-4 text-primary-foreground" />
+                      <span>0 / {event.capacity} checked in</span>
+                    </div>
+                  </div>
+
+                  <div className="mb-4">
+                    <div className="flex justify-between text-sm mb-1 text-muted-foreground">
+                      <span>Check-in Progress</span>
+                      <span>0%</span>
+                    </div>
+                    <div className="w-full rounded-full h-2 bg-muted">
+                      <div 
+                        className="h-2 rounded-full bg-primary" 
+                        style={{ width: '0%' }}
+                      ></div>
+                    </div>
+                  </div>
+                {/* TODO : implement the checkin count */}
+                  <div className="mb-4 p-3 rounded-lg" >
+                    <div className="text-sm text-black" >My Check-ins</div>
+                    <div className="text-2xl font-bold" >0</div>
+                  </div>
+
+                  <div className="flex space-x-2">
+                    {getEventStatus(event) === 'active' ? (
+                      <button
+                        type="button"
+                        onClick={openScannerModal}
+                        className="flex-1 flex items-center justify-center h-10 px-4 py-2 rounded-md font-medium text-primary-foreground shadow-md transition-all duration-200 bg-primary"
+                      >
+                        <Scan className="w-4 h-4 mr-1" />
+                        Check-in
+                      </button>
+                    ) : (
+                      <button
+                        className="flex-1 flex items-center justify-center h-10 px-4 py-2 rounded-md font-medium text-primary-foreground shadow-md opacity-50 cursor-not-allowed bg-primary"
+                        disabled
+                      >
+                        <Scan className="w-4 h-4 mr-1" />
+                        Check-in
+                      </button>
+                    )}
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      className="transition-all duration-200 hover:shadow-md border-primary text-foreground hover:bg-primary/10"
+                      onClick={() => {
+                        setSelectedEvent(event.id.toString());
+                        setActiveTab('attendees');
+                      }}
+                    >
+                      <Eye className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         )}
 
         {activeTab === 'checkin' && selectedEventData && (
           <div className="space-y-6">
             {/* Event Info Card */}
-            <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
+            <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl bg-card border-border">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="text-lg font-semibold" style={{ color: '#fff' }}>{selectedEventData.title}</h3>
-                  <p className="text-sm" style={{ color: '#ABA8A9' }}>{selectedEventData.venue}</p>
+                  <h3 className="text-lg font-semibold text-foreground">{selectedEventData.name}</h3>
+                  <p className="text-sm text-muted-foreground">{selectedEventData.venue?.name || 'Venue TBD'}</p>
                 </div>
-                <span className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(selectedEventData.status)}`}>
-                  {selectedEventData.status}
+                <span className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(getEventStatus(selectedEventData))}`}>
+                  {getEventStatus(selectedEventData)}
                 </span>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div className="text-center p-3 rounded-lg" style={{ backgroundColor: '#1f222a' }}>
-                  <div className="text-2xl font-bold" style={{ color: '#fff' }}>{selectedEventData.totalTickets}</div>
-                  <div className="text-sm" style={{ color: '#ABA8A9' }}>Total Tickets</div>
+                <div className="text-center p-3 rounded-lg bg-muted/30">
+                  <div className="text-2xl font-bold text-foreground">{selectedEventData.capacity}</div>
+                  <div className="text-sm text-muted-foreground">Total Capacity</div>
                 </div>
-                <div className="text-center p-3 rounded-lg" style={{ backgroundColor: '#1f222a' }}>
-                  <div className="text-2xl font-bold" style={{ color: '#CBF83E' }}>{selectedEventData.checkedIn}</div>
-                  <div className="text-sm" style={{ color: '#ABA8A9' }}>Checked In</div>
+                <div className="text-center p-3 rounded-lg bg-muted/30">
+                  <div className="text-2xl font-bold text-primary">0</div>
+                  <div className="text-sm text-muted-foreground">Checked In</div>
                 </div>
-                <div className="text-center p-3 rounded-lg" style={{ backgroundColor: '#1f222a' }}>
-                  <div className="text-2xl font-bold" style={{ color: '#CBF83E' }}>{selectedEventData.myCheckins}</div>
-                  <div className="text-sm" style={{ color: '#ABA8A9' }}>My Check-ins</div>
+                <div className="text-center p-3 rounded-lg bg-muted/30">
+                  <div className="text-2xl font-bold text-primary">0</div>
+                  <div className="text-sm text-muted-foreground">My Check-ins</div>
                 </div>
               </div>
             </div>
 
             {/* QR Scanner */}
-            <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl text-center" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
+            <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl text-center bg-card border-border">
               <div className="max-w-md mx-auto">
                 {!scannerActive ? (
                   <>
-                    <div className="w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: greenBorder + '20' }}>
-                      <QrCode className="w-12 h-12" style={{ color: '#CBF83E' }} />
+                    <div className="w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4 bg-primary/20">
+                      <QrCode className="w-12 h-12 text-primary" />
                     </div>
-                    <h3 className="text-lg font-medium mb-2" style={{ color: '#fff' }}>QR Code Scanner</h3>
-                    <p className="text-sm mb-6" style={{ color: '#ABA8A9' }}>
+                    <h3 className="text-lg font-medium mb-2 text-foreground">QR Code Scanner</h3>
+                    <p className="text-sm mb-6 text-muted-foreground">
                       Tap the button below to activate the QR code scanner and check in attendees
                     </p>
                     <Button 
                       size="lg" 
-                      className="w-full text-white"
-                      style={{ background: '#0D6EFD' }}
+                      className="w-full text-white bg-blue-600 hover:bg-blue-700"
                       onClick={() => setScannerActive(true)}
                     >
                       <QrCode className="w-5 h-5 mr-2" />
@@ -710,23 +812,22 @@ export default function CheckinOfficerDashboard() {
                   </>
                 ) : (
                   <>
-                    <div className="w-64 h-64 rounded-lg mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: '#0f1115' }}>
-                      <div className="text-center" style={{ color: '#fff' }}>
+                    <div className="w-64 h-64 rounded-lg mx-auto mb-4 flex items-center justify-center bg-background border">
+                      <div className="text-center text-foreground">
                         <QrCode className="w-16 h-16 mx-auto mb-2 animate-pulse" />
                         <p className="text-sm">Camera Active</p>
-                        <p className="text-xs" style={{ color: '#ABA8A9' }}>Point camera at QR code</p>
+                        <p className="text-xs text-muted-foreground">Point camera at QR code</p>
                       </div>
                     </div>
                     <div className="flex space-x-4">
                       <Button 
                         variant="outline" 
-                        className="flex-1 transition-all duration-200 hover:shadow-md"
-                        style={{ borderColor: greenBorder, color: '#fff', backgroundColor: 'transparent' }}
+                        className="flex-1 transition-all duration-200 hover:shadow-md border-primary text-foreground hover:bg-primary/10"
                         onClick={() => setScannerActive(false)}
                       >
                         Stop Scanner
                       </Button>
-                      <Button className="flex-1 text-white" style={{ background: '#0D6EFD' }}>
+                      <Button className="flex-1 text-white bg-blue-600 hover:bg-blue-700">
                         Manual Entry
                       </Button>
                     </div>
@@ -738,12 +839,12 @@ export default function CheckinOfficerDashboard() {
         )}
 
         {activeTab === 'attendees' && (
-          <div className="backdrop-blur-xl border rounded-2xl shadow-xl overflow-hidden" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
-            <div className="p-6 border-b" style={{ borderColor: greenBorder }}>
+          <div className="backdrop-blur-xl border rounded-2xl shadow-xl overflow-hidden bg-card border-border">
+            <div className="p-6 border-b border-border">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-semibold" style={{ color: '#fff' }}>Attendee List</h2>
-                  <p className="text-sm mt-1" style={{ color: '#ABA8A9' }}>
+                  <h2 className="text-xl font-semibold text-foreground">Attendee List</h2>
+                  <p className="text-sm mt-1 text-muted-foreground">
                     {selectedEventData?.title} - {filteredAttendees.length} attendees
                   </p>
                 </div>
@@ -752,13 +853,12 @@ export default function CheckinOfficerDashboard() {
                     variant="outline"
                     size="sm"
                     onClick={() => exportAttendeesCSV(filteredAttendees)}
-                    className="transition-all duration-200 hover:shadow-md"
-                    style={{ borderColor: greenBorder, color: '#fff', backgroundColor: 'transparent' }}
+                    className="transition-all duration-200 hover:shadow-md border-primary text-foreground hover:bg-primary/10"
                   >
                     <Download className="w-4 h-4 mr-2" />
                     Export
                   </Button>
-                  <Button variant="outline" size="sm" className="transition-all duration-200 hover:shadow-md" style={{ borderColor: greenBorder, color: '#fff', backgroundColor: 'transparent' }}>
+                  <Button variant="outline" size="sm" className="transition-all duration-200 hover:shadow-md border-primary text-foreground hover:bg-primary/10">
                     <RefreshCw className="w-4 h-4 mr-2" />
                     Refresh
                   </Button>
@@ -767,21 +867,19 @@ export default function CheckinOfficerDashboard() {
               {/* Attendees filter/search controls */}
               <div className="flex flex-col md:flex-row gap-4 items-center mt-6">
                 <div className="relative w-full md:w-64">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4" style={{ color: '#ABA8A9' }} />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <input
                     type="text"
                     placeholder="Search attendees..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 pr-4 py-2 rounded-lg w-full"
-                    style={{ backgroundColor: darkBg, border: `1px solid ${greenBorder}`, color: '#fff' }}
+                    className="pl-10 pr-4 py-2 rounded-lg w-full bg-background border border-border text-foreground placeholder-muted-foreground"
                   />
                 </div>
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="appearance-none rounded-lg px-4 py-2 pr-8"
-                  style={{ backgroundColor: darkBg, border: `1px solid ${greenBorder}`, color: '#fff' }}
+                  className="appearance-none rounded-lg px-4 py-2 pr-8 bg-background border border-border text-foreground"
                 >
                   <option value="all">All Status</option>
                   <option value="checked_in">Checked In</option>
@@ -791,67 +889,66 @@ export default function CheckinOfficerDashboard() {
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full">
-                <thead style={{ backgroundColor: '#1f222a' }}>
+                <thead>
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: '#fff' }}>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-foreground">
                       Attendee
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: '#fff' }}>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-foreground">
                       Ticket
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: '#fff' }}>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-foreground">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: '#fff' }}>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-foreground">
                       Check-in Time
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: '#fff' }}>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-foreground">
                       Actions
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredAttendees.map((attendee) => (
-                    <tr key={attendee.id} className="transition-colors duration-200" style={{ borderBottom: `1px solid ${greenBorder}20` }} onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.backgroundColor = '#1f222a'; }} onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.backgroundColor = 'transparent'; }}>
+                    <tr key={attendee.id} className="transition-colors duration-200 border-b border-border hover:bg-muted/30">
                       <td className="px-6 py-4">
                         <div className="flex items-center">
-                          <div className="w-8 h-8 rounded-full flex items-center justify-center mr-3" style={{ backgroundColor: '#1f222a' }}>
-                            <User className="w-4 h-4" style={{ color: '#ABA8A9' }} />
+                          <div className="w-8 h-8 rounded-full flex items-center justify-center mr-3 bg-muted/30">
+                            <User className="w-4 h-4 text-muted-foreground" />
                           </div>
                           <div>
-                            <div className="text-sm font-medium" style={{ color: '#fff' }}>{attendee.name}</div>
-                            <div className="text-sm" style={{ color: '#ABA8A9' }}>{attendee.email}</div>
+                            <div className="text-sm font-medium text-foreground">{attendee.name}</div>
+                            <div className="text-sm text-muted-foreground">{attendee.email}</div>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="text-sm" style={{ color: '#fff' }}>{attendee.ticketId}</div>
-                        <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium`} style={{ color: '#CBF83E', backgroundColor: greenBorder + '20' }}>
+                        <div className="text-sm text-foreground">{attendee.ticketId}</div>
+                        <span className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-primary/20 text-primary">
                           {attendee.ticketType}
                         </span>
                       </td>
                       <td className="px-6 py-4">
                         {attendee.status === 'checked_in' ? (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium" style={{ background: greenBorder + '20', color: '#CBF83E' }}>
-                            <CheckCircle2 className="w-3 h-3 mr-1" style={{ color: '#CBF83E' }} />
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary/20 text-primary">
+                            <CheckCircle2 className="w-3 h-3 mr-1 text-primary" />
                             Checked In
                           </span>
                         ) : (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium" style={{ background: '#2a2d34', color: '#fff' }}>
-                            <Clock4 className="w-3 h-3 mr-1" style={{ color: '#fff' }} />
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-muted/30 text-foreground">
+                            <Clock4 className="w-3 h-3 mr-1 text-foreground" />
                             Pending
                           </span>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-sm" style={{ color: '#ABA8A9' }}>
+                      <td className="px-6 py-4 text-sm text-muted-foreground">
                         {attendee.checkedInAt ? new Date(attendee.checkedInAt).toLocaleString() : 'Not checked in'}
                       </td>
                       <td className="px-6 py-4 text-sm font-medium">
                         {attendee.status === 'pending' ? (
                           <Button 
                             size="sm" 
-                            className="text-white" 
-                            style={{ background: '#0D6EFD' }}
+                            className="text-white bg-blue-600 hover:bg-blue-700"
                           >
                             <CheckCircle2 className="w-4 h-4 mr-1" />
                             Check In
@@ -860,8 +957,7 @@ export default function CheckinOfficerDashboard() {
                           <Button 
                             size="sm" 
                             variant="outline"
-                            className="transition-all duration-200 hover:shadow-md"
-                            style={{ borderColor: greenBorder, color: '#fff', backgroundColor: 'transparent' }}
+                            className="transition-all duration-200 hover:shadow-md border-primary text-foreground hover:bg-primary/10"
                           >
                             <Eye className="w-4 h-4 mr-1" />
                             View
@@ -878,24 +974,23 @@ export default function CheckinOfficerDashboard() {
 
         {/* Scanner Modal */}
         {scannerModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}>
-            <div className="rounded-xl shadow-2xl p-8 max-w-md w-full text-center relative" style={{ backgroundColor: cardBg, border: `1px solid ${greenBorder}` }}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="rounded-xl shadow-2xl p-8 max-w-md w-full text-center relative bg-card border border-border">
               <button
-                className="absolute top-4 right-4"
-                style={{ color: '#ABA8A9' }}
+                className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
                 onClick={() => setScannerModalOpen(false)}
                 aria-label="Close"
               >
                 &times;
               </button>
-              <div className="mx-auto mb-4 w-20 h-20 rounded-full flex items-center justify-center" style={{ background: greenBorder + '20' }}>
-                <QrCode className="w-10 h-10" style={{ color: '#CBF83E' }} />
+              <div className="mx-auto mb-4 w-20 h-20 rounded-full flex items-center justify-center bg-primary/20">
+                <QrCode className="w-10 h-10 text-primary" />
               </div>
-              <h2 className="text-xl font-semibold mb-2" style={{ color: '#fff' }}>Check-in Scanner</h2>
-              <p className="text-sm mb-4" style={{ color: '#ABA8A9' }}>Scan tickets for event</p>
+              <h2 className="text-xl font-semibold mb-2 text-foreground">Check-in Scanner</h2>
+              <p className="text-sm mb-4 text-muted-foreground">Scan tickets for event</p>
               {/* Camera preview or error */}
               {cameraError ? (
-                <div className="border-2 rounded-lg p-6 mb-4" style={{ borderColor: '#fca5a5', color: '#fca5a5' }}>
+                <div className="border-2 rounded-lg p-6 mb-4 border-red-300 text-red-500">
                   {cameraError}
                 </div>
               ) : cameraStream ? (
@@ -910,11 +1005,11 @@ export default function CheckinOfficerDashboard() {
                   }}
                 />
               ) : (
-                <div className="border-2 border-dashed rounded-lg p-6 mb-4" style={{ borderColor: '#2a2d34' }}>
-                  <p className="text-sm" style={{ color: '#ABA8A9' }}>Scanner placeholder — integrate camera/QR scanner here.</p>
+                <div className="border-2 border-dashed rounded-lg p-6 mb-4 border-muted">
+                  <p className="text-sm text-muted-foreground">Scanner placeholder — integrate camera/QR scanner here.</p>
                 </div>
               )}
-              <Button variant="outline" className="transition-all duration-200 hover:shadow-md" style={{ borderColor: greenBorder, color: '#fff', backgroundColor: 'transparent' }} onClick={() => setScannerModalOpen(false)}>
+              <Button variant="outline" className="transition-all duration-200 hover:shadow-md border-primary text-foreground hover:bg-primary/10" onClick={() => setScannerModalOpen(false)}>
                 Close
               </Button>
             </div>

@@ -13,9 +13,9 @@ import {
   CardContent,
   CardActions,
   Avatar,
-  Chip,
-  CircularProgress
+  Chip
 } from '@mui/material';
+import { Loading } from '@/components/ui/loading';
 import { 
   AdminPanelSettings,
   Business,
@@ -68,22 +68,12 @@ export default function DashboardPage() {
   // Show loading while checking authentication
   if (isLoading) {
     return (
-      <Box 
-        sx={{ 
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          bgcolor: '#f5f5f5'
-        }}
-      >
-        <Paper elevation={3} sx={{ p: 4, textAlign: 'center' }}>
-          <CircularProgress size={60} />
-          <Typography variant="h6" sx={{ mt: 2 }}>
-            Loading your dashboard...
-          </Typography>
-        </Paper>
-      </Box>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loading
+          size="lg"
+          text="Loading your dashboard..."
+        />
+      </div>
     );
   }
 

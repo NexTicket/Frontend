@@ -3,28 +3,27 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
+import { ErrorDisplay } from '@/components/ui/error-display';
+import { Loading } from '@/components/ui/loading';
 import { createVenue, uploadVenueImage } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import '@/utils/test-venue-creation'; // Load test utilities
+import { LocationPicker } from '@/components/ui/location-picker';
 import { 
   Building2,
-  MapPin,
   Users,
   Image as ImageIcon,
   Save,
   ArrowLeft,
   ArrowRight,
   Plus,
-  Minus,
   Grid,
   Eye,
   Palette,
   Settings,
-  Zap,
   Check,
   X,
   RotateCcw,
-  Move,
   Square,
   Circle
 } from 'lucide-react';
@@ -55,6 +54,8 @@ interface SeatMapData {
 interface VenueFormData {
   name: string;
   location: string;
+  latitude?: number;
+  longitude?: number;
   capacity: number;
   description: string;
   amenities: string[];
@@ -62,9 +63,15 @@ interface VenueFormData {
     phone: string;
     email: string;
   };
+  availability: {
+    weekdays: boolean;
+    weekends: boolean;
+    allWeek: boolean;
+  };
   seatMap: SeatMapData;
   images: string[];
   featuredImage?: string;
+  type: string;
 }
 
 const defaultSeatMap: SeatMapData = {
@@ -77,7 +84,7 @@ const defaultSeatMap: SeatMapData = {
       rows: 10,
       columns: 10,
       price_multiplier: 1.0,
-      color: '#3B82F6',
+      color: 'hsl(var(--primary))',
       startRow: 0,
       startCol: 0
     }
@@ -89,14 +96,57 @@ const defaultSeatMap: SeatMapData = {
 };
 
 const sectionColors = [
-  '#3B82F6', // Blue
-  '#10B981', // Green
-  '#F59E0B', // Yellow
-  '#EF4444', // Red
-  '#8B5CF6', // Purple
-  '#06B6D4', // Cyan
-  '#F97316', // Orange
-  '#EC4899'  // Pink
+  'hsl(var(--primary))', // Primary theme color
+  'hsl(var(--secondary))', // Secondary theme color
+  'hsl(var(--accent))', // Accent theme color
+  'hsl(var(--destructive))', // Destructive theme color
+  'hsl(var(--muted))', // Muted theme color
+  'hsl(var(--popover))', // Popover theme color
+  'hsl(var(--card))', // Card theme color
+  'hsl(var(--border))'  // Border theme color
+];
+
+const venueTypes = [
+  'Banquet Halls',
+  'Conference Centers',
+  'Country Clubs',
+  'Cruise Ships',
+  'Museums and Art Galleries',
+  'Parks and Gardens',
+  'Rooftop Venues',
+  'Stadiums - Indoor',
+  'Stadiums - Outdoor',
+  'Theatres',
+  'Universities and University Halls'
+];
+
+const commonAmenities = [
+  'WiFi',
+  'Parking',
+  'Catering',
+  'Sound System',
+  'Projector',
+  'Microphones',
+  'Stage Lighting',
+  'Air Conditioning',
+  'Heating',
+  'Restrooms',
+  'Bar',
+  'Kitchen',
+  'Dance Floor',
+  'Outdoor Space',
+  'Wheelchair Accessible',
+  'Security',
+  'First Aid',
+  'Lounge Area',
+  'Dressing Rooms',
+  'Green Room',
+  'Loading Dock',
+  'Power Backup',
+  'Internet',
+  'Coffee/Tea',
+  'Water',
+  'Snacks'
 ];
 
 const predefinedLayouts = [
@@ -109,9 +159,9 @@ const predefinedLayouts = [
       rows: 15,
       columns: 20,
       sections: [
-        { id: 'premium', name: 'Premium', rows: 5, columns: 20, price_multiplier: 1.5, color: '#F59E0B', startRow: 0, startCol: 0 },
-        { id: 'standard', name: 'Standard', rows: 7, columns: 20, price_multiplier: 1.0, color: '#3B82F6', startRow: 5, startCol: 0 },
-        { id: 'economy', name: 'Economy', rows: 3, columns: 20, price_multiplier: 0.8, color: '#10B981', startRow: 12, startCol: 0 }
+        { id: 'premium', name: 'Premium', rows: 5, columns: 20, price_multiplier: 1.5, color: 'hsl(var(--accent))', startRow: 0, startCol: 0 },
+        { id: 'standard', name: 'Standard', rows: 7, columns: 20, price_multiplier: 1.0, color: 'hsl(var(--primary))', startRow: 5, startCol: 0 },
+        { id: 'economy', name: 'Economy', rows: 3, columns: 20, price_multiplier: 0.8, color: 'hsl(var(--secondary))', startRow: 12, startCol: 0 }
       ],
       aisles: [5, 12],
       wheelchair_accessible: [1, 15],
@@ -128,8 +178,8 @@ const predefinedLayouts = [
       rows: 12,
       columns: 16,
       sections: [
-        { id: 'front', name: 'Front VIP', rows: 3, columns: 16, price_multiplier: 1.3, color: '#8B5CF6', startRow: 0, startCol: 0 },
-        { id: 'middle', name: 'Standard', rows: 9, columns: 16, price_multiplier: 1.0, color: '#3B82F6', startRow: 3, startCol: 0 }
+        { id: 'front', name: 'Front VIP', rows: 3, columns: 16, price_multiplier: 1.3, color: 'hsl(var(--primary))', startRow: 0, startCol: 0 },
+        { id: 'middle', name: 'Standard', rows: 9, columns: 16, price_multiplier: 1.0, color: 'hsl(var(--secondary))', startRow: 3, startCol: 0 }
       ],
       aisles: [3, 8],
       wheelchair_accessible: [1, 12],
@@ -146,9 +196,9 @@ const predefinedLayouts = [
       rows: 20,
       columns: 25,
       sections: [
-        { id: 'orchestra', name: 'Orchestra', rows: 8, columns: 25, price_multiplier: 1.4, color: '#F59E0B', startRow: 0, startCol: 0 },
-        { id: 'mezzanine', name: 'Mezzanine', rows: 6, columns: 25, price_multiplier: 1.1, color: '#3B82F6', startRow: 8, startCol: 0 },
-        { id: 'balcony', name: 'Balcony', rows: 6, columns: 25, price_multiplier: 0.9, color: '#10B981', startRow: 14, startCol: 0 }
+        { id: 'orchestra', name: 'Orchestra', rows: 8, columns: 25, price_multiplier: 1.4, color: 'hsl(var(--accent))', startRow: 0, startCol: 0 },
+        { id: 'mezzanine', name: 'Mezzanine', rows: 6, columns: 25, price_multiplier: 1.1, color: 'hsl(var(--primary))', startRow: 8, startCol: 0 },
+        { id: 'balcony', name: 'Balcony', rows: 6, columns: 25, price_multiplier: 0.9, color: 'hsl(var(--secondary))', startRow: 14, startCol: 0 }
       ],
       aisles: [8, 14],
       wheelchair_accessible: [1, 20],
@@ -162,6 +212,7 @@ export default function CreateVenue() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [formData, setFormData] = useState<VenueFormData>({
     name: '',
     location: '',
@@ -172,9 +223,15 @@ export default function CreateVenue() {
       phone: '',
       email: ''
     },
+    availability: {
+      weekdays: true,
+      weekends: true,
+      allWeek: false
+    },
     seatMap: defaultSeatMap,
     images: [],
-    featuredImage: ''
+    featuredImage: '',
+    type: ''
   });
 
   const [selectedLayout, setSelectedLayout] = useState<string>('');
@@ -184,14 +241,31 @@ export default function CreateVenue() {
   const [uploadingImages, setUploadingImages] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [imageFiles, setImageFiles] = useState<File[]>([]); // Store actual file objects
+  const [validationErrors, setValidationErrors] = useState<{phone?: string; email?: string}>({});
 
   const totalSteps = 5;
 
-  // Calculate total capacity based on seat map
+  // Calculate total capacity based on seat map (avoiding double-counting overlaps)
   useEffect(() => {
-    const capacity = formData.seatMap.sections.reduce((total, section) => {
-      return total + (section.rows * section.columns);
-    }, 0);
+    const { rows, columns, sections } = formData.seatMap;
+    
+    // Create a grid to track occupied seats and avoid double counting
+    const occupiedSeats = new Set<string>();
+    
+    sections.forEach(section => {
+      const actualRows = Math.min(section.rows, rows - section.startRow);
+      const actualCols = Math.min(section.columns, columns - section.startCol);
+      
+      for (let row = section.startRow; row < section.startRow + actualRows; row++) {
+        for (let col = section.startCol; col < section.startCol + actualCols; col++) {
+          if (row >= 0 && col >= 0 && row < rows && col < columns) {
+            occupiedSeats.add(`${row}-${col}`);
+          }
+        }
+      }
+    });
+    
+    const capacity = occupiedSeats.size;
     setFormData(prev => ({ ...prev, capacity }));
   }, [formData.seatMap]);
 
@@ -222,6 +296,50 @@ export default function CreateVenue() {
         [field]: value
       }
     }));
+
+    // Validate the field
+    if (field === 'phone') {
+      validatePhone(value);
+    } else if (field === 'email') {
+      validateEmail(value);
+    }
+  };
+
+  const handleAvailabilityChange = (field: string) => {
+    setFormData(prev => ({
+      ...prev,
+      availability: {
+        weekdays: field === 'weekdays',
+        weekends: field === 'weekends',
+        allWeek: field === 'allWeek'
+      }
+    }));
+  };
+
+  const validatePhone = (phone: string) => {
+    const phoneRegex = /^\d{10}$/;
+    if (!phone) {
+      setValidationErrors(prev => ({ ...prev, phone: undefined }));
+    } else if (!phoneRegex.test(phone)) {
+      setValidationErrors(prev => ({ ...prev, phone: 'Phone number must be exactly 10 digits' }));
+    } else {
+      setValidationErrors(prev => ({ ...prev, phone: undefined }));
+    }
+  };
+
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email) {
+      setValidationErrors(prev => ({ ...prev, email: undefined }));
+    } else if (!emailRegex.test(email)) {
+      setValidationErrors(prev => ({ ...prev, email: 'Please enter a valid email address' }));
+    } else {
+      setValidationErrors(prev => ({ ...prev, email: undefined }));
+    }
+  };
+
+  const hasValidationErrors = () => {
+    return Object.values(validationErrors).some(error => error !== undefined);
   };
 
   const handleSeatMapChange = (seatMap: SeatMapData) => {
@@ -240,15 +358,56 @@ export default function CreateVenue() {
   };
 
   const addSection = () => {
+    // Calculate the next available position for the new section
+    const existingSections = formData.seatMap.sections;
+    let newStartRow = 0;
+    let newStartCol = 0;
+
+    if (existingSections.length > 0) {
+      // Find the bottom-most occupied row
+      let maxEndRow = 0;
+      existingSections.forEach(section => {
+        const sectionEndRow = section.startRow + section.rows;
+        if (sectionEndRow > maxEndRow) {
+          maxEndRow = sectionEndRow;
+        }
+      });
+      
+      // If there's space below existing sections within the venue bounds
+      if (maxEndRow + 5 <= formData.seatMap.rows) {
+        newStartRow = maxEndRow;
+        newStartCol = 0;
+      } else {
+        // Find space to the right of existing sections
+        let maxEndCol = 0;
+        existingSections.forEach(section => {
+          const sectionEndCol = section.startCol + section.columns;
+          if (sectionEndCol > maxEndCol) {
+            maxEndCol = sectionEndCol;
+          }
+        });
+        
+        // Place to the right if there's space
+        if (maxEndCol + 5 <= formData.seatMap.columns) {
+          newStartRow = 0;
+          newStartCol = maxEndCol;
+        } else {
+          // If no space, expand the venue or overlap (fallback)
+          newStartRow = Math.min(maxEndRow, formData.seatMap.rows - 5);
+          newStartCol = 0;
+        }
+      }
+    }
+
     const newSection: SeatSection = {
       id: `section_${Date.now()}`,
       name: `Section ${formData.seatMap.sections.length + 1}`,
-      rows: 5,
-      columns: 5,
+      rows: Math.min(5, formData.seatMap.rows - newStartRow),
+      columns: Math.min(5, formData.seatMap.columns - newStartCol),
       price_multiplier: 1.0,
       color: sectionColors[formData.seatMap.sections.length % sectionColors.length],
-      startRow: 0,
-      startCol: 0
+      startRow: newStartRow,
+      startCol: newStartCol
     };
 
     handleSeatMapChange({
@@ -258,9 +417,32 @@ export default function CreateVenue() {
   };
 
   const updateSection = (sectionId: string, updates: Partial<SeatSection>) => {
-    const newSections = formData.seatMap.sections.map(section =>
-      section.id === sectionId ? { ...section, ...updates } : section
-    );
+    const newSections = formData.seatMap.sections.map(section => {
+      if (section.id === sectionId) {
+        const updatedSection = { ...section, ...updates };
+        
+        // Validate that the section doesn't exceed venue bounds
+        if (updatedSection.startRow + updatedSection.rows > formData.seatMap.rows) {
+          updatedSection.rows = Math.max(1, formData.seatMap.rows - updatedSection.startRow);
+        }
+        
+        if (updatedSection.startCol + updatedSection.columns > formData.seatMap.columns) {
+          updatedSection.columns = Math.max(1, formData.seatMap.columns - updatedSection.startCol);
+        }
+        
+        // Ensure startRow and startCol are within bounds
+        if (updatedSection.startRow >= formData.seatMap.rows) {
+          updatedSection.startRow = Math.max(0, formData.seatMap.rows - updatedSection.rows);
+        }
+        
+        if (updatedSection.startCol >= formData.seatMap.columns) {
+          updatedSection.startCol = Math.max(0, formData.seatMap.columns - updatedSection.columns);
+        }
+        
+        return updatedSection;
+      }
+      return section;
+    });
 
     handleSeatMapChange({
       ...formData.seatMap,
@@ -366,40 +548,60 @@ export default function CreateVenue() {
     const { rows, columns, sections, aisles } = formData.seatMap;
     const seats = [];
 
+    // Calculate seat size based on total seats to prevent overflow
+    const totalSeats = rows * columns;
+    const seatSize = totalSeats > 500 ? 'w-3 h-3' : totalSeats > 200 ? 'w-4 h-4' : 'w-6 h-6';
+    const marginSize = totalSeats > 500 ? 'm-0.5' : 'm-0.5';
+
+    // Create a 2D array to track which section owns each seat
+    const seatGrid = Array(rows).fill(null).map(() => Array(columns).fill(null));
+    
+    // Fill the grid with section ownership (last section wins in case of overlap)
+    sections.forEach(section => {
+      for (let row = section.startRow; row < Math.min(section.startRow + section.rows, rows); row++) {
+        for (let col = section.startCol; col < Math.min(section.startCol + section.columns, columns); col++) {
+          if (row >= 0 && col >= 0 && row < rows && col < columns) {
+            seatGrid[row][col] = section;
+          }
+        }
+      }
+    });
+
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < columns; col++) {
-        const section = sections.find(s => 
-          row >= s.startRow && row < s.startRow + s.rows &&
-          col >= s.startCol && col < s.startCol + s.columns
-        );
-
+        const section = seatGrid[row][col];
         const isAisle = aisles.includes(row);
         const isSelected = selectedSection === section?.id;
+        const isEmpty = !section;
 
         seats.push(
           <div
             key={`${row}-${col}`}
-            className={`w-6 h-6 m-0.5 rounded-sm transition-all duration-200 cursor-pointer transform hover:scale-110 ${
+            className={`${seatSize} ${marginSize} rounded-sm transition-all duration-200 cursor-pointer transform hover:scale-110 ${
               isAisle ? 'opacity-50' : ''
             } ${
               isSelected ? 'ring-2 ring-white ring-offset-1' : ''
+            } ${
+              isEmpty ? 'border-2 border-dashed border-gray-400' : ''
             }`}
             style={{
-              backgroundColor: section?.color || '#6B7280',
+              backgroundColor: section?.color || 'hsl(var(--muted))',
               opacity: section ? 1 : 0.3
             }}
             onClick={() => section && setSelectedSection(section.id)}
+            title={section ? `${section.name} (${row + 1}, ${col + 1})` : `Empty seat (${row + 1}, ${col + 1})`}
           />
         );
       }
     }
 
     return (
-      <div className="inline-block p-6 bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl">
+      <div className="inline-block p-6 bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl max-w-full">
         <div 
-          className="grid gap-0.5"
+          className="grid gap-0.5 overflow-x-auto"
           style={{
-            gridTemplateColumns: `repeat(${columns}, 1fr)`
+            gridTemplateColumns: `repeat(${columns}, 1fr)`,
+            maxWidth: '100%'
           }}
         >
           {seats}
@@ -408,6 +610,14 @@ export default function CreateVenue() {
         {/* Stage */}
         <div className="mt-6 w-full h-8 bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 rounded-lg flex items-center justify-center">
           <span className="text-white text-sm font-semibold">🎭 STAGE</span>
+        </div>
+        
+        {/* Section Info */}
+        <div className="mt-4 text-white text-xs">
+          <div className="flex justify-between">
+            <span>Total Seats: {sections.reduce((sum, s) => sum + Math.min(s.rows, rows - s.startRow) * Math.min(s.columns, columns - s.startCol), 0)}</span>
+            <span>Sections: {sections.length}</span>
+          </div>
         </div>
       </div>
     );
@@ -421,10 +631,25 @@ export default function CreateVenue() {
     
     try {
       setIsSubmitting(true);
+
+      // Check for validation errors
+      if (hasValidationErrors()) {
+        throw new Error('Please fix the validation errors before submitting');
+      }
       
       // Validate required fields
-      if (!formData.name.trim() || !formData.location.trim() || !formData.capacity) {
-        throw new Error('Please fill in all required fields (Name, Location, Capacity)');
+      if (!formData.name.trim() || !formData.location.trim() || !formData.capacity || !formData.latitude || !formData.longitude) {
+        throw new Error('Please fill in all required fields (Name, Location, Capacity) and select a location on the map');
+      }
+
+      // Validate phone number
+      if (formData.contact.phone && !/^\d{10}$/.test(formData.contact.phone)) {
+        throw new Error('Phone number must be exactly 10 digits');
+      }
+
+      // Validate email
+      if (formData.contact.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.contact.email)) {
+        throw new Error('Please enter a valid email address');
       }
       
       // Confirm if no images
@@ -441,14 +666,18 @@ export default function CreateVenue() {
       const venuePayload = {
         name: formData.name.trim(),
         location: formData.location.trim(),
+        latitude: formData.latitude,
+        longitude: formData.longitude,
         capacity: formData.capacity,
         description: formData.description.trim() || null,
         seatMap: formData.seatMap,
+        type: formData.type.trim(),
         contact: {
           phone: formData.contact.phone.trim(),
           email: formData.contact.email.trim()
         },
-        amenities: formData.amenities
+        amenities: formData.amenities,
+        availability: formData.availability
       };
 
       console.log('📤 Creating venue with data:', {
@@ -458,11 +687,12 @@ export default function CreateVenue() {
         hasDescription: !!venuePayload.description,
         seatMapSections: venuePayload.seatMap.sections.length,
         hasContact: !!(venuePayload.contact.phone || venuePayload.contact.email),
+        availability: venuePayload.availability,
         pendingImages: imageFiles.length
       });
 
       const createResponse = await createVenue(venuePayload);
-      console.log('✅ Venue created successfully:', createResponse);
+      console.log(' Venue created successfully:', createResponse);
       
       if (!createResponse || !createResponse.data) {
         throw new Error(createResponse?.message || 'Failed to create venue');
@@ -473,8 +703,8 @@ export default function CreateVenue() {
 
       // Step 2: Upload image if any exists
       if (imageFiles.length > 0) {
-        console.log(`🖼️ Step 2: Uploading single image to venue ${newVenueId}...`);
-        console.log('🖼️ Image file details:', {
+        console.log(` Step 2: Uploading single image to venue ${newVenueId}...`);
+        console.log(' Image file details:', {
           name: imageFiles[0].name,
           size: imageFiles[0].size,
           type: imageFiles[0].type
@@ -483,25 +713,25 @@ export default function CreateVenue() {
         try {
           // Use the single image upload function
           const uploadResponse = await uploadVenueImage(newVenueId.toString(), imageFiles[0]);
-          console.log('✅ Image uploaded successfully:', uploadResponse);
+          console.log(' Image uploaded successfully:', uploadResponse);
           
           // Show success message
-          alert(`✅ Venue "${createResponse.data.name}" created successfully with image!`);
+          // alert(`Venue "${createResponse.data.name}" created successfully with image!`);
         } catch (imageError) {
-          console.warn('⚠️ Venue created but image upload failed:', imageError);
-          alert(`⚠️ Venue "${createResponse.data.name}" was created successfully, but image upload failed. You can add images later by editing the venue.`);
+          console.warn(' Venue created but image upload failed:', imageError);
+          // alert(` Venue "${createResponse.data.name}" was created successfully, but image upload failed. You can add images later by editing the venue.`);
         }
       } else {
         // Success without images
-        alert(`✅ Venue "${createResponse.data.name}" created successfully!`);
+        // alert(` Venue "${createResponse.data.name}" created successfully!`);
       }
       
       // Navigate to venues page
       router.push('/venue-owner/venues');
       
     } catch (error: any) {
-      console.error('❌ Error creating venue:', error);
-      console.error('❌ Error details:', {
+      console.error(' Error creating venue:', error);
+      console.error(' Error details:', {
         message: error.message,
         stack: error.stack
       });
@@ -519,7 +749,7 @@ export default function CreateVenue() {
         errorMessage = error.message;
       }
         
-      alert(`❌ ${errorMessage}`);
+      setSubmitError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -583,15 +813,34 @@ export default function CreateVenue() {
             transition={{ duration: 0.5 }}
             className="bg-card/50 backdrop-blur-sm rounded-xl border p-8"
           >
-            {/* Step 1: Basic Information */}
+            {/* Step 1: Venue Information */}
             {currentStep === 1 && (
               <div className="space-y-6">
                 <h2 className="text-2xl font-semibold mb-6 flex items-center">
                   <Building2 className="h-6 w-6 mr-3 text-primary" />
-                  Basic Information
+                  Venue Information
                 </h2>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Venue Type *
+                    </label>
+                    <select
+                      value={formData.type}
+                      onChange={(e) => handleInputChange('type', e.target.value)}
+                      className="w-full px-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                      required
+                    >
+                      <option value="">Select venue type</option>
+                      {venueTypes.map((type) => (
+                        <option key={type} value={type}>
+                          {type}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-2">
                       Venue Name *
@@ -608,75 +857,183 @@ export default function CreateVenue() {
 
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-2">
-                      Location *
+                      Venue Location *
                     </label>
-                    <div className="relative">
-                      <MapPin className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
-                      <input
-                        type="text"
-                        value={formData.location}
-                        onChange={(e) => handleInputChange('location', e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                        placeholder="Enter venue location"
-                        required
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Description
-                  </label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => handleInputChange('description', e.target.value)}
-                    rows={4}
-                    className="w-full px-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                    placeholder="Describe your venue..."
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">
-                      Contact Phone
-                    </label>
-                    <input
-                      type="tel"
-                      value={formData.contact.phone}
-                      onChange={(e) => handleContactChange('phone', e.target.value)}
-                      className="w-full px-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                      placeholder="Enter phone number"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">
-                      Contact Email
-                    </label>
-                    <input
-                      type="email"
-                      value={formData.contact.email}
-                      onChange={(e) => handleContactChange('email', e.target.value)}
-                      className="w-full px-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                      placeholder="Enter email address"
+                    <LocationPicker
+                      apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''}
+                      onLocationSelect={(location) => {
+                        setFormData(prev => ({
+                          ...prev,
+                          location: location.address,
+                          latitude: location.latitude,
+                          longitude: location.longitude
+                        }));
+                      }}
+                      initialLocation={
+                        formData.location && formData.latitude && formData.longitude
+                          ? {
+                              address: formData.location,
+                              latitude: formData.latitude,
+                              longitude: formData.longitude
+                            }
+                          : undefined
+                      }
                     />
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Step 2: Images & Media */}
+            {/* Step 3: Contact Information */}
+            {currentStep === 3 && (
+              <div className="space-y-6">
+                <h2 className="text-2xl font-semibold mb-6 flex items-center">
+                  <Users className="h-6 w-6 mr-3 text-primary" />
+                  Contact Information
+                </h2>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Contact Phone *
+                    </label>
+                    <input
+                      type="tel"
+                      value={formData.contact.phone}
+                      onChange={(e) => handleContactChange('phone', e.target.value)}
+                      className={`w-full px-4 py-3 border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all ${
+                        validationErrors.phone ? 'border-red-500' : 'border-border'
+                      }`}
+                      placeholder="Enter phone number"
+                    />
+                    {validationErrors.phone && (
+                      <p className="text-red-500 text-sm mt-1">{validationErrors.phone}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Contact Email *
+                    </label>
+                    <input
+                      type="email"
+                      value={formData.contact.email}
+                      onChange={(e) => handleContactChange('email', e.target.value)}
+                      className={`w-full px-4 py-3 border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all ${
+                        validationErrors.email ? 'border-red-500' : 'border-border'
+                      }`}
+                      placeholder="Enter email address"
+                    />
+                    {validationErrors.email && (
+                      <p className="text-red-500 text-sm mt-1">{validationErrors.email}</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Availability */}
+                <div className="space-y-4">
+                  <label className="block text-sm font-medium text-foreground">
+                    Contact Availability
+                  </label>
+                  <div className="bg-background/50 rounded-lg p-4 border">
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Select when venue owners can be contacted for inquiries and bookings
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Weekdays */}
+                      <div className="relative">
+                        <label className="flex items-center p-3 rounded-lg border-2 transition-all cursor-pointer hover:border-primary/50 hover:bg-primary/5 group">
+                          <input
+                            type="radio"
+                            name="availability"
+                            checked={formData.availability.weekdays}
+                            onChange={() => handleAvailabilityChange('weekdays')}
+                            className="mr-3 accent-primary"
+                          />
+                          <div className="flex-1">
+                            <div className="font-medium text-sm">Weekdays</div>
+                            <div className="text-xs text-muted-foreground">Mon - Fri</div>
+                          </div>
+                          <div className="text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                            📅
+                          </div>
+                        </label>
+                      </div>
+
+                      {/* Weekends */}
+                      <div className="relative">
+                        <label className="flex items-center p-3 rounded-lg border-2 transition-all cursor-pointer hover:border-primary/50 hover:bg-primary/5 group">
+                          <input
+                            type="radio"
+                            name="availability"
+                            checked={formData.availability.weekends}
+                            onChange={() => handleAvailabilityChange('weekends')}
+                            className="mr-3 accent-primary"
+                          />
+                          <div className="flex-1">
+                            <div className="font-medium text-sm">Weekends</div>
+                            <div className="text-xs text-muted-foreground">Sat - Sun</div>
+                          </div>
+                          <div className="text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                            🎉
+                          </div>
+                        </label>
+                      </div>
+
+                      {/* All Week */}
+                      <div className="relative">
+                        <label className="flex items-center p-3 rounded-lg border-2 transition-all cursor-pointer hover:border-primary/50 hover:bg-primary/5 group">
+                          <input
+                            type="radio"
+                            name="availability"
+                            checked={formData.availability.allWeek}
+                            onChange={() => handleAvailabilityChange('allWeek')}
+                            className="mr-3 accent-primary"
+                          />
+                          <div className="flex-1">
+                            <div className="font-medium text-sm">All Week</div>
+                            <div className="text-xs text-muted-foreground">24/7 Available</div>
+                          </div>
+                          <div className="text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                            🌟
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Selected availability summary */}
+                    <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+                      <div className="text-xs text-muted-foreground mb-1">Selected availability:</div>
+                      <div className="flex flex-wrap gap-2">
+                        {formData.availability.weekdays && (
+                          <span className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">Weekdays</span>
+                        )}
+                        {formData.availability.weekends && (
+                          <span className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">Weekends</span>
+                        )}
+                        {formData.availability.allWeek && (
+                          <span className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">All Week</span>
+                        )}
+                        {!formData.availability.weekdays && !formData.availability.weekends && !formData.availability.allWeek && (
+                          <span className="px-2 py-1 bg-muted text-muted-foreground text-xs rounded-full">No availability selected</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Venue Image and Description */}
             {currentStep === 2 && (
               <div className="space-y-6">
                 <h2 className="text-2xl font-semibold mb-6 flex items-center">
                   <ImageIcon className="h-6 w-6 mr-3 text-primary" />
-                  Venue Images & Media
+                  Venue Image and Description
                 </h2>
 
                 {/* Image Upload Area */}
-                <div className="space-y-6">
+                <div className="space-y-4">
                   <div
                     className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300 ${
                       dragActive 
@@ -690,8 +1047,10 @@ export default function CreateVenue() {
                   >
                     {uploadingImages ? (
                       <div className="flex flex-col items-center">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
-                        <p className="text-muted-foreground">Uploading images...</p>
+                        <Loading
+                          size="lg"
+                          text="Uploading images..."
+                        />
                       </div>
                     ) : (
                       <div className="space-y-4">
@@ -766,12 +1125,120 @@ export default function CreateVenue() {
                       </div>
                     </div>
                   )}
+
+                  {/* Description */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-foreground">
+                      Venue Description
+                    </label>
+                    <textarea
+                      value={formData.description}
+                      onChange={(e) => handleInputChange('description', e.target.value)}
+                      rows={4}
+                      className="w-full px-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                      placeholder="Describe your venue, its features, capacity, and what makes it special..."
+                    />
+                  </div>
+
+                  {/* Amenities */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-foreground">
+                      Amenities
+                    </label>
+                    <div className="space-y-3">
+                      {/* Selected amenities */}
+                      <div className="flex flex-wrap gap-2">
+                        {formData.amenities.map((amenity, index) => (
+                          <div key={index} className="flex items-center bg-primary/10 border border-primary/20 rounded-full px-3 py-1">
+                            <span className="text-sm text-primary mr-2">{amenity}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  amenities: prev.amenities.filter((_, i) => i !== index)
+                                }));
+                              }}
+                              className="text-primary hover:text-primary/80 transition-colors"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Common amenities suggestions */}
+                      <div className="space-y-2">
+                        <p className="text-xs text-muted-foreground">Quick add common amenities:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {commonAmenities.filter(amenity => !formData.amenities.includes(amenity)).slice(0, 12).map((amenity) => (
+                            <button
+                              key={amenity}
+                              type="button"
+                              onClick={() => {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  amenities: [...prev.amenities, amenity]
+                                }));
+                              }}
+                              className="px-3 py-1 text-xs bg-muted hover:bg-muted/80 border border-border rounded-full transition-colors"
+                            >
+                              + {amenity}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Custom amenity input */}
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="Add custom amenity"
+                          className="flex-1 px-3 py-2 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all text-sm"
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              const value = e.currentTarget.value.trim();
+                              if (value && !formData.amenities.includes(value)) {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  amenities: [...prev.amenities, value]
+                                }));
+                                e.currentTarget.value = '';
+                              }
+                            }
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const input = document.querySelector('input[placeholder*="custom amenity"]') as HTMLInputElement;
+                            const value = input?.value.trim();
+                            if (value && !formData.amenities.includes(value)) {
+                              setFormData(prev => ({
+                                ...prev,
+                                amenities: [...prev.amenities, value]
+                              }));
+                              if (input) input.value = '';
+                            }
+                          }}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Click common amenities above or type custom ones. Press Enter or click + to add.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* Step 3: Layout Selection */}
-            {currentStep === 3 && (
+            {/* Step 4: Layout Selection */}
+            {currentStep === 4 && (
               <div className="space-y-6">
                 <h2 className="text-2xl font-semibold mb-6 flex items-center">
                   <Grid className="h-6 w-6 mr-3 text-primary" />
@@ -857,10 +1324,10 @@ export default function CreateVenue() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="space-y-8">
                   {/* Controls */}
                   {!isPreviewMode && (
-                    <div className="space-y-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                       {/* Layout Settings */}
                       <div className="bg-background/50 rounded-lg p-4 border">
                         <h3 className="font-semibold mb-4 flex items-center">
@@ -956,13 +1423,42 @@ export default function CreateVenue() {
 
                               <div className="grid grid-cols-2 gap-2 text-xs">
                                 <div>
+                                  <label className="block text-muted-foreground">Start Row</label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max={formData.seatMap.rows - 1}
+                                    value={section.startRow}
+                                    onChange={(e) => updateSection(section.id, { 
+                                      startRow: Math.max(0, Math.min(parseInt(e.target.value) || 0, formData.seatMap.rows - 1))
+                                    })}
+                                    className="w-full px-2 py-1 border rounded text-xs"
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-muted-foreground">Start Col</label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max={formData.seatMap.columns - 1}
+                                    value={section.startCol}
+                                    onChange={(e) => updateSection(section.id, { 
+                                      startCol: Math.max(0, Math.min(parseInt(e.target.value) || 0, formData.seatMap.columns - 1))
+                                    })}
+                                    className="w-full px-2 py-1 border rounded text-xs"
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                </div>
+                                <div>
                                   <label className="block text-muted-foreground">Rows</label>
                                   <input
                                     type="number"
                                     min="1"
+                                    max={formData.seatMap.rows - section.startRow}
                                     value={section.rows}
                                     onChange={(e) => updateSection(section.id, { 
-                                      rows: parseInt(e.target.value) || 1 
+                                      rows: Math.max(1, Math.min(parseInt(e.target.value) || 1, formData.seatMap.rows - section.startRow))
                                     })}
                                     className="w-full px-2 py-1 border rounded text-xs"
                                     onClick={(e) => e.stopPropagation()}
@@ -973,9 +1469,10 @@ export default function CreateVenue() {
                                   <input
                                     type="number"
                                     min="1"
+                                    max={formData.seatMap.columns - section.startCol}
                                     value={section.columns}
                                     onChange={(e) => updateSection(section.id, { 
-                                      columns: parseInt(e.target.value) || 1 
+                                      columns: Math.max(1, Math.min(parseInt(e.target.value) || 1, formData.seatMap.columns - section.startCol))
                                     })}
                                     className="w-full px-2 py-1 border rounded text-xs"
                                     onClick={(e) => e.stopPropagation()}
@@ -1014,7 +1511,7 @@ export default function CreateVenue() {
                   )}
 
                   {/* Seating Map Visualization */}
-                  <div className={`${isPreviewMode ? 'lg:col-span-3' : 'lg:col-span-2'} flex flex-col items-center`}>
+                  <div className="flex flex-col items-center w-full">
                     <div className="mb-4">
                       <div className="flex items-center justify-center space-x-6 text-sm">
                         <div className="flex items-center">
@@ -1028,7 +1525,7 @@ export default function CreateVenue() {
                       </div>
                     </div>
 
-                    <div className="relative">
+                    <div className="relative overflow-x-auto max-w-full">
                       {renderSeatMap()}
                     </div>
 
@@ -1073,11 +1570,28 @@ export default function CreateVenue() {
                         <div>
                           <span className="text-sm text-muted-foreground">Location:</span>
                           <p className="font-medium">{formData.location}</p>
+                          {formData.latitude && formData.longitude && (
+                            <p className="text-xs text-muted-foreground">
+                              Coordinates: {formData.latitude.toFixed(6)}, {formData.longitude.toFixed(6)}
+                            </p>
+                          )}
                         </div>
                         <div>
                           <span className="text-sm text-muted-foreground">Capacity:</span>
                           <p className="font-medium">{formData.capacity} seats</p>
                         </div>
+                        {formData.amenities.length > 0 && (
+                          <div>
+                            <span className="text-sm text-muted-foreground">Amenities:</span>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {formData.amenities.map((amenity, index) => (
+                                <span key={index} className="inline-flex items-center px-2 py-1 bg-primary/10 border border-primary/20 rounded-full text-xs text-primary">
+                                  {amenity}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                         {formData.description && (
                           <div>
                             <span className="text-sm text-muted-foreground">Description:</span>
@@ -1179,6 +1693,23 @@ export default function CreateVenue() {
           </motion.div>
         </AnimatePresence>
 
+        {/* Error Display - moved near create button */}
+        {submitError && (
+          <div className="flex justify-center mb-6">
+            <ErrorDisplay
+              type="error"
+              title="Failed to Create Venue"
+              message={submitError}
+              variant="card"
+              onRetry={() => {
+                setSubmitError(null);
+                handleSubmit();
+              }}
+              className="max-w-2xl"
+            />
+          </div>
+        )}
+
         {/* Navigation */}
         <div className="flex items-center justify-between mt-8">
           <Button
@@ -1196,8 +1727,9 @@ export default function CreateVenue() {
               <Button
                 onClick={nextStep}
                 disabled={
-                  (currentStep === 1 && (!formData.name || !formData.location)) ||
-                  (currentStep === 2 && formData.images.length === 0)
+                  (currentStep === 1 && (!formData.type || !formData.name || !formData.location)) ||
+                  (currentStep === 2 && formData.images.length === 0) ||
+                  (currentStep === 3 && (!formData.contact.phone || !formData.contact.email))
                 }
                 className="flex items-center bg-gradient-to-r from-primary to-purple-600"
               >

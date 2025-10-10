@@ -41,7 +41,7 @@ export default function RootLayout({
           <AuthProvider>
             <div className="min-h-screen flex flex-col">
               <Navbar />
-              <main className="flex-1" style={{ backgroundColor: '#191C24' }}>
+              <main className="flex-1 bg-background">
                 {children}
               </main>
               <Footer />

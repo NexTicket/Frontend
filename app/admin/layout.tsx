@@ -3,6 +3,7 @@
 import { useAuth } from '@/components/auth/auth-provider';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { Loading } from '@/components/ui/loading';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { firebaseUser, userProfile, isLoading } = useAuth();
@@ -23,14 +24,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   }, [firebaseUser, userProfile, isLoading, router]);
 
-  // Show loading while auth is being determined
+    // Show loading while auth is being determined
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-2 text-muted-foreground">Loading...</p>
-        </div>
+        <Loading
+          size="md"
+          text="Loading..."
+        />
       </div>
     );
   }
@@ -39,10 +40,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (firebaseUser && !userProfile) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-2 text-muted-foreground">Checking permissions...</p>
-        </div>
+        <Loading
+          size="md"
+          text="Checking permissions..."
+        />
       </div>
     );
   }

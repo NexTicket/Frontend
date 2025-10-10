@@ -163,26 +163,26 @@ export default function SignInPage() {
   // Show loading state while auth is initializing or redirecting
   if (authLoading || isRedirecting) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#191C24' }}>
-        <div className="backdrop-blur-xl border rounded-3xl p-8 shadow-xl text-center max-w-md w-full mx-4" style={{ backgroundColor: '#191C24', borderColor: '#ABA8A9' + '30' }}>
-          <h2 className="text-xl font-bold text-white mb-4">
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="backdrop-blur-xl border rounded-3xl p-8 shadow-xl text-center max-w-md w-full mx-4 bg-card border-border">
+          <h2 className="text-xl font-bold text-foreground mb-4">
             {isRedirecting ? 'Redirecting...' : loading ? 'Signing you in...' : 'Loading...'}
           </h2>
-          <p className="text-white opacity-70 mb-4">
+          <p className="text-muted-foreground mb-4">
             {isRedirecting 
               ? 'Welcome back! Taking you to your dashboard...'
               : firebaseUser 
               ? 'Setting up your profile...' 
               : 'Checking authentication...'}
           </p>
-          <div className="w-10 h-10 border-4 border-gray-300 border-t-4 rounded-full mx-auto animate-spin" style={{ borderTopColor: '#0D6EFD' }}></div>
+          <div className="w-10 h-10 border-4 border-muted border-t-primary rounded-full mx-auto animate-spin"></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen relative" style={{ background: '#191C24' }}>
+    <div className="min-h-screen relative bg-background">
       {/* Background Image */}
       <div 
         className="absolute inset-0 z-0"
@@ -197,9 +197,9 @@ export default function SignInPage() {
 
       {/* Background Elements */}
       <div className="absolute inset-0 z-1">
-        <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-20" style={{ backgroundColor: '#ABA8A9' }}></div>
-        <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-15" style={{ backgroundColor: '#0D6EFD' }}></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl opacity-10" style={{ backgroundColor: '#0D6EFD' }}></div>
+        <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-20 bg-muted"></div>
+        <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-15 bg-primary"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl opacity-10 bg-primary"></div>
       </div>
 
       <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 min-h-screen">
@@ -217,8 +217,7 @@ export default function SignInPage() {
               transition={{ duration: 0.3 }}
             >
               <motion.div 
-                className="absolute -inset-4 rounded-3xl blur-2xl opacity-30 transition-opacity duration-300 group-hover:opacity-50" 
-                style={{ backgroundColor: '#0D6EFD' }}
+                className="absolute -inset-4 rounded-3xl blur-2xl opacity-30 transition-opacity duration-300 group-hover:opacity-50 bg-primary"
                 animate={{ 
                   rotate: [0, 5, -5, 0],
                   scale: [1, 1.02, 0.98, 1]
@@ -230,16 +229,14 @@ export default function SignInPage() {
                 }}
               ></motion.div>
               <motion.div 
-                className="relative backdrop-blur-xl border rounded-3xl p-8 text-center shadow-2xl transition-all duration-300 group-hover:shadow-3xl" 
-                style={{ backgroundColor: '#191C24' + '80', borderColor: '#0D6EFD' + '30' }}
-                whileHover={{ borderColor: '#0D6EFD' + '60' }}
+                className="relative backdrop-blur-xl border rounded-3xl p-8 text-center shadow-2xl transition-all duration-300 group-hover:shadow-3xl bg-card/80 border-primary/30"
+                whileHover={{ borderColor: 'hsl(var(--primary) / 0.6)' }}
               >
                 <motion.div 
-                  className="w-32 h-32 mx-auto mb-6 rounded-2xl flex items-center justify-center transition-all duration-300" 
-                  style={{ backgroundColor: '#0D6EFD' + '20' }}
+                  className="w-32 h-32 mx-auto mb-6 rounded-2xl flex items-center justify-center transition-all duration-300 bg-primary/20"
                   whileHover={{ 
                     scale: 1.1,
-                    backgroundColor: '#0D6EFD' + '30' 
+                    backgroundColor: 'hsl(var(--primary) / 0.3)' 
                   }}
                   animate={{ 
                     y: [0, -5, 0],
@@ -262,13 +259,12 @@ export default function SignInPage() {
                     }}
                   >
                     <Shield 
-                      className="w-16 h-16 transition-colors duration-300" 
-                      style={{ color: '#0D6EFD' }} 
+                      className="w-16 h-16 transition-colors duration-300 text-primary" 
                     />
                   </motion.div>
                 </motion.div>
                 <motion.h2 
-                  className="text-3xl font-bold text-white mb-4 transition-all duration-300 group-hover:text-blue-100"
+                  className="text-3xl font-bold text-foreground mb-4 transition-all duration-300 group-hover:text-primary"
                   animate={{ 
                     textShadow: [
                       '0 0 0px rgba(216, 223, 238, 0)',
@@ -285,7 +281,7 @@ export default function SignInPage() {
                   Welcome Back
                 </motion.h2>
                 <motion.p 
-                  className="text-white opacity-80 text-lg leading-relaxed transition-opacity duration-300 group-hover:opacity-100"
+                  className="text-muted-foreground text-lg leading-relaxed transition-opacity duration-300 group-hover:opacity-100"
                   initial={{ opacity: 0.8 }}
                   animate={{ opacity: [0.8, 1, 0.8] }}
                   transition={{ 
@@ -309,16 +305,16 @@ export default function SignInPage() {
           className="flex items-center justify-center p-8"
         >
           <motion.div variants={itemVariants} className="w-full max-w-md">
-            <div className="backdrop-blur-xl border rounded-3xl p-8 shadow-2xl" style={{ backgroundColor: '#191C24' + '80', borderColor: '#ABA8A9' + '30' }}>
+            <div className="backdrop-blur-xl border rounded-3xl p-8 shadow-2xl bg-card/80 border-border">
               {/* Header */}
               <div className="text-center mb-8">
-                <Link href="/" className="inline-flex items-center text-white hover:opacity-80 transition-opacity mb-6">
+                <Link href="/" className="inline-flex items-center text-foreground hover:opacity-80 transition-opacity mb-6">
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Back to Home
                 </Link>
                 
-                <h1 className="text-3xl font-bold text-white mb-2">Sign In</h1>
-                <p className="text-white opacity-70">Welcome back to NexTicket</p>
+                <h1 className="text-3xl font-bold text-foreground mb-2">Sign In</h1>
+                <p className="text-muted-foreground">Welcome back to NexTicket</p>
               </div>
 
               {/* Demo Access Info */}

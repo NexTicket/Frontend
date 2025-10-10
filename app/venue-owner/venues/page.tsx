@@ -6,6 +6,8 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/components/auth/auth-provider';
 import { fetchmyVenues, deleteVenue } from '@/lib/api';
+import { Loading } from '@/components/ui/loading';
+import { ErrorDisplay } from '@/components/ui/error-display';
 import { 
   Building2, 
   Plus, 
@@ -33,6 +35,7 @@ interface Venue {
   description?: string;
   images?: string[];
   featuredImage?: string;
+  amenities?: string[];
   status?: string;
   totalEvents?: number;
   monthlyRevenue?: number;
@@ -100,6 +103,7 @@ export default function VenueOwnerVenues() {
             description: venue.description || 'No description available',
             images: Array.isArray(venue.images) ? venue.images : (venue.image ? [venue.image] : []),
             featuredImage: venue.featuredImage || venue.image || (Array.isArray(venue.images) ? venue.images[0] : '') || '',
+            amenities: Array.isArray(venue.amenities) ? venue.amenities : [],
             status: 'active',
             totalEvents: 0,
             monthlyRevenue: 0,
@@ -150,7 +154,7 @@ export default function VenueOwnerVenues() {
     try {
       setVenues(prevVenues => prevVenues.filter(venue => venue.id !== venueId));
       await deleteVenue(venueId);
-      alert(`Venue "${venueName}" has been deleted successfully.`);
+      // alert(`Venue "${venueName}" has been deleted successfully.`);
     } catch (error) {
       console.error('Failed to delete venue:', error);
       try {
@@ -164,6 +168,7 @@ export default function VenueOwnerVenues() {
             description: venue.description || 'No description available',
             images: Array.isArray(venue.images) ? venue.images : (venue.image ? [venue.image] : []),
             featuredImage: venue.featuredImage || venue.image || (Array.isArray(venue.images) ? venue.images[0] : '') || '',
+            amenities: Array.isArray(venue.amenities) ? venue.amenities : [],
             status: 'active',
             totalEvents: 0,
             monthlyRevenue: 0,
@@ -177,31 +182,30 @@ export default function VenueOwnerVenues() {
       } catch (refetchError) {
         console.error('Failed to refetch venues after delete error:', refetchError);
       }
-      alert(`Failed to delete venue: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      // alert(`Failed to delete venue: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
   // Show loading while auth is being checked
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#191C24' }}>
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <div className="relative">
             <motion.div
-              className="w-16 h-16 border-4 border-[#0D6EFD] border-t-[#39FD48] rounded-full mx-auto"
+              className="w-16 h-16 border-4 border-primary border-t-green-500 rounded-full mx-auto"
               animate={{ rotate: 360 }}
               transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
             />
           </div>
           <motion.h3 
-            className="text-2xl font-bold mt-6 mb-4"
-            style={{ color: '#fff' }}
+            className="text-2xl font-bold mt-6 mb-4 text-foreground"
             animate={{ opacity: [0.5, 1, 0.5] }}
             transition={{ duration: 2, repeat: Infinity }}
           >
             Authenticating...
           </motion.h3>
-          <p style={{ color: '#ABA8A9' }}>Verifying your credentials</p>
+          <p >Verifying your credentials</p>
         </div>
       </div>
     );
@@ -210,18 +214,16 @@ export default function VenueOwnerVenues() {
   // Redirect to login if not authenticated
   if (!firebaseUser) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#191C24' }}>
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <div className="backdrop-blur-xl border rounded-2xl p-12 max-w-md mx-auto shadow-xl" 
-            style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '50' }}>
-            <Building2 className="h-16 w-16 mx-auto mb-6" style={{ color: '#39FD48' }} />
-            <h3 className="text-2xl font-bold mb-4" style={{ color: '#fff' }}>Authentication Required</h3>
-            <p className="mb-8 leading-relaxed" style={{ color: '#ABA8A9' }}>
+          <div className="backdrop-blur-xl border rounded-2xl p-12 max-w-md mx-auto shadow-xl bg-card border-border">
+            <Building2 className="h-16 w-16 mx-auto mb-6 text-primary" />
+            <h3 className="text-2xl font-bold mb-4 text-foreground">Authentication Required</h3>
+            <p className="mb-8 leading-relaxed text-muted-foreground">
               Please log in to access your venue dashboard
             </p>
             <Link href="/auth/signin">
-              <Button className="text-white font-semibold px-8 py-3 rounded-xl hover:opacity-90 transition-opacity"
-                style={{ background: 'linear-gradient(135deg, #39FD48, #0D6EFD)' }}>
+              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-8 py-3 rounded-xl">
                 Sign In
               </Button>
             </Link>
@@ -231,12 +233,41 @@ export default function VenueOwnerVenues() {
     );
   }
 
+  // Show loading while venues are being fetched
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#191C24' }}>
+        <Loading
+          size="lg"
+          text="Loading Your Venues..."
+          className="text-white"
+        />
+      </div>
+    );
+  }
+
+  // Show error if there was an error loading venues
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4" >
+        <ErrorDisplay
+          type="error"
+          title="Failed to Load Venues"
+          message={error}
+          variant="card"
+          onRetry={retryFetch}
+          className="max-w-md"
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen" style={{ background: '#191C24' }}>
+    <div className="min-h-screen bg-background">
       {/* Background Elements */}
-      <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-20" style={{ backgroundColor: '#ABA8A9' }}></div>
-      <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-15" style={{ backgroundColor: '#D8DFEE' }}></div>
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl opacity-10" style={{ backgroundColor: '#ABA8A9' }}></div>
+      <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-20 bg-muted"></div>
+      <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-15 bg-accent"></div>
+      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl opacity-10 bg-muted"></div>
       
       {/* Content Container */}
       <div className="relative z-10 pt-8 px-8">
@@ -248,7 +279,7 @@ export default function VenueOwnerVenues() {
         >
           {/* Header */}
           <motion.div variants={itemVariants} className="mb-12 h-25">
-            <div className="border rounded-2xl p-6 shadow-lg" style={{ backgroundColor: '#0D6EFD', borderColor: '#000' }}>
+            <div className="border rounded-2xl p-6 shadow-lg bg-primary border-primary-foreground">
               <div className="flex items-center justify-between">
                 <div>
                   <motion.h1 
@@ -302,7 +333,7 @@ export default function VenueOwnerVenues() {
                     onClick={retryFetch}
                     disabled={loading}
                     className="px-4 py-2 text-white font-medium rounded-xl hover:opacity-90 transition-opacity shadow-md"
-                    style={{ background: 'linear-gradient(135deg, #0D6EFD, #1565C0)' }}
+                    
                   >
                     <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                     Refresh
@@ -320,40 +351,29 @@ export default function VenueOwnerVenues() {
 
           {/* Search and Filters */}
           <motion.div variants={itemVariants} className="mb-8">
-            <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl" 
-              style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '50', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}>
+            <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl bg-card border-border">
               <div className="flex flex-col lg:flex-row gap-6">
                 <div className="flex-1 relative">
-                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5" style={{ color: '#ABA8A9' }} />
+                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <input
                     type="text"
                     placeholder="Search venues by name or location..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-12 pr-4 py-3 rounded-xl border focus:outline-none focus:border-[#39FD48] transition-all duration-300"
-                    style={{ 
-                      backgroundColor: '#0D6EFD' + '20', 
-                      borderColor: '#0D6EFD' + '30',
-                      color: '#fff'
-                    }}
+                    className="w-full pl-12 pr-4 py-3 rounded-xl border focus:outline-none focus:border-primary transition-all duration-300 bg-background text-foreground border-border placeholder:text-muted-foreground"
                   />
                 </div>
                 <div className="relative">
-                  <Filter className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5" style={{ color: '#ABA8A9' }} />
+                  <Filter className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <select
                     value={filterStatus}
                     onChange={(e) => setFilterStatus(e.target.value)}
-                    className="w-full pl-12 pr-10 py-3 rounded-xl border focus:outline-none focus:border-[#39FD48] transition-all duration-300 appearance-none"
-                    style={{ 
-                      backgroundColor: '#0D6EFD' + '20', 
-                      borderColor: '#0D6EFD' + '30',
-                      color: '#fff'
-                    }}
+                    className="w-full pl-12 pr-10 py-3 rounded-xl border focus:outline-none focus:border-primary transition-all duration-300 appearance-none bg-background text-foreground border-border"
                   >
-                    <option value="all" style={{ backgroundColor: '#191C24', color: '#fff' }}>All Status</option>
-                    <option value="active" style={{ backgroundColor: '#191C24', color: '#fff' }}>Active</option>
-                    <option value="maintenance" style={{ backgroundColor: '#191C24', color: '#fff' }}>Maintenance</option>
-                    <option value="inactive" style={{ backgroundColor: '#191C24', color: '#fff' }}>Inactive</option>
+                    <option value="all" className="bg-background text-foreground">All Status</option>
+                    <option value="active" className="bg-background text-foreground">Active</option>
+                    <option value="maintenance" className="bg-background text-foreground">Maintenance</option>
+                    <option value="inactive" className="bg-background text-foreground">Inactive</option>
                   </select>
                 </div>
               </div>
@@ -361,43 +381,21 @@ export default function VenueOwnerVenues() {
           </motion.div>
 
           {/* Loading State */}
-          {loading ? (
-            <motion.div variants={itemVariants} className="flex items-center justify-center py-20">
-              <div className="text-center">
-                <div className="relative">
-                  <motion.div
-                    className="w-16 h-16 border-4 border-[#0D6EFD] border-t-[#39FD48] rounded-full mx-auto"
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                  />
-                </div>
-                <motion.h3 
-                  className="text-2xl font-bold mt-6 mb-4"
-                  style={{ color: '#fff' }}
-                  animate={{ opacity: [0.5, 1, 0.5] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                >
-                  Loading Venues...
-                </motion.h3>
-                <p style={{ color: '#ABA8A9' }}>Fetching your venue data</p>
-              </div>
-            </motion.div>
-          ) : error ? (
+          {error ? (
             <motion.div variants={itemVariants} className="text-center py-20">
-              <div className="backdrop-blur-xl border rounded-2xl p-12 max-w-md mx-auto shadow-xl" 
-                style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '50' }}>
+              <div className="backdrop-blur-xl border rounded-2xl p-12 max-w-md mx-auto shadow-xl bg-card border-border">
                 <motion.div
                   initial={{ scale: 0.5, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ duration: 0.5 }}
                 >
-                  <Building2 className="h-16 w-16 mx-auto mb-6" style={{ color: '#39FD48' }} />
+                  <Building2 className="h-16 w-16 mx-auto mb-6"  />
                   <h3 className="text-2xl font-bold mb-4" style={{ color: '#fff' }}>Connection Error</h3>
                   <p className="mb-8 leading-relaxed" style={{ color: '#ABA8A9' }}>{error}</p>
                   <Button 
                     onClick={retryFetch} 
                     className="text-white font-semibold px-8 py-3 rounded-xl hover:opacity-90 transition-opacity"
-                    style={{ background: 'linear-gradient(135deg, #39FD48, #0D6EFD)' }}
+                    
                   >
                     Retry Connection
                   </Button>
@@ -422,7 +420,7 @@ export default function VenueOwnerVenues() {
                   }}
                   className="group relative backdrop-blur-xl border rounded-2xl overflow-hidden hover:shadow-2xl transition-all duration-500"
                   style={{ 
-                    backgroundColor: '#191C24', 
+                  backgroundColor: 'hsl(var(--card))', 
                     borderColor: '#39FD48' + '50',
                     boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)'
                   }}
@@ -441,7 +439,7 @@ export default function VenueOwnerVenues() {
                       <span 
                         className="px-3 py-1 rounded-full text-xs font-medium border"
                         style={{ 
-                          backgroundColor: '#39FD48' + '20', 
+                           
                           borderColor: '#39FD48',
                           color: '#39FD48'
                         }}
@@ -452,9 +450,8 @@ export default function VenueOwnerVenues() {
                     
                     {/* Rating Badge */}
                     {venue.rating && venue.rating > 0 && (
-                      <div className="absolute top-4 left-4 z-20 flex items-center space-x-1 backdrop-blur-md rounded-full px-3 py-2" 
-                        style={{ backgroundColor: '#191C24' + '80' }}>
-                        <Star className="h-4 w-4 fill-current" style={{ color: '#39FD48' }} />
+                      <div className="absolute top-4 left-4 z-20 flex items-center space-x-1 bg-card/80 backdrop-blur-xl border border-border rounded-full px-3 py-2">
+                        <Star className="h-4 w-4 fill-current"  />
                         <span className="text-sm font-bold" style={{ color: '#fff' }}>{venue.rating}</span>
                       </div>
                     )}
@@ -465,62 +462,93 @@ export default function VenueOwnerVenues() {
                     {/* Title and Actions */}
                     <div className="flex items-start justify-between">
                       <h3 className="text-xl font-bold group-hover:opacity-90 transition-opacity duration-300"
-                        style={{ color: '#fff' }}>
+                        >
                         {venue.name}
                       </h3>
                       <Button 
                         variant="ghost" 
                         size="sm" 
                         className="hover:bg-[#0D6EFD]/20 rounded-full transition-all duration-300"
-                        style={{ color: '#ABA8A9' }}
+                        
                       >
                         <MoreVertical className="h-4 w-4" />
                       </Button>
                     </div>
 
                     {/* Location */}
-                    <div className="flex items-center text-sm" style={{ color: '#ABA8A9' }}>
-                      <MapPin className="h-4 w-4 mr-2" style={{ color: '#39FD48' }} />
+                    <div className="flex items-center text-sm" >
+                      <MapPin className="h-4 w-4 mr-2" />
                       <span>{venue.location}</span>
                     </div>
 
-                    <p className="text-sm leading-relaxed line-clamp-2" style={{ color: '#ABA8A9' }}>
+                    <p className="text-sm leading-relaxed line-clamp-2" >
                       {venue.description || 'Premium venue space with modern amenities and exceptional service.'}
                     </p>
+
+                    {/* Amenities */}
+                    {venue.amenities && venue.amenities.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {venue.amenities.slice(0, 4).map((amenity: string, idx: number) => (
+                          <span
+                            key={idx}
+                            className="px-2 py-1 rounded-full text-xs font-medium border"
+                            style={{
+                              backgroundColor: '#39FD48' + '20',
+                              borderColor: '#39FD48' + '50',
+                              color: '#39FD48'
+                            }}
+                          >
+                            {amenity}
+                          </span>
+                        ))}
+                        {venue.amenities.length > 4 && (
+                          <span
+                            className="px-2 py-1 rounded-full text-xs font-medium border"
+                            style={{
+                              backgroundColor: '#ABA8A9' + '20',
+                              borderColor: '#ABA8A9' + '50',
+                              color: '#ABA8A9'
+                            }}
+                          >
+                            +{venue.amenities.length - 4} more
+                          </span>
+                        )}
+                      </div>
+                    )}
 
                     {/* Stats Grid */}
                     <div className="grid grid-cols-2 gap-4">
                       <div className="text-center p-3 rounded-xl border transition-all duration-300"
-                        style={{ backgroundColor: '#0D6EFD' + '20', borderColor: '#0D6EFD' + '30' }}>
-                        <Users className="h-5 w-5 mx-auto mb-2" style={{ color: '#39FD48' }} />
-                        <p className="text-lg font-bold" style={{ color: '#fff' }}>{venue.capacity.toLocaleString()}</p>
-                        <p className="text-xs" style={{ color: '#ABA8A9' }}>Capacity</p>
+                        >
+                        <Users className="h-5 w-5 mx-auto mb-2"  />
+                        <p className="text-lg font-bold" >{venue.capacity.toLocaleString()}</p>
+                        <p className="text-xs" >Capacity</p>
                       </div>
                       
                       <div className="text-center p-3 rounded-xl border transition-all duration-300"
-                        style={{ backgroundColor: '#0D6EFD' + '20', borderColor: '#0D6EFD' + '30' }}>
-                        <Calendar className="h-5 w-5 mx-auto mb-2" style={{ color: '#0D6EFD' }} />
-                        <p className="text-lg font-bold" style={{ color: '#fff' }}>{venue.totalEvents || 0}</p>
-                        <p className="text-xs" style={{ color: '#ABA8A9' }}>Events</p>
+                        >
+                        <Calendar className="h-5 w-5 mx-auto mb-2"  />
+                        <p className="text-lg font-bold" >{venue.totalEvents || 0}</p>
+                        <p className="text-xs" >Events</p>
                       </div>
                     </div>
 
                     {/* Revenue Display */}
                     <div className="relative overflow-hidden rounded-xl border p-4"
-                      style={{ backgroundColor: '#39FD48' + '10', borderColor: '#39FD48' + '30' }}>
+                      style={{ borderColor: '#39FD48' + '30' }}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
-                          <DollarSign className="h-5 w-5" style={{ color: '#39FD48' }} />
-                          <span className="text-sm font-medium" style={{ color: '#fff' }}>Monthly Revenue</span>
+                          <DollarSign className="h-5 w-5"  />
+                          <span className="text-sm font-medium">Monthly Revenue</span>
                         </div>
-                        <span className="text-lg font-bold" style={{ color: '#39FD48' }}>
+                        <span className="text-lg font-bold" >
                           LKR {(venue.monthlyRevenue || 0).toLocaleString()}
                         </span>
                       </div>
                     </div>
 
                     {/* Last Activity */}
-                    <div className="flex items-center text-xs" style={{ color: '#ABA8A9' }}>
+                    <div className="flex items-center text-xs" >
                       <Activity className="h-3 w-3 mr-2" style={{ color: '#0D6EFD' }} />
                       <span>Last event: {venue.lastEvent || 'Ready for bookings'}</span>
                     </div>
@@ -542,7 +570,7 @@ export default function VenueOwnerVenues() {
                         <Button 
                           
                           size="sm" 
-                          className="w-full text-white hover:bg-[#39FD48] hover:text-black transition-all duration-300" style={{ backgroundColor: '#0D6EFD' }}
+                          className="w-full text-white  hover:text-black transition-all duration-300" style={{ backgroundColor: '#0D6EFD' }}
                         >
                           <Edit className="h-4 w-4 mr-2" />
                           Edit
@@ -567,8 +595,7 @@ export default function VenueOwnerVenues() {
           {/* Empty State */}
           {!loading && !error && filteredVenues.length === 0 && (
             <motion.div variants={itemVariants} className="text-center py-20">
-              <div className="backdrop-blur-xl border rounded-2xl p-16 max-w-2xl mx-auto shadow-xl" 
-                style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '50' }}>
+              <div className="backdrop-blur-xl border rounded-2xl p-16 max-w-2xl mx-auto shadow-xl bg-card border-border">
                 <motion.div
                   initial={{ scale: 0.5, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
@@ -577,7 +604,7 @@ export default function VenueOwnerVenues() {
                   <div className="relative mb-8">
                     <motion.div
                       className="w-20 h-20 mx-auto rounded-full border-2 flex items-center justify-center"
-                      style={{ backgroundColor: '#0D6EFD' + '20', borderColor: '#39FD48' }}
+                      
                       animate={{ 
                         scale: [1, 1.1, 1]
                       }}
@@ -587,7 +614,7 @@ export default function VenueOwnerVenues() {
                         ease: "easeInOut"
                       }}
                     >
-                      <Building2 className="h-10 w-10" style={{ color: '#39FD48' }} />
+                      <Building2 className="h-10 w-10"  />
                     </motion.div>
                   </div>
                   
@@ -598,7 +625,7 @@ export default function VenueOwnerVenues() {
                     }
                   </h3>
                   
-                  <p className="mb-10 text-lg leading-relaxed" style={{ color: '#ABA8A9' }}>
+                  <p className="mb-10 text-lg leading-relaxed" >
                     {searchTerm || filterStatus !== 'all' 
                       ? 'Try adjusting your search criteria or filters to find what you\'re looking for' 
                       : 'Ready to build something extraordinary? Create your first venue and start your journey.'
@@ -608,7 +635,7 @@ export default function VenueOwnerVenues() {
                   {!searchTerm && filterStatus === 'all' && venues.length === 0 && (
                     <Link href="/venue-owner/venues/new">
                       <Button className="text-white font-bold px-10 py-4 rounded-2xl text-lg hover:opacity-90 transition-opacity shadow-lg"
-                        style={{ background: 'linear-gradient(135deg, #39FD48, #0D6EFD)' }}>
+                        >
                         <Plus className="h-6 w-6 mr-3" />
                         Create Your First Venue
                       </Button>

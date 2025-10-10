@@ -1,27 +1,29 @@
 "use client"
 
 import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/components/auth/auth-provider';
+import { Loading } from '@/components/ui/loading';
+import { ErrorDisplay } from '@/components/ui/error-display';
 import { 
   Plus, 
   Calendar,  
   DollarSign, 
   TrendingUp,
   Ticket,
-  ArrowLeft,
-  Check,
-  ArrowRight,
+  Users,
+  Activity,
+  BarChart3,
   Eye,
-  Edit
+  Edit,
+  RefreshCw,
 } from 'lucide-react';
-import { fetchEvents, deleteEvent, fetchVenues, createEvent, createVenue } from '@/lib/api';
-import { AnimatePresence } from 'framer-motion';
-import axios from 'axios';
+import { deleteEvent, fetchEventsByOrganizer } from '@/lib/api';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 
+// Animation variants
 const containerVariants: any = {
   hidden: { opacity: 0, scale: 0.98 },
   visible: {
@@ -41,23 +43,14 @@ const itemVariants: any = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.17, 0.67, 0.83, 0.67] as any } }
 };
 
-// Theme colors for matching admin dashboard
-const darkBg = "#181A20";
-const blueHeader = "#1877F2";
-const cardBg = "#23262F";
-const greenBorder = "#39FD48" + '50';
-const cardShadow = "0 2px 16px 0 rgba(57,253,72,0.08)";
-
 export default function OrganizerDashboard() {
   const { userProfile, firebaseUser, isLoading } = useAuth();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState('overview');
-  type SimpleEvent = { id: string | number; title: string; category?: string; startDate?: string; date?: string };
-  const [events, setEvents] = useState<SimpleEvent[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [events, setEvents] = useState<any[]>([]);
   const [eventsLoading, setEventsLoading] = useState(true);
-  const [venues, setVenues] = useState<any[]>([]);
-  const [venuesLoading, setVenuesLoading] = useState(true);
-  const [showVenueModal, setShowVenueModal] = useState(false);
+
+  console.log('User profile in organizer dashboard:', userProfile);
 
   // Check authentication and organizer role
   useEffect(() => {
@@ -68,236 +61,75 @@ export default function OrganizerDashboard() {
     }
   }, [isLoading, firebaseUser, userProfile, router]);
 
-  // Load events (use shared API helper, expects NEXT_PUBLIC_API_URL=/api base)
+  // Fetch organizer-specific events
   useEffect(() => {
-    async function loadEvents() {
+    const loadOrganizerEvents = async () => {
+      if (!userProfile?.uid) return;
+      
+      setEventsLoading(true);
       try {
-        setEventsLoading(true);
-        const eventsData = await fetchEvents();
-        const data = Array.isArray((eventsData as any)?.data) ? (eventsData as any).data : Array.isArray(eventsData) ? eventsData : [];
-        setEvents(data);
+        // Use the new fetchEventsByOrganizer function
+        const response = await fetchEventsByOrganizer(userProfile.uid);
+        const eventsData = response?.data || response || [];
+        setEvents(Array.isArray(eventsData) ? eventsData : []);
       } catch (error) {
-        console.error('Failed to load events:', error);
+        console.error('Failed to load organizer events:', error);
         setEvents([]);
       } finally {
         setEventsLoading(false);
       }
+    };
+
+    if (userProfile?.role === 'organizer') {
+      loadOrganizerEvents();
     }
+  }, [userProfile]);
 
-    loadEvents();
-  }, []);
+  // const handleDeleteEvent = async (eventId: string) => {
+  //   if (confirm('Are you sure you want to delete this event?')) {
+  //     try {
+  //       await deleteEvent(eventId);
+  //       // Refresh events list
+  //       const response = await fetchEventsByOrganizer(userProfile?.uid || '');
+  //       const eventsData = response?.data || response || [];
+  //       setEvents(Array.isArray(eventsData) ? eventsData : []);
+  //       alert('Event deleted successfully!');
+  //     } catch (error) {
+  //       console.error('Failed to delete event:', error);
+  //       alert('Failed to delete event');
+  //     }
+  //   }
+  // };
 
-  // Fetch venues from backend
-  useEffect(() => {
-    async function loadVenues() {
-      setVenuesLoading(true);
-      try {
-        const response = await fetchVenues();
-        const data = Array.isArray(response?.data) ? response.data : Array.isArray(response) ? response : [];
-        setVenues(data);
-      } catch (err) {
-        setVenues([]);
-      } finally {
-        setVenuesLoading(false);
-      }
-    }
-    loadVenues();
-  }, []);
-
-  const handleDeleteEvent = async (eventId: string) => {
-    if (confirm('Are you sure you want to delete this event?')) {
-      try {
-        await deleteEvent(eventId);
-        // Refresh events list
-        const eventsData = await fetchEvents();
-        setEvents(Array.isArray(eventsData) ? eventsData : []);
-        alert('Event deleted successfully!');
-      } catch (error) {
-        console.error('Failed to delete event:', error);
-        alert('Failed to delete event');
-      }
+  const handleRefresh = () => {
+    setRefreshing(true);
+    // Refresh events data
+    if (userProfile?.uid) {
+      fetchEventsByOrganizer(userProfile.uid)
+        .then(response => {
+          const eventsData = response?.data || response || [];
+          setEvents(Array.isArray(eventsData) ? eventsData : []);
+        })
+        .catch(error => {
+          console.error('Failed to refresh events:', error);
+        })
+        .finally(() => {
+          setRefreshing(false);
+        });
+    } else {
+      setRefreshing(false);
     }
   };
 
   // Show loading if auth is still loading
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-          <p className="mt-4 text-muted-foreground">Loading organizer dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-
-  const organizerEvents = Array.isArray(events) ? events : []; // Use real events
-
-  const VenueCreationWizard = ({ onClose, onCreated }: { onClose: () => void; onCreated?: () => void }) => {
-    const [currentStep, setCurrentStep] = useState(1);
-    const totalSteps = 3;
-    const [submitting, setSubmitting] = useState(false);
-    const [error, setError] = useState('');
-    const [formData, setFormData] = useState({
-      name: '',
-      city: '',
-      state: '',
-      capacity: '',
-      amenities: '',
-      description: ''
-    });
-
-    const nextStep = () => {
-      if (currentStep < totalSteps) setCurrentStep(currentStep + 1);
-    };
-    const prevStep = () => {
-      if (currentStep > 1) setCurrentStep(currentStep - 1);
-    };
-    const handleInputChange = (field: string, value: string) => {
-      setFormData(prev => ({ ...prev, [field]: value }));
-    };
-    const handleSubmit = async () => {
-      if (!formData.name || !formData.city || !formData.state || !formData.capacity) {
-        setError('Please fill in all required fields');
-        return;
-      }
-      setSubmitting(true);
-      setError('');
-      try {
-        await createVenue({
-          name: formData.name,
-          city: formData.city,
-          state: formData.state,
-          capacity: Number(formData.capacity),
-          amenities: formData.amenities.split(',').map(a => a.trim()),
-          description: formData.description
-        });
-        if (onCreated) onCreated();
-        onClose();
-      } catch (err) {
-        setError('Failed to create venue');
-      } finally {
-        setSubmitting(false);
-      }
-    };
-
-    // Venue form stepper UI
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
-        <div className="rounded-2xl border p-0 overflow-hidden shadow-2xl" style={{ backgroundColor: '#191C24', borderColor: '#39FD48'+ '50', minWidth: 400, maxWidth: 500 }}>
-          <div className="bg-blue-600 p-6 text-center">
-            <h3 className="text-xl font-bold text-white mb-1">Add New Venue</h3>
-            <p className="text-blue-100">Step {currentStep} of {totalSteps}</p>
-          </div>
-          <div className="p-8">
-            {/* Stepper */}
-            <div className="flex items-center justify-center mb-8">
-              {[...Array(totalSteps)].map((_, idx) => (
-                <div key={idx} className="flex items-center">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all duration-300 ${
-                    idx + 1 === currentStep
-                      ? 'border-primary bg-primary text-white'
-                      : idx + 1 < currentStep
-                      ? 'border-green-500 bg-green-500 text-white'
-                      : 'border-gray-300 bg-gray-100 text-gray-400'
-                  }`}>
-                    {idx + 1 < currentStep ? <Check className="w-4 h-4" /> : idx + 1}
-                  </div>
-                  {idx < totalSteps - 1 && (
-                    <div className={`w-10 h-0.5 mx-2 transition-all duration-300 ${
-                      idx + 1 < currentStep ? 'bg-green-500' : 'bg-gray-300'
-                    }`} />
-                  )}
-                </div>
-              ))}
-            </div>
-            {/* Step Content */}
-            {currentStep === 1 && (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-white">Venue Name *</label>
-                  <input type="text" value={formData.name} onChange={e => handleInputChange('name', e.target.value)} className="w-full px-4 py-3 border rounded-lg bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200" placeholder="Venue name" required />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-white">City *</label>
-                    <input type="text" value={formData.city} onChange={e => handleInputChange('city', e.target.value)} className="w-full px-4 py-3 border rounded-lg bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200" placeholder="City" required />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-white">State *</label>
-                    <input type="text" value={formData.state} onChange={e => handleInputChange('state', e.target.value)} className="w-full px-4 py-3 border rounded-lg bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200" placeholder="State" required />
-                  </div>
-                </div>
-              </div>
-            )}
-            {currentStep === 2 && (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-white">Capacity *</label>
-                  <input type="number" value={formData.capacity} onChange={e => handleInputChange('capacity', e.target.value)} className="w-full px-4 py-3 border rounded-lg bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200" placeholder="Capacity" required />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-white">Amenities (comma separated)</label>
-                  <input type="text" value={formData.amenities} onChange={e => handleInputChange('amenities', e.target.value)} className="w-full px-4 py-3 border rounded-lg bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200" placeholder="WiFi, Parking, etc." />
-                </div>
-              </div>
-            )}
-            {currentStep === 3 && (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-white">Description</label>
-                  <textarea value={formData.description} onChange={e => handleInputChange('description', e.target.value)} rows={4} className="w-full px-4 py-3 border rounded-lg bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200" placeholder="Describe your venue..." />
-                </div>
-                <div className="bg-gray-900 rounded-lg p-4 mt-4 border border-green-500 text-white">
-                  <div><strong>Name:</strong> {formData.name}</div>
-                  <div><strong>Location:</strong> {formData.city}, {formData.state}</div>
-                  <div><strong>Capacity:</strong> {formData.capacity}</div>
-                  <div><strong>Amenities:</strong> {formData.amenities}</div>
-                  <div><strong>Description:</strong> {formData.description}</div>
-                </div>
-              </div>
-            )}
-            {error && <div className="text-red-500 text-center mt-4">{error}</div>}
-            <div className="flex items-center justify-between mt-8">
-              <Button variant="outline" onClick={prevStep} disabled={currentStep === 1} className="px-6 py-2 hover:bg-primary/10 dark:hover:bg-primary/20 hover:border-primary/30 transition-all duration-200">
-                <ArrowLeft className="h-4 w-4 mr-2" />Previous
-              </Button>
-              {currentStep < totalSteps ? (
-                <Button onClick={nextStep} className="px-6 py-2 hover:shadow-lg hover:shadow-primary/20 dark:hover:shadow-primary/30 hover:scale-105 transition-all duration-300">
-                  Next<ArrowRight className="h-4 w-4 ml-2" />
-                </Button>
-              ) : (
-                <Button onClick={handleSubmit} disabled={submitting} className="px-6 py-2 hover:shadow-lg hover:shadow-primary/20 dark:hover:shadow-primary/30 hover:scale-105 transition-all duration-300">
-                  {submitting ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 mr-2 border-b-2 border-white"></div>
-                      Creating...
-                    </>
-                  ) : (
-                    <>
-                      <Check className="h-4 w-4 mr-2" />Create Venue
-                    </>
-                  )}
-                </Button>
-              )}
-            </div>
-            <div className="flex justify-end mt-4">
-              <Button variant="outline" onClick={onClose}>Cancel</Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Show loading if auth is still loading
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-          <p className="mt-4 text-muted-foreground">Loading organizer dashboard...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loading
+          size="lg"
+          text="Loading organizer dashboard..."
+          className="text-foreground"
+        />
       </div>
     );
   }
@@ -305,355 +137,359 @@ export default function OrganizerDashboard() {
   // Show access denied if not authenticated or not organizer
   if (!firebaseUser || !userProfile || userProfile.role !== 'organizer') {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
-          <p className="text-muted-foreground mb-6">You need organizer privileges to access this page.</p>
-          <Button onClick={() => router.push('/auth/signin')}>
-            Sign In
-          </Button>
-        </div>
+      <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+        <ErrorDisplay
+          type="auth"
+          title="Access Denied"
+          message="You need organizer privileges to access this page."
+          variant="card"
+          className="max-w-md"
+        />
       </div>
     );
   }
 
-  // Mock organizer data
-  const organizer = {
-    name: userProfile?.email?.split('@')[0] || 'Event Organizer',
-    email: userProfile?.email || 'organizer@nexticket.com',
-    totalEvents: Array.isArray(events) ? events.length : 0,
-    totalRevenue: 0,
-    totalTicketsSold: 0,
-    averageRating: 4.7
-  };
+  // Calculate stats from real events data
+  const totalEvents = events.length;
+  const activeEvents = events.filter(event => event.status === 'APPROVED').length;
+  const pendingEvents = events.filter(event => event.status === 'PENDING').length;
+  const totalRevenue = events.reduce((sum, event) => sum + (event.revenue || 0), 0);
+  const totalTicketsSold = events.reduce((sum, event) => sum + (event.ticketsSold || 0), 0);
 
   const stats = [
     {
       title: 'Total Events',
-      value: organizer.totalEvents,
-      icon: Calendar,
-      color: 'bg-blue-500'
+      value: totalEvents,
+      icon: <Calendar size={24} className="text-primary" />,
+      trend: 12.5,
+      color: '#CBF83E',
+      subtitle: `${pendingEvents} pending approval`
     },
     {
-      title: 'Revenue',
-      value: `$${organizer.totalRevenue.toLocaleString()}`,
-      icon: DollarSign,
-      color: 'bg-green-500'
+      title: 'Active Events',
+      value: activeEvents,
+      icon: <Activity size={24} className="text-primary" />,
+      trend: 8.2,
+      color: '#CBF83E',
+      subtitle: 'Currently running'
+    },
+    {
+      title: 'Monthly Revenue',
+      value: `LKR ${totalRevenue.toLocaleString()}`,
+      icon: <DollarSign size={24} className="text-primary" />,
+      trend: 15.8,
+      color: '#CBF83E',
+      subtitle: 'This month'
     },
     {
       title: 'Tickets Sold',
-      value: organizer.totalTicketsSold.toLocaleString(),
-      icon: Ticket,
-      color: 'bg-purple-500'
-    },
-    {
-      title: 'Average Rating',
-      value: organizer.averageRating,
-      icon: TrendingUp,
-      color: 'bg-orange-500'
+      value: totalTicketsSold.toLocaleString(),
+      icon: <Ticket size={24} className="text-primary" />,
+      trend: 23.1,
+      color: '#CBF83E',
+      subtitle: 'Total sales'
     }
   ];
 
-  // Mock data shown when no real events/venues exist
-  const mockEvents = [
-    { id: 'mock-e1', title: 'Rock Fest Colombo', description: 'A night of rock music with top bands.', category: 'Concert', date: '2025-09-12' },
-    { id: 'mock-e2', title: 'Tech Summit 2025', description: 'Talks and workshops on emerging tech.', category: 'Conference', date: '2025-10-03' },
-    { id: 'mock-e3', title: 'Laughter Night', description: 'Stand-up comedy special.', category: 'Comedy', date: '2025-08-21' }
+  // Mock data for charts (can be replaced with real analytics later)
+  const revenueData = [
+    { name: 'Jan', revenue: 25000, tickets: 80, events: 5 },
+    { name: 'Feb', revenue: 32000, tickets: 95, events: 7 },
+    { name: 'Mar', revenue: 28000, tickets: 82, events: 6 },
+    { name: 'Apr', revenue: 41000, tickets: 118, events: 9 },
+    { name: 'May', revenue: 38000, tickets: 105, events: 8 },
+    { name: 'Jun', revenue: 47000, tickets: 139, events: 11 },
+    { name: 'Jul', revenue: 54000, tickets: 160, events: 13 }
   ];
 
-  const mockVenues = [
-    { id: 'mock-v1', name: 'Nelum Pokuna', description: 'Iconic performing arts theatre.', city: 'Colombo', state: 'WP', capacity: 1200 },
-    { id: 'mock-v2', name: 'Sugathadasa Indoor Stadium', description: 'Large indoor venue for sports and events.', city: 'Colombo', state: 'WP', capacity: 5000 },
-    { id: 'mock-v3', name: 'BMICH Hall A', description: 'Convention center hall.', city: 'Colombo', state: 'WP', capacity: 2000 }
-  ];
+  interface StatCardProps {
+    title: string;
+    value: string | number;
+    icon: React.ReactNode;
+    trend?: number;
+    color: string;
+    subtitle?: string;
+  }
 
-  const tabs = [
-    { id: 'overview', label: 'Overview' },
-    { id: 'events', label: 'My Events' },
-    { id: 'venues', label: 'My Venues' },
-    { id: 'analytics', label: 'Analytics' },
-  ];
+  const StatCard: React.FC<StatCardProps> = ({ title, value, icon, trend, color, subtitle }) => {
+    const TrendIcon = trend && trend > 0 ? TrendingUp : TrendingUp;
+    const trendColor = trend && trend > 0 ? 'text-green-500' : 'text-red-500';
 
-  return (
-    <div className="min-h-screen" style={{ background: darkBg }}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10">
-        {/* Dashboard Header */}
-        <div
-          className="rounded-xl shadow-lg mb-8 flex items-center justify-between"
-          style={{
-            backgroundColor: blueHeader,
-            borderRadius: "14px",
-            padding: "1.2rem",
-            color: "#fff",
-            boxShadow: cardShadow,
-            fontSize: "1rem"
-          }}
-        >
-          <div>
-            <h1 className="font-bold mb-1" style={{ fontSize: "1.4rem" }}>Organizer Dashboard</h1>
-            <p className="text-base">Welcome back, {organizer.name}!</p>
+    return (
+      <motion.div
+        variants={itemVariants}
+        whileHover={{ scale: 1.02, y: -2 }}
+        className="bg-card backdrop-blur-xl border border-border rounded-2xl p-4 shadow-lg hover:shadow-xl transition-all duration-200"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <p className="text-sm font-medium mb-1 text-muted-foreground">{title}</p>
+            <div className="text-2xl font-bold mb-1 text-foreground">{value}</div>
+            {subtitle && (
+              <p className="text-xs text-muted-foreground">{subtitle}</p>
+            )}
+            {trend && (
+              <div className="flex items-center mt-2">
+                <TrendIcon size={12} className={trendColor} />
+                <span className={`text-xs ml-1 font-medium ${trendColor}`}>
+                  {Math.abs(trend)}% from last month
+                </span>
+              </div>
+            )}
+          </div>
+          <div className="bg-primary/10 rounded-lg p-3 ml-4 text-primary">
+            {icon}
           </div>
         </div>
+      </motion.div>
+    );
+  };
 
-        {/* Tabs as small card buttons */}
-        <div className="mb-8 flex gap-4">
-          {tabs.map(tab => (
-            <div
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 cursor-pointer rounded-lg shadow-md transition-all duration-200 text-center font-medium py-3 ${activeTab === tab.id ? "border" : "border"} ${activeTab === tab.id ? "border-green-400" : "border-gray-700"} hover:scale-105`}
-              style={{
-                backgroundColor: cardBg,
-                color: "#fff",
-                borderColor: activeTab === tab.id ? greenBorder : "#23262F",
-                boxShadow: cardShadow,
-                fontSize: "1rem",
-                borderWidth: "1px"
-              }}
-            >
-              {tab.label}
-            </div>
-          ))}
-        </div>
-
-        {/* Stats cards */}
-        {activeTab === "overview" && (
-          <motion.div
-            initial="hidden"
-            animate="visible"
-            variants={containerVariants}
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
-          >
-            {stats.map(stat => (
-              <motion.div
-                key={stat.title}
-                variants={itemVariants}
-                className="rounded-lg border p-4 flex flex-col items-start justify-between"
-                style={{
-                  backgroundColor: cardBg,
-                  borderColor: greenBorder,
-                  color: "#fff",
-                  boxShadow: cardShadow,
-                  minHeight: 90,
-                  fontSize: "0.95rem",
-                  borderWidth: "1px"
-                }}
-              >
-                <div className="flex items-center mb-1">
-                  <stat.icon className="w-5 h-5 mr-2" />
-                  <span className="font-medium">{stat.title}</span>
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Background Elements */}
+      <div className="absolute top-0 right-0 w-80 h-80 bg-primary/5 rounded-full blur-3xl opacity-50"></div>
+      <div className="absolute bottom-0 left-0 w-80 h-80 bg-secondary/5 rounded-full blur-3xl opacity-40"></div>
+      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-muted/10 rounded-full blur-3xl opacity-30"></div>
+      
+      {/* Content Container */}
+      <div className="relative z-10 pt-8 px-8">
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={containerVariants}
+          className="max-w-7xl mx-auto"
+        >
+          {/* Header */}
+          <motion.div variants={itemVariants} className="mb-12">
+            <div className="bg-gradient-to-r from-primary to-primary/80 border border-primary/20 rounded-2xl p-6 shadow-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <motion.h1 
+                    initial={{ opacity: 0, x: -30 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.6, ease: "easeOut" }}
+                    className="text-3xl font-bold mb-2 text-primary-foreground"
+                  >
+                    Organizer Dashboard
+                  </motion.h1>
+                  <motion.p
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2, duration: 0.5 }}
+                    className="text-lg font-normal text-primary-foreground/90"
+                  >
+                    Welcome back, {userProfile?.firstName || userProfile?.email?.split('@')[0] || 'Organizer'}! 
+                  </motion.p>
                 </div>
-                <div className="text-xl font-bold mb-1" style={{ fontSize: "1.2rem" }}>{stat.value}</div>
-              </motion.div>
-            ))}
-            <div className="sm:col-span-2 lg:col-span-4 rounded-lg p-4" style={{ backgroundColor: cardBg, border: `1px solid ${greenBorder}`, boxShadow: cardShadow }}>
-              <div className="flex flex-wrap gap-4">
-                <div className="flex-1 min-w-[220px]">
-                  <div className="text-xs text-muted-foreground">This Week Revenue</div>
-                  <div className="text-2xl font-bold text-white mt-1">LKR 125,400</div>
-                  <div className="h-2 w-full rounded mt-2" style={{ background: "#2a2d34" }}>
-                    <div className="h-2 rounded" style={{ width: "65%", background: blueHeader }}></div>
-                  </div>
-                </div>
-                <div className="flex-1 min-w-[220px]">
-                  <div className="text-xs text-muted-foreground">New Tickets Sold</div>
-                  <div className="text-2xl font-bold text-white mt-1">842</div>
-                  <div className="h-2 w-full rounded mt-2" style={{ background: "#2a2d34" }}>
-                    <div className="h-2 rounded" style={{ width: "48%", background: greenBorder }}></div>
-                  </div>
-                </div>
-                <div className="flex-1 min-w-[220px]">
-                  <div className="text-xs text-muted-foreground">Active Venues</div>
-                  <div className="text-2xl font-bold text-white mt-1">7</div>
-                  <div className="h-2 w-full rounded mt-2" style={{ background: "#2a2d34" }}>
-                    <div className="h-2 rounded" style={{ width: "70%", background: blueHeader }}></div>
-                  </div>
-                </div>
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.3, duration: 0.4 }}
+                >
+                  <Button 
+                    onClick={handleRefresh}
+                    disabled={refreshing}
+                    className="bg-primary-foreground/20 hover:bg-primary-foreground/30 text-primary-foreground border border-primary-foreground/30"
+                  >
+                    <RefreshCw className={`h-5 w-5 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                    Refresh
+                  </Button>
+                </motion.div>
               </div>
             </div>
           </motion.div>
-        )}
 
-        {/* Tab Content Cards */}
-        <div className="rounded-lg border p-4 shadow-md" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow, borderWidth: "1px", fontSize: "0.95rem" }}>
-          {activeTab === 'events' && (
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-white">My Events</h2>
-                <Button onClick={() => router.push('/organizer/events/new')} className="flex items-center" style={{ backgroundColor: darkBg, borderColor: greenBorder }}>
-                  <Plus className="w-4 h-4 mr-2" /> Add New Event
-                </Button>
+          {/* Quick Action Buttons */}
+          <motion.div variants={itemVariants} className="mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Button 
+                onClick={() => router.push('/organizer/events/new')}
+                className="h-16 bg-card border border-border text-lg rounded-2xl p-8 shadow-lg  "
+              >
+                <Plus className="h-8 w-8 mr-3 text-primary" />
+                <span className="text-foreground">Create New Event</span>
+              </Button>
+              <Button 
+                onClick={() => router.push('/organizer/events')}
+                className="h-16 bg-card border border-border text-lg rounded-2xl p-8 shadow-lg transition-all duration-200 hover:scale-105 hover:shadow-xl"
+              >
+                <Calendar className="h-8 w-8 mr-3 text-primary"/>
+                <span className="text-foreground">Manage Events</span>
+              </Button>
+              <Button 
+                onClick={() => router.push('/organizer/analytics')}
+                className="h-16 bg-card border border-border text-lg rounded-2xl p-8 shadow-lg transition-all duration-200 hover:scale-105 hover:shadow-xl"
+              >
+                <BarChart3 className="h-8 w-8 mr-3 text-primary" />
+                <span className="text-foreground">View Analytics</span>
+              </Button>
+            </div>
+          </motion.div>
+
+          {/* Stats Grid */}
+          <motion.div variants={itemVariants} className="mb-16">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {stats.map((stat, index) => (
+                <StatCard key={index} {...stat} />
+              ))}
+            </div>
+          </motion.div>
+
+          {/* My Events Section */}
+          <motion.div variants={itemVariants} className="mb-16">
+            <div className="bg-card border border-border rounded-2xl p-8 shadow-lg">
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-3xl font-bold text-foreground">My Events</h3>
+                <div className="flex items-center space-x-4">
+                  <div className="text-sm font-medium text-muted-foreground">
+                    {eventsLoading ? 'Loading...' : `${events.length} events total`}
+                  </div>
+                  <Button 
+                    onClick={() => router.push('/organizer/events/new')}
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Event
+                  </Button>
+                </div>
               </div>
+              
               {eventsLoading ? (
-                <div className="text-center py-10">
-                  <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto"></div>
-                  <p className="mt-4 text-muted-foreground">Loading your events...</p>
+                <div className="text-center py-8">
+                  <Loading
+                    size="md"
+                    text="Loading your events..."
+                    className="text-foreground"
+                  />
+                </div>
+              ) : events.length === 0 ? (
+                <div className="text-center py-8">
+                  <Calendar className="h-12 w-12 mx-auto mb-4 text-primary" />
+                  <p className="text-lg font-semibold text-foreground">No Events Yet</p>
+                  <p className="text-sm mb-4 text-muted-foreground">Create your first event to get started</p>
+                  <Button 
+                    onClick={() => router.push('/organizer/events/new')}
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Event
+                  </Button>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {(organizerEvents.length === 0 ? mockEvents : organizerEvents).map(event => (
-                    <div key={event.id} className="rounded-xl p-4 bg-background shadow-sm flex items-center justify-between" style={{ backgroundColor: darkBg }}>
-                      <div className="flex items-center gap-4 min-w-0">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold" style={{ color: '#fff', backgroundColor: blueHeader }}>
-                          {(event.title || 'E').charAt(0).toUpperCase()}
-                        </div>
-                        <div className="min-w-0">
-                          <Link href={`/organizer/events/${event.id}`} className="block font-semibold text-white truncate">
-                            {event.title}
-                          </Link>
-                          <div className="flex flex-wrap items-center gap-2 mt-1 text-xs">
-                            <span className="px-2 py-0.5 rounded-full" style={{ color: greenBorder, backgroundColor: greenBorder + '20' }}>{(event as any).category || '—'}</span>
-                            <span className="px-2 py-0.5 rounded-full" style={{ color: '#fff', backgroundColor: '#2a2d34' }}>{(event as any).startDate ? new Date((event as any).startDate).toLocaleString() : (event as any).date || '—'}</span>
+                <div className="space-y-4">
+                  {events.slice(0, 5).map((event) => (
+                    <div key={event.id} className="bg-card border border-border rounded-2xl p-6 shadow-md">
+                      <div className="flex flex-col lg:flex-row lg:items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-3 mb-2">
+                            <h4 className="text-lg font-semibold text-foreground truncate">{event.title}</h4>
+                            <span className={`px-2 py-1 text-xs rounded-full ${
+                              event.status === 'APPROVED' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' :
+                              event.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300' :
+                              'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+                            }`}>
+                              {event.status}
+                            </span>
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-3">
+                            {event.description}
+                          </p>
+                          <div className="flex flex-wrap gap-3">
+                            <span className="text-xs rounded-full px-3 py-1 bg-primary/20 text-primary">
+                              {event.category}
+                            </span>
+                            <span className="text-xs rounded-full px-3 py-1 bg-muted text-muted-foreground">
+                              {new Date(event.startDate).toLocaleDateString()}
+                            </span>
+                            <span className="text-xs rounded-full px-3 py-1 bg-muted text-muted-foreground">
+                              {event.venue?.name || 'No venue'}
+                            </span>
                           </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2 ml-4 shrink-0">
-                        <Button variant="outline" size="sm" className="h-8" style={{ backgroundColor: 'white', borderColor: '#2a2d34', color: 'black' }}>
-                          <Eye className="h-4 w-4 mr-1" /> View
-                        </Button>
-                        <Button variant="outline" size="sm" className="h-8" style={{ backgroundColor: 'white', borderColor: '#2a2d34', color: 'black' }}>
-                          <Edit className="h-4 w-4 mr-1" /> Edit
-                        </Button>
+                        <div className="mt-4 lg:mt-0 lg:ml-6 flex space-x-2">
+                          <Button 
+                            onClick={() => router.push(`/organizer/events/${event.id}/view`)}
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                            size="sm"
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            View
+                          </Button>
+                          <Button 
+                            onClick={() => router.push(`/organizer/events/${event.id}/edit`)}
+                            className="bg-secondary hover:bg-secondary/90 text-secondary-foreground"
+                            size="sm"
+                          >
+                            <Edit className="h-4 w-4 mr-1" />
+                            Edit
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   ))}
+                  {events.length > 5 && (
+                    <div className="text-center pt-4">
+                      <Button 
+                        onClick={() => router.push('/organizer/events')}
+                        variant="outline"
+                        className="border-border text-foreground hover:bg-muted"
+                      >
+                        View All {events.length} Events
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-          )}
+          </motion.div>
 
-          {activeTab === 'venues' && (
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-white">My Venues</h2>
-                <Button onClick={() => setShowVenueModal(true)} className="flex items-center" style={{ backgroundColor: darkBg, borderColor: greenBorder }}>
-                  <Plus className="w-4 h-4 mr-2" /> Add New Venue
-                </Button>
+          {/* Analytics Chart */}
+          <motion.div variants={itemVariants} className="mb-16">
+            <div className="bg-card border border-border rounded-2xl p-8 shadow-lg">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-bold text-foreground">Revenue Overview</h3>
+                <div className="flex items-center space-x-2">
+                  <BarChart3 className="h-5 w-5 text-foreground" />
+                  <span className="text-sm font-medium text-foreground">Monthly View</span>
+                </div>
               </div>
-              {venuesLoading ? (
-                <div className="text-center py-10">
-                  <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto"></div>
-                  <p className="mt-4 text-muted-foreground">Loading your venues...</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {(venues.length === 0 ? mockVenues : venues).map(venue => (
-                    <div key={venue.id} className="rounded-xl p-4 bg-background shadow-sm flex items-center justify-between" style={{ backgroundColor: darkBg }}>
-                      <div className="flex items-center gap-4 min-w-0">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold" style={{ color: '#fff', backgroundColor: blueHeader }}>
-                          {(venue.name || 'V').charAt(0).toUpperCase()}
-                        </div>
-                        <div className="min-w-0">
-                          <Link href={`/organizer/venues/${venue.id}`} className="block font-semibold text-white truncate">
-                            {venue.name}
-                          </Link>
-                          <div className="flex flex-wrap items-center gap-2 mt-1 text-xs">
-                            <span className="px-2 py-0.5 rounded-full" style={{ color: '#fff', backgroundColor: '#2a2d34' }}>{venue.city}, {venue.state}</span>
-                            <span className="px-2 py-0.5 rounded-full" style={{ color: greenBorder, backgroundColor: greenBorder + '20' }}>Capacity: {venue.capacity}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 ml-4 shrink-0">
-                        <Button variant="outline" size="sm" className="h-8" style={{ backgroundColor: darkBg, borderColor: '#2a2d34', color: '#fff' }}>
-                          <Eye className="h-4 w-4 mr-1" /> View
-                        </Button>
-                        <Button variant="outline" size="sm" className="h-8" style={{ backgroundColor: darkBg, borderColor: '#2a2d34', color: '#fff' }}>
-                          <Edit className="h-4 w-4 mr-1" /> Edit
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'analytics' && (
-            <div>
-              <h2 className="text-xl font-bold text-white mb-4">Analytics</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {stats.map(stat => (
-                  <div key={stat.title} className="rounded-2xl border p-4 bg-background shadow-md flex flex-col" style={{ backgroundColor: darkBg, borderColor: greenBorder }}>
-                    <div className="flex-1">
-                      <div className="text-sm font-medium text-muted-foreground mb-1">{stat.title}</div>
-                      <div className="text-lg font-bold text-white">{stat.value}</div>
-                    </div>
-                    <div className="mt-2">
-                      <div className={`w-full h-1 rounded-full ${stat.color} bg-opacity-20`}>
-                        <div className={`h-1 rounded-full ${stat.color}`} style={{ width: `60%` }} />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-                <div className="rounded-xl p-6" style={{ backgroundColor: cardBg, border: `1px solid ${greenBorder}`, boxShadow: cardShadow }}>
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="text-white font-semibold">Top Categories</div>
-                  </div>
-                  <div className="space-y-3">
-                    {[{name:'Concert',pct:54},{name:'Conference',pct:28},{name:'Comedy',pct:18}].map(c => (
-                      <div key={c.name}>
-                        <div className="flex justify-between text-xs mb-1">
-                          <span className="text-muted-foreground">{c.name}</span>
-                          <span className="text-white font-medium">{c.pct}%</span>
-                        </div>
-                        <div className="h-2 w-full rounded" style={{ background: '#2a2d34' }}>
-                          <div className="h-2 rounded" style={{ width: `${c.pct}%`, background: blueHeader }}></div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="rounded-xl p-6" style={{ backgroundColor: cardBg, border: `1px solid ${greenBorder}`, boxShadow: cardShadow }}>
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="text-white font-semibold">Weekly Ticket Sales</div>
-                  </div>
-                  <div className="grid grid-cols-7 gap-2 text-center text-xs text-muted-foreground">
-                    {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((d,i)=> (
-                      <div key={d}>
-                        <div className="h-20 w-full rounded mb-1" style={{ background: '#2a2d34' }}>
-                          <div className="w-full rounded-b" style={{ height: `${[45,52,48,61,58,67,74][i]}%`, background: blueHeader }}></div>
-                        </div>
-                        {d}
-                      </div>
-                    ))}
-                  </div>
-                </div>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={revenueData}>
+                    <defs>
+                      <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.1}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted-foreground))" />
+                    <XAxis dataKey="name" stroke="hsl(var(--foreground))" />
+                    <YAxis stroke="hsl(var(--foreground))" />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--card))', 
+                        border: '1px solid hsl(var(--border))', 
+                        color: 'hsl(var(--foreground))',
+                        borderRadius: '8px'
+                      }} 
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="revenue" 
+                      stroke="hsl(var(--primary))" 
+                      fillOpacity={1} 
+                      fill="url(#colorRevenue)" 
+                      strokeWidth={2}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
             </div>
-          )}
-        </div>
+          </motion.div>
+
+        </motion.div>
       </div>
-
-      {/* Venue Creation Modal */}
-      <AnimatePresence>
-        {showVenueModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
-            <div className="rounded-xl border-2 shadow-2xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, minWidth: 400, maxWidth: 500, boxShadow: cardShadow }}>
-              <div className="bg-blue-600 p-6 text-center rounded-t-xl">
-                <h3 className="text-2xl font-bold text-white mb-1">Add New Venue</h3>
-              </div>
-              <div className="p-8">
-                <VenueCreationWizard onClose={() => setShowVenueModal(false)} onCreated={() => {
-                  setShowVenueModal(false);
-                  // refresh events and venues after creation
-                  (async () => {
-                    try {
-                      setVenuesLoading(true);
-                      const response = await fetchVenues();
-                      const data = Array.isArray((response as any)?.data) ? (response as any).data : Array.isArray(response) ? response : [];
-                      setVenues(data);
-                    } finally {
-                      setVenuesLoading(false);
-                    }
-                  })();
-                }} />
-              </div>
-            </div>
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
