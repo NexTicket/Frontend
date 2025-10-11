@@ -34,6 +34,8 @@ interface UserLockedSeatsResponse {
   };
 }
 
+const APIGATEWAY_TICKET_URL = (process.env.API_GATEWAY_URL || 'http://localhost:5000' ) + '/ticket_service';
+
 export async function getUserLockedSeats(): Promise<UserLockedSeatsResponse> {
   try {
     // Ensure we're on the client side
@@ -75,7 +77,7 @@ export async function getUserLockedSeats(): Promise<UserLockedSeatsResponse> {
     
     const token = await user.getIdToken();
 
-    const response = await fetch('http://localhost:5000/ticket_service/api/ticket-locking/locked-seats', {
+    const response = await fetch(`${APIGATEWAY_TICKET_URL}/api/ticket-locking/locked-seats`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -127,7 +129,7 @@ export async function lockSeats({
     
     const token = await user.getIdToken();
 
-    const response = await fetch('http://localhost:5000/ticket_service/api/ticket-locking/lock-seats', {
+    const response = await fetch(`${APIGATEWAY_TICKET_URL}/api/ticket-locking/lock-seats`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
