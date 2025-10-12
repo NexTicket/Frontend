@@ -17,12 +17,7 @@ import {
   UserPlus,
   UserMinus,
   CheckCircle,
-  XCircle,
-  AlertCircle,
-  Plus,
-  Trash2,
-  Mail,
-  Phone
+  Plus
 } from 'lucide-react';
 import { fetchMyAssignedEvents, fetchCheckinOfficers, updateEventDetails } from '@/lib/api';
 

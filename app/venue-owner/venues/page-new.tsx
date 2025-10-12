@@ -20,7 +20,6 @@ import {
   Star,
   MoreVertical,
   Activity,
-  Loader2,
   RefreshCw
 } from 'lucide-react';
 

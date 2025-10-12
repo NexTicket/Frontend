@@ -1,12 +1,17 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { createEvent, fetchVenues, uploadEventImage, fetchVenueSeatMap, fetchVenueById, fetchFilteredVenues } from "@/lib/api";
+import { createEvent, fetchVenues, uploadEventImage, fetchVenueSeatMap, fetchVenueById, fetchFilteredVenues, fetchVenueAvailability } from "@/lib/api";
 import { useAuth } from "@/components/auth/auth-provider";
 import dynamic from "next/dynamic";
 import { ArrowLeft, ArrowRight, Image as ImageIcon, X, MapPin, Users, Building2, Grid3X3, Eye } from "lucide-react";
+
+// Dynamic import for LocationPicker to avoid SSR issues
+const LocationPicker = dynamic(() => import("@/components/ui/location-picker").then(mod => mod.LocationPicker), {
+  loading: () => <div className="w-full h-64 bg-gray-800 rounded-lg flex items-center justify-center">Loading map...</div>
+});
 
 function NewEventPageInner() {
   const router = useRouter();
@@ -16,7 +21,7 @@ function NewEventPageInner() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  const totalSteps = 5;
+  const totalSteps = 6;
   const [currentStep, setCurrentStep] = useState(1);
   const [form, setForm] = useState({
     title: "",
@@ -82,10 +87,15 @@ function NewEventPageInner() {
   const [checkInEmails, setCheckInEmails] = useState<string[]>([""]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
+  // Venue availability states
+  const [venueAvailability, setVenueAvailability] = useState<any>(null);
+  const [loadingAvailability, setLoadingAvailability] = useState(false);
+  const [availabilityLoaded, setAvailabilityLoaded] = useState(false);
+
   // Venue filter states
   const [venueFilters, setVenueFilters] = useState({
     type: 'all',
-    district: 'all',
+    location: null as { latitude: number; longitude: number; address: string } | null,
     amenities: [] as string[]
   });
   const [availableAmenities, setAvailableAmenities] = useState<string[]>([
@@ -126,24 +136,30 @@ function NewEventPageInner() {
     }
   }, [venues, form.venueId]);
 
-  // Debug form state changes
+  // Reset availability when modal closes
   useEffect(() => {
-    console.log('🎯 Form state changed:', form);
-  }, [form]);
+    if (!showVenueModal) {
+      setAvailabilityLoaded(false);
+      setVenueAvailability(null);
+      setLoadingAvailability(false);
+    }
+  }, [showVenueModal]);
 
-  const loadVenueDetails = async (venueId: string | number) => {
+  const loadVenueDetails = useCallback(async (venueId: string | number) => {
     try {
       setSelectedVenueDetails(null);
       setSeatMapData(null);
+      // Don't reset venue availability here - we'll load it lazily
       
-      // Fetch venue details
+      // Fetch venue details first (fast)
       const venueData = await fetchVenueById(String(venueId));
       if (venueData?.data) {
         setSelectedVenueDetails(venueData.data);
         
-        // Try to fetch seat map
+        // Try to fetch seat map in parallel
         try {
-          const seatMapData = await fetchVenueSeatMap(String(venueId));
+          const seatMapPromise = fetchVenueSeatMap(String(venueId));
+          const seatMapData = await seatMapPromise;
           if (seatMapData?.seatMap) {
             setSeatMapData(seatMapData.seatMap);
           } else if (venueData.data.seatMap) {
@@ -161,7 +177,96 @@ function NewEventPageInner() {
     } catch (e) {
       console.warn('Failed to load venue details', e);
     }
-  };
+  }, []); // Remove form dependencies since we don't fetch availability here anymore
+
+  // Separate function to load availability lazily
+  const loadVenueAvailability = useCallback(async (venueId: string | number) => {
+    if (!form.startDateDate || !form.startHour || !form.startMinute) return;
+    
+    try {
+      setLoadingAvailability(true);
+      const startDate = new Date(form.startDateDate);
+      const endDate = form.endDateDate ? new Date(form.endDateDate) : startDate;
+      
+      // Generate array of dates in the range
+      const dates = [];
+      const currentDate = new Date(startDate);
+      while (currentDate <= endDate) {
+        dates.push(currentDate.toISOString().split('T')[0]);
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+      
+      // Check if venue is available for the entire period with the selected times
+      const eventStartTime = `${form.startHour.padStart(2,'0')}:${form.startMinute.padStart(2,'0')}`;
+      const eventEndTime = form.endHour && form.endMinute ? `${form.endHour.padStart(2,'0')}:${form.endMinute.padStart(2,'0')}` : null;
+      
+      // Fetch availability for each date in parallel
+      const availabilityPromises = dates.map(date => 
+        fetchVenueAvailability(venueId, date).catch(err => {
+          console.warn(`Failed to fetch availability for ${date}:`, err);
+          return { data: { events: [], availableSlots: [] } }; // Return empty data on error
+        })
+      );
+      
+      const availabilityResults = await Promise.all(availabilityPromises);
+      
+      // Check if the venue is available for our event times on each day
+      const dailyAvailability = dates.map((date, index) => {
+        const dayData = availabilityResults[index]?.data || { events: [], availableSlots: [] };
+        const events = dayData.events || [];
+        const availableSlots = dayData.availableSlots || [];
+        
+        // Check if our event time conflicts with existing events
+        const hasConflict = events.some((event: any) => {
+          if (!event.startTime) return false;
+          const eventStart = event.startTime;
+          const eventEnd = event.endTime || '23:59';
+          
+          // Check for time overlap
+          const ourStart = eventStartTime;
+          const ourEnd = eventEndTime || '23:59';
+          
+          return !(ourEnd <= eventStart || ourStart >= eventEnd);
+        });
+        
+        // Check if our time slot is available
+        const isTimeSlotAvailable = !hasConflict && (availableSlots.length === 0 || availableSlots.some((slot: any) => {
+          const slotStart = slot.start;
+          const slotEnd = slot.end;
+          return eventStartTime >= slotStart && (!eventEndTime || eventEndTime <= slotEnd);
+        }));
+        
+        return {
+          date,
+          events,
+          availableSlots,
+          isAvailableForEvent: isTimeSlotAvailable,
+          conflictEvents: hasConflict ? events.filter((event: any) => {
+            if (!event.startTime) return false;
+            const eventStart = event.startTime;
+            const eventEnd = event.endTime || '23:59';
+            const ourStart = eventStartTime;
+            const ourEnd = eventEndTime || '23:59';
+            return !(ourEnd <= eventStart || ourStart >= eventEnd);
+          }) : []
+        };
+      });
+      
+      setVenueAvailability({ dailyAvailability });
+    } catch (availabilityError) {
+      console.warn('Failed to load venue availability:', availabilityError);
+      setVenueAvailability({ dailyAvailability: [] }); // Set empty on error
+    } finally {
+      setLoadingAvailability(false);
+    }
+  }, [form.startDateDate, form.endDateDate, form.startHour, form.startMinute, form.endHour, form.endMinute]);
+
+  // Reload venue availability when venue or dates change
+  useEffect(() => {
+    if (form.venueId && form.startDateDate) {
+      loadVenueDetails(form.venueId);
+    }
+  }, [form.venueId, form.startDateDate, form.endDateDate, loadVenueDetails]);
 
   const onChange = (k: string, v: string) => {
     console.log('🎯 Form onChange:', { key: k, value: v, currentForm: form });
@@ -171,16 +276,30 @@ function NewEventPageInner() {
   const nextStep = () => {
     console.log('🎯 nextStep called:', { currentStep, form: form });
     if (currentStep === 1) {
-      const missing = !form.title.trim() || !form.category.trim() || !form.startDateDate.trim() || !form.startHour.trim() || !form.startMinute.trim();
+      const missing = !form.title.trim() || !form.category.trim() || !form.startDateDate.trim();
       if (missing) {
-        setError("Title, category, start date and start time are required.");
+        setError("Title, category, and start date are required.");
         return;
       }
-      if (form.endDateDate && form.endHour && form.endMinute) {
-        const s = new Date(`${form.startDateDate}T${form.startHour}:${form.startMinute}`).getTime();
-        const e = new Date(`${form.endDateDate}T${form.endHour}:${form.endMinute}`).getTime();
-        if (s > e) {
-          setError("Start date/time must be before end date/time.");
+      if (form.endDateDate && new Date(form.endDateDate) < new Date(form.startDateDate)) {
+        setError("End date must be after start date.");
+        return;
+      }
+    } else if (currentStep === 2) {
+      if (!form.venueId) {
+        setError("Please select a venue for your event.");
+        return;
+      }
+    } else if (currentStep === 3) {
+      if (!form.startHour || !form.startMinute) {
+        setError("Please select start time for your event.");
+        return;
+      }
+      if (form.endHour && form.endMinute) {
+        const startTime = `${form.startHour.padStart(2,'0')}:${form.startMinute.padStart(2,'0')}`;
+        const endTime = `${form.endHour.padStart(2,'0')}:${form.endMinute.padStart(2,'0')}`;
+        if (startTime >= endTime) {
+          setError("End time must be after start time.");
           return;
         }
       }
@@ -216,10 +335,11 @@ function NewEventPageInner() {
   const removePoster = () => setForm(prev => ({ ...prev, poster: "" }));
 
   const handleSubmit = async () => {
-    if (!form.title.trim() || !form.category.trim() || !form.startDateDate.trim() || !form.startHour.trim() || !form.startMinute.trim()) {
-      setError("Title, category, start date and start time are required.");
+    if (!form.title.trim() || !form.category.trim() || !form.startDateDate.trim() || !form.venueId || !form.startHour || !form.startMinute) {
+      setError("Title, category, start date, venue, and start time are required.");
       return;
     }
+
     setSubmitting(true);
     setError(null);
     try {
@@ -369,8 +489,7 @@ function NewEventPageInner() {
                   style={{ 
                     backgroundColor: '#191C24', 
                     borderColor: greenBorder, 
-                    color: '#fff',
-                    focusRingColor: greenBorder + '50'
+                    color: '#fff'
                   }}
                   placeholder="Enter event title"
                 />
@@ -415,43 +534,6 @@ function NewEventPageInner() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: '#fff' }}>Start Time *</label>
-                  <div className="flex gap-2">
-                    <select 
-                      value={form.startHour} 
-                      onChange={e => onChange("startHour", e.target.value)} 
-                      className="px-3 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 w-24"
-                      style={{ 
-                        backgroundColor: '#191C24', 
-                        borderColor: greenBorder, 
-                        color: '#fff'
-                      }}
-                    >
-                      <option value="" style={{ backgroundColor: '#191C24', color: '#fff' }}>HH</option>
-                      {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map(h => 
-                        <option key={h} value={h} style={{ backgroundColor: '#191C24', color: '#fff' }}>{h}</option>
-                      )}
-                    </select>
-                    <select 
-                      value={form.startMinute} 
-                      onChange={e => onChange("startMinute", e.target.value)} 
-                      className="px-3 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 w-24"
-                      style={{ 
-                        backgroundColor: '#191C24', 
-                        borderColor: greenBorder, 
-                        color: '#fff'
-                      }}
-                    >
-                      <option value="" style={{ backgroundColor: '#191C24', color: '#fff' }}>MM</option>
-                      {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m => 
-                        <option key={m} value={m} style={{ backgroundColor: '#191C24', color: '#fff' }}>{m}</option>
-                      )}
-                    </select>
-                  </div>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
                   <label className="block text-sm font-medium mb-2" style={{ color: '#fff' }}>End Date (optional)</label>
                   <input 
                     type="date" 
@@ -466,54 +548,8 @@ function NewEventPageInner() {
                     }}
                   />
                 </div>
-            <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: '#fff' }}>End Time (optional)</label>
-                  <div className="flex gap-2">
-                    <select 
-                      value={form.endHour} 
-                      onChange={e => onChange("endHour", e.target.value)} 
-                      className="px-3 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 w-24"
-                      style={{ 
-                        backgroundColor: '#191C24', 
-                        borderColor: greenBorder, 
-                        color: '#fff'
-                      }}
-                    >
-                      <option value="" style={{ backgroundColor: '#191C24', color: '#fff' }}>HH</option>
-                      {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map(h => 
-                        <option key={h} value={h} style={{ backgroundColor: '#191C24', color: '#fff' }}>{h}</option>
-                      )}
-                    </select>
-                    <select 
-                      value={form.endMinute} 
-                      onChange={e => onChange("endMinute", e.target.value)} 
-                      className="px-3 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 w-24"
-                      style={{ 
-                        backgroundColor: '#191C24', 
-                        borderColor: greenBorder, 
-                        color: '#fff'
-                      }}
-                    >
-                      <option value="" style={{ backgroundColor: '#191C24', color: '#fff' }}>MM</option>
-                      {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m => 
-                        <option key={m} value={m} style={{ backgroundColor: '#191C24', color: '#fff' }}>{m}</option>
-                      )}
-              </select>
-            </div>
-          </div>
               </div>
 
-              {/* soft warning when start > end */}
-              {form.endDateDate && form.endHour && form.endMinute && form.startDateDate && form.startHour && form.startMinute && (
-                (() => {
-                  const s = new Date(`${form.startDateDate}T${form.startHour}:${form.startMinute}`).getTime();
-                  const e = new Date(`${form.endDateDate}T${form.endHour}:${form.endMinute}`).getTime();
-                  if (s > e) {
-                    return <div className="text-red-400 text-sm font-medium">Warning: Start date/time is after End date/time.</div>;
-                  }
-                  return null;
-                })()
-              )}
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: '#fff' }}>Description</label>
                 <textarea 
@@ -563,56 +599,51 @@ function NewEventPageInner() {
                       }}
                     >
                       <option value="all" style={{ backgroundColor: '#23262F', color: '#fff' }}>All Types</option>
-                      <option value="MOVIE_THEATER" style={{ backgroundColor: '#23262F', color: '#fff' }}>Movie Theater</option>
-                      <option value="CONFERENCE_HALL" style={{ backgroundColor: '#23262F', color: '#fff' }}>Conference Hall</option>
-                      <option value="STADIUM_INDOOR" style={{ backgroundColor: '#23262F', color: '#fff' }}>Indoor Stadium</option>
-                      <option value="STADIUM_OUTDOOR" style={{ backgroundColor: '#23262F', color: '#fff' }}>Outdoor Stadium</option>
-                      <option value="THEATRE" style={{ backgroundColor: '#23262F', color: '#fff' }}>Theatre</option>
-                      <option value="MUSIC_VENUE" style={{ backgroundColor: '#23262F', color: '#fff' }}>Music Venue</option>
-                      <option value="OPEN_AREA" style={{ backgroundColor: '#23262F', color: '#fff' }}>Open Area</option>
+                      <option value="Banquet Halls" style={{ backgroundColor: '#23262F', color: '#fff' }}>Banquet Halls</option>
+                      <option value="Conference Centers" style={{ backgroundColor: '#23262F', color: '#fff' }}>Conference Centers</option>
+                      <option value="Country Clubs" style={{ backgroundColor: '#23262F', color: '#fff' }}>Country Clubs</option>
+                      <option value="Cruise Ships" style={{ backgroundColor: '#23262F', color: '#fff' }}>Cruise Ships</option>
+                      <option value="Museums and Art Galleries" style={{ backgroundColor: '#23262F', color: '#fff' }}>Museums and Art Galleries</option>
+                      <option value="Parks and Gardens" style={{ backgroundColor: '#23262F', color: '#fff' }}>Parks and Gardens</option>
+                      <option value="Rooftop Venues" style={{ backgroundColor: '#23262F', color: '#fff' }}>Rooftop Venues</option>
+                      <option value="Stadiums - Indoor" style={{ backgroundColor: '#23262F', color: '#fff' }}>Stadiums - Indoor</option>
+                      <option value="Stadiums - Outdoor" style={{ backgroundColor: '#23262F', color: '#fff' }}>Stadiums - Outdoor</option>
+                      <option value="Theatres" style={{ backgroundColor: '#23262F', color: '#fff' }}>Theatres</option>
+                      <option value="Universities and University Halls" style={{ backgroundColor: '#23262F', color: '#fff' }}>Universities and University Halls</option>
                     </select>
                   </div>
 
-                  {/* District Filter */}
+                  {/* Location Filter with Google Maps */}
                   <div>
-                    <label className="block text-sm font-medium mb-2" style={{ color: '#fff' }}>District</label>
-                    <select 
-                      value={venueFilters.district}
-                      onChange={(e) => setVenueFilters(prev => ({ ...prev, district: e.target.value }))}
-                      className="w-full px-4 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2"
-                      style={{ 
-                        backgroundColor: '#23262F', 
-                        borderColor: greenBorder, 
-                        color: '#fff'
-                      }}
-                    >
-                      <option value="all" style={{ backgroundColor: '#23262F', color: '#fff' }}>All Districts</option>
-                      <option value="Colombo" style={{ backgroundColor: '#23262F', color: '#fff' }}>Colombo</option>
-                      <option value="Gampaha" style={{ backgroundColor: '#23262F', color: '#fff' }}>Gampaha</option>
-                      <option value="Kalutara" style={{ backgroundColor: '#23262F', color: '#fff' }}>Kalutara</option>
-                      <option value="Kandy" style={{ backgroundColor: '#23262F', color: '#fff' }}>Kandy</option>
-                      <option value="Matale" style={{ backgroundColor: '#23262F', color: '#fff' }}>Matale</option>
-                      <option value="Nuwara Eliya" style={{ backgroundColor: '#23262F', color: '#fff' }}>Nuwara Eliya</option>
-                      <option value="Galle" style={{ backgroundColor: '#23262F', color: '#fff' }}>Galle</option>
-                      <option value="Matara" style={{ backgroundColor: '#23262F', color: '#fff' }}>Matara</option>
-                      <option value="Hambantota" style={{ backgroundColor: '#23262F', color: '#fff' }}>Hambantota</option>
-                      <option value="Jaffna" style={{ backgroundColor: '#23262F', color: '#fff' }}>Jaffna</option>
-                      <option value="Kilinochchi" style={{ backgroundColor: '#23262F', color: '#fff' }}>Kilinochchi</option>
-                      <option value="Mannar" style={{ backgroundColor: '#23262F', color: '#fff' }}>Mannar</option>
-                      <option value="Vavuniya" style={{ backgroundColor: '#23262F', color: '#fff' }}>Vavuniya</option>
-                      <option value="Mullaitivu" style={{ backgroundColor: '#23262F', color: '#fff' }}>Mullaitivu</option>
-                      <option value="Batticaloa" style={{ backgroundColor: '#23262F', color: '#fff' }}>Batticaloa</option>
-                      <option value="Ampara" style={{ backgroundColor: '#23262F', color: '#fff' }}>Ampara</option>
-                      <option value="Trincomalee" style={{ backgroundColor: '#23262F', color: '#fff' }}>Trincomalee</option>
-                      <option value="Kurunegala" style={{ backgroundColor: '#23262F', color: '#fff' }}>Kurunegala</option>
-                      <option value="Puttalam" style={{ backgroundColor: '#23262F', color: '#fff' }}>Puttalam</option>
-                      <option value="Anuradhapura" style={{ backgroundColor: '#23262F', color: '#fff' }}>Anuradhapura</option>
-                      <option value="Polonnaruwa" style={{ backgroundColor: '#23262F', color: '#fff' }}>Polonnaruwa</option>
-                      <option value="Badulla" style={{ backgroundColor: '#23262F', color: '#fff' }}>Badulla</option>
-                      <option value="Moneragala" style={{ backgroundColor: '#23262F', color: '#fff' }}>Moneragala</option>
-                      <option value="Ratnapura" style={{ backgroundColor: '#23262F', color: '#fff' }}>Ratnapura</option>
-                      <option value="Kegalle" style={{ backgroundColor: '#23262F', color: '#fff' }}>Kegalle</option>
-                    </select>
+                    <label className="block text-sm font-medium mb-2" style={{ color: '#fff' }}>Location</label>
+                    <div className="space-y-2">
+                      <LocationPicker
+                        apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''}
+                        onLocationSelect={(location) => {
+                          setVenueFilters(prev => ({ ...prev, location }));
+                        }}
+                        initialLocation={venueFilters.location || undefined}
+                        className="w-full"
+                      />
+                      {venueFilters.location && (
+                        <div className="text-sm" style={{ color: '#ABA8A9' }}>
+                          Selected: {venueFilters.location.address}
+                        </div>
+                      )}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setVenueFilters(prev => ({ ...prev, location: null }))}
+                        style={{ 
+                          backgroundColor: 'transparent', 
+                          borderColor: greenBorder, 
+                          color: '#fff' 
+                        }}
+                      >
+                        Clear Location
+                      </Button>
+                    </div>
                   </div>
 
                   {/* Amenities Filter */}
@@ -652,7 +683,7 @@ function NewEventPageInner() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setVenueFilters({ type: 'all', district: 'all', amenities: [] })}
+                    onClick={() => setVenueFilters({ type: 'all', location: null, amenities: [] })}
                     style={{ 
                       backgroundColor: 'transparent', 
                       borderColor: greenBorder, 
@@ -705,6 +736,9 @@ function NewEventPageInner() {
                               e.stopPropagation(); 
                               await loadVenueDetails(v.id); 
                               setShowVenueModal(true);
+                              // Reset availability loaded state for new venue
+                              setAvailabilityLoaded(false);
+                              setVenueAvailability(null);
                             }}
                             style={{ 
                               backgroundColor: 'transparent', 
@@ -928,30 +962,94 @@ function NewEventPageInner() {
                         </div>
                       </div>
 
-                      {/* Description */}
-                      {selectedVenueDetails.description && (
-                        <div className="p-4 rounded-xl border" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30' }}>
-                          <h4 className="font-bold mb-2 text-white">About This Venue</h4>
-                          <p className="text-gray-300">{selectedVenueDetails.description}</p>
+                      {/* Venue Availability */}
+                      <div className="p-4 rounded-xl border" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30' }}>
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="font-bold text-white flex items-center">
+                            <Eye className="h-5 w-5 mr-2" style={{ color: '#39FD48' }} />
+                            Availability Overview
+                          </h4>
+                          {!availabilityLoaded && selectedVenueDetails && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setAvailabilityLoaded(true);
+                                loadVenueAvailability(selectedVenueDetails.id);
+                              }}
+                              disabled={loadingAvailability}
+                              style={{ 
+                                backgroundColor: 'transparent', 
+                                borderColor: greenBorder, 
+                                color: '#fff' 
+                              }}
+                            >
+                              {loadingAvailability ? 'Loading...' : 'Check Availability'}
+                            </Button>
+                          )}
                         </div>
-                      )}
-
-                      {/* Action Button */}
-                      <div className="flex justify-end">
-                        <Button 
-                          onClick={() => {
-                            console.log('Modal "Select This Venue" clicked:', { 
-                              venueId: selectedVenueDetails.id, 
-                              venueIdType: typeof selectedVenueDetails.id,
-                              currentFormVenueId: form.venueId 
-                            });
-                            onChange('venueId', String(selectedVenueDetails.id));
-                            setShowVenueModal(false);
-                          }}
-                          className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
-                        >
-                          Select This Venue
-                        </Button>
+                        
+                        {loadingAvailability ? (
+                          <div className="text-center py-4">
+                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-500 mx-auto"></div>
+                            <p className="text-gray-400 mt-2">Checking availability...</p>
+                          </div>
+                        ) : venueAvailability && availabilityLoaded ? (
+                          <div className="space-y-4">
+                            {/* Show availability for each day in the range */}
+                            {venueAvailability.dailyAvailability && venueAvailability.dailyAvailability.length > 0 ? (
+                              venueAvailability.dailyAvailability.map((day: any, dayIndex: number) => (
+                                <div key={dayIndex} className="border rounded-lg p-3" style={{ borderColor: '#39FD48' + '20' }}>
+                                  <h5 className="font-medium text-white mb-2">
+                                    {new Date(day.date).toLocaleDateString('en-US', { 
+                                      weekday: 'long', 
+                                      year: 'numeric', 
+                                      month: 'long', 
+                                      day: 'numeric' 
+                                    })}
+                                  </h5>
+                                  
+                                  {day.events && day.events.length > 0 ? (
+                                    <div className="space-y-2">
+                                      <p className="text-sm text-gray-400">Scheduled events:</p>
+                                      {day.events.map((event: any, eventIndex: number) => (
+                                        <div key={eventIndex} className="flex justify-between items-center p-2 bg-gray-700/30 rounded text-sm">
+                                          <span className="font-medium text-white">{event.title}</span>
+                                          <span className="text-gray-400">
+                                            {event.startTime} - {event.endTime || 'End of day'}
+                                          </span>
+                                        </div>
+                                      ))}
+                                      
+                                      {/* Show available time slots */}
+                                      {day.availableSlots && day.availableSlots.length > 0 && (
+                                        <div className="mt-3">
+                                          <p className="text-sm text-green-400 mb-2">Available time slots:</p>
+                                          <div className="flex flex-wrap gap-2">
+                                            {day.availableSlots.map((slot: any, slotIndex: number) => (
+                                              <span key={slotIndex} className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs border border-green-500/30">
+                                                {slot.start} - {slot.end}
+                                              </span>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <p className="text-green-400 text-sm">🎉 Fully available - no events scheduled</p>
+                                  )}
+                                </div>
+                              ))
+                            ) : (
+                              <p className="text-green-400 text-sm">🎉 Venue appears to be available for your selected dates</p>
+                            )}
+                          </div>
+                        ) : availabilityLoaded ? (
+                          <p className="text-gray-400 text-sm">No availability data available</p>
+                        ) : (
+                          <p className="text-gray-400 text-sm">Click &quot;Check Availability&quot; to see venue availability for your selected dates</p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -961,6 +1059,187 @@ function NewEventPageInner() {
           )}
 
           {currentStep === 3 && (
+            <div className="space-y-6">
+              <h3 className="text-2xl font-semibold" style={{ color: '#fff' }}>Time Selection & Seating</h3>
+              
+              {form.venueId ? (
+                <div className="space-y-6">
+                  {/* Selected Venue Info */}
+                  <div className="rounded-xl border p-4" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30' }}>
+                    <h4 className="font-semibold text-white mb-2">Selected Venue</h4>
+                    {(() => {
+                      const v = venues.find((vv: VenueCard) => String(vv.id) === String(form.venueId));
+                      return v ? (
+                        <div className="flex items-center space-x-4">
+                          <div className="w-16 h-16 overflow-hidden rounded-lg border flex items-center justify-center" style={{ backgroundColor: '#23262F', borderColor: greenBorder }}>
+                            {v.featuredImage || v.image ? <img src={v.featuredImage || v.image} alt="Venue" className="w-full h-full object-cover" /> : <div className="text-xs" style={{ color: '#ABA8A9' }}>No image</div>}
+                          </div>
+                          <div>
+                            <div className="font-semibold text-white">{v.name}</div>
+                            <div className="text-sm" style={{ color: '#ABA8A9' }}>{v.location || '—'}</div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-gray-400">Venue details not found</div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Time Selection */}
+                  <div className="rounded-lg p-6" style={{ backgroundColor: '#191C24', borderColor: greenBorder + '30', border: '1px solid' }}>
+                    <h4 className="font-semibold text-white mb-4">Event Times</h4>
+                    <p className="text-sm text-gray-400 mb-4">Set the start and end times for your event. These times will apply to all selected dates.</p>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium mb-2" style={{ color: '#fff' }}>Start Time *</label>
+                        <div className="flex gap-2">
+                          <select 
+                            value={form.startHour || ''} 
+                            onChange={e => onChange("startHour", e.target.value)} 
+                            className="px-3 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 w-24"
+                            style={{ 
+                              backgroundColor: '#23262F', 
+                              borderColor: greenBorder, 
+                              color: '#fff'
+                            }}
+                          >
+                            <option value="" style={{ backgroundColor: '#23262F', color: '#fff' }}>HH</option>
+                            {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map(h => 
+                              <option key={h} value={h} style={{ backgroundColor: '#23262F', color: '#fff' }}>{h}</option>
+                            )}
+                          </select>
+                          <select 
+                            value={form.startMinute || ''} 
+                            onChange={e => onChange("startMinute", e.target.value)} 
+                            className="px-3 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 w-24"
+                            style={{ 
+                              backgroundColor: '#23262F', 
+                              borderColor: greenBorder, 
+                              color: '#fff'
+                            }}
+                          >
+                            <option value="" style={{ backgroundColor: '#23262F', color: '#fff' }}>MM</option>
+                            {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m => 
+                              <option key={m} value={m} style={{ backgroundColor: '#23262F', color: '#fff' }}>{m}</option>
+                            )}
+                          </select>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium mb-2" style={{ color: '#fff' }}>End Time (optional)</label>
+                        <div className="flex gap-2">
+                          <select 
+                            value={form.endHour || ''} 
+                            onChange={e => onChange("endHour", e.target.value)} 
+                            className="px-3 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 w-24"
+                            style={{ 
+                              backgroundColor: '#23262F', 
+                              borderColor: greenBorder, 
+                              color: '#fff'
+                            }}
+                          >
+                            <option value="" style={{ backgroundColor: '#23262F', color: '#fff' }}>HH</option>
+                            {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map(h => 
+                              <option key={h} value={h} style={{ backgroundColor: '#23262F', color: '#fff' }}>{h}</option>
+                            )}
+                          </select>
+                          <select 
+                            value={form.endMinute || ''} 
+                            onChange={e => onChange("endMinute", e.target.value)} 
+                            className="px-3 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 w-24"
+                            style={{ 
+                              backgroundColor: '#23262F', 
+                              borderColor: greenBorder, 
+                              color: '#fff'
+                            }}
+                          >
+                            <option value="" style={{ backgroundColor: '#23262F', color: '#fff' }}>MM</option>
+                            {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m => 
+                              <option key={m} value={m} style={{ backgroundColor: '#23262F', color: '#fff' }}>{m}</option>
+                            )}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Show selected times */}
+                    {(form.startHour && form.startMinute) && (
+                      <div className="mt-4 p-3 rounded-lg" style={{ backgroundColor: '#39FD48' + '10', borderColor: '#39FD48' + '30', border: '1px solid' }}>
+                        <div className="text-sm text-white">
+                          <strong>Event Duration:</strong> {form.startHour}:{form.startMinute.padStart(2, '0')}
+                          {form.endHour && form.endMinute ? ` - ${form.endHour}:${form.endMinute.padStart(2, '0')}` : ' (open-ended)'}
+                        </div>
+                        <div className="text-xs text-gray-400 mt-1">
+                          This time applies to all selected dates: {form.startDateDate}{form.endDateDate ? ` to ${form.endDateDate}` : ''}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Seat Selection */}
+                  {seatMapData && (
+                    <div className="rounded-xl border p-6" style={{ backgroundColor: '#191C24', borderColor: greenBorder + '30' }}>
+                      <h4 className="font-semibold text-white mb-4 flex items-center">
+                        <Grid3X3 className="h-5 w-5 mr-2" style={{ color: '#39FD48' }} />
+                        Seat Selection
+                      </h4>
+                      
+                      {/* Seat Map Display */}
+                      <div className="flex justify-center mb-4">
+                        <div className="inline-block p-4 rounded-xl border" 
+                          style={{ backgroundColor: '#0D6EFD' + '10', borderColor: '#0D6EFD' + '30' }}>
+                          <div 
+                            className="grid gap-1"
+                            style={{
+                              gridTemplateColumns: `repeat(${Math.min(Number(seatMapData.columns) || 10, 30)}, 1fr)`
+                            }}
+                          >
+                            {Array.from({ 
+                              length: Math.min((Number(seatMapData.rows) || 10) * (Number(seatMapData.columns) || 10), 600) 
+                            }).map((_, index) => {
+                              const columns = Number(seatMapData.columns) || 10;
+                              const row = Math.floor(index / columns);
+                              const col = index % columns;
+                              
+                              const section = Array.isArray(seatMapData.sections) ? seatMapData.sections.find((s: any) =>
+                                row >= s.startRow && row < s.startRow + s.rows &&
+                                col >= s.startCol && col < s.startCol + s.columns
+                              ) : null;
+                              
+                              return (
+                                <div
+                                  key={`${row}-${col}`}
+                                  className="w-4 h-4 rounded-sm flex items-center justify-center text-xs font-bold cursor-pointer hover:scale-110 transition-transform"
+                                  style={{
+                                    backgroundColor: section ? section.color : '#39FD48',
+                                    opacity: 0.8
+                                  }}
+                                  title={`Row ${row + 1}, Seat ${col + 1}${section ? ` - ${section.name}` : ''}`}
+                                >
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <p className="text-sm text-gray-400 text-center">Click on seats to select/deselect them for your event</p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <Building2 className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+                  <h4 className="text-lg font-bold mb-2 text-white">No Venue Selected</h4>
+                  <p className="text-gray-400">Please go back to the previous step and select a venue first.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {currentStep === 4 && (
             <div className="space-y-6">
               <h3 className="text-2xl font-semibold text-white">Event Poster</h3>
               <div className="space-y-4">
@@ -993,7 +1272,7 @@ function NewEventPageInner() {
             </div>
           )}
 
-          {currentStep === 4 && (
+          {currentStep === 5 && (
             <div className="space-y-6">
               <h3 className="text-2xl font-semibold text-white">Staff</h3>
               <div>
@@ -1018,7 +1297,7 @@ function NewEventPageInner() {
             </div>
           )}
 
-          {currentStep === 5 && (
+          {currentStep === 6 && (
             <div className="space-y-6 text-white">
               <h3 className="text-2xl font-semibold">Review & Submit</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1105,16 +1384,15 @@ function NewEventPageInner() {
                 {submitting ? 'Creating...' : 'Create Event'}
               </Button>
             )}
-          </div>
+
           </div>
           <div className="flex justify-end mt-4">
             <Button variant="ghost" onClick={() => router.push('/organizer/dashboard')} style={{ color: '#fff' }}>Cancel</Button>
-          </div>
+        </div>
         </div>
       </div>
     </div>
-  );
+</div>  );
 }
 
-const NewEventPage = dynamic(() => Promise.resolve(NewEventPageInner), { ssr: false });
-export default NewEventPage;
+export default NewEventPageInner;
