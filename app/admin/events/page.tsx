@@ -220,11 +220,11 @@ export default function AdminEvents() {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-white mb-2">Assign Event Admin</label>
+                <label className="block text-sm font-medium text-foreground mb-2">Assign Event Admin</label>
                 <select 
                   value={selectedEventAdmin} 
                   onChange={(e) => setSelectedEventAdmin(e.target.value)}
-                  className="w-full p-2 border rounded-lg bg-gray-800 border-gray-600 text-white"
+                  className="w-full p-2 border rounded-lg bg-background border-gray-600 text-foreground"
                 >
                   <option value="">Select Event Admin (Optional)</option>
                   {eventAdmins.map(admin => (
@@ -237,8 +237,8 @@ export default function AdminEvents() {
               
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-medium text-white">Assign Checkin Officers</label>
-                  <span className="text-xs text-gray-400">
+                  <label className="block text-sm font-medium text-foreground">Assign Checkin Officers</label>
+                  <span className="text-xs text-foreground">
                     {selectedCheckinOfficers.length} selected
                   </span>
                 </div>
@@ -267,7 +267,7 @@ export default function AdminEvents() {
                         />
                         <label 
                           htmlFor={`officer-${officer.uid}`}
-                          className="text-white text-sm cursor-pointer"
+                          className="text-foreground text-sm cursor-pointer"
                         >
                           {officer.displayName || officer.email}
                         </label>

@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/components/auth/auth-provider';
+import { fetchmyVenues } from '@/lib/api';
 import { 
   Building2, 
   Plus, 
@@ -18,7 +20,11 @@ import {
   Clock,
   Star,
   Activity,
-  RefreshCw
+  BarChart3,
+  PieChart,
+  AlertTriangle,
+  RefreshCw,
+  Loader2
 } from 'lucide-react';
 
 // Animation variants for smooth transitions
@@ -45,50 +51,29 @@ const itemVariants = {
 };
 
 // Mock data for now - replace with actual API calls
-const mockVenueOwnerData = {
-  venues: [
-    {
-      id: '1',
-      name: 'Grand Theater',
-      location: 'Downtown',
-      capacity: 500,
-      image: 'https://images.unsplash.com/photo-1539650116574-75c0c6d73a0e?w=400&h=300&fit=crop',
-      status: 'active',
-      totalEvents: 12,
-      monthlyRevenue: 25000,
-      rating: 4.8,
-      occupancyRate: 85,
-      recentBookings: 8
-    },
-    {
-      id: '2',
-      name: 'Conference Center',
-      location: 'Business District',
-      capacity: 200,
-      image: 'https://images.unsplash.com/photo-1587825140708-dfaf72ae4b04?w=400&h=300&fit=crop',
-      status: 'active',
-      totalEvents: 8,
-      monthlyRevenue: 15000,
-      rating: 4.6,
-      occupancyRate: 72,
-      recentBookings: 5
-    }
-  ],
-  stats: {
-    totalVenues: 2,
-    totalEvents: 20,
-    monthlyRevenue: 40000,
-    occupancyRate: 85,
-    avgRating: 4.7,
-    totalBookings: 156
-  },
-  recentActivity: [
-    { id: 1, user: 'Sarah Johnson', action: 'Booked venue', venue: 'Grand Theater', time: '2 min ago', avatar: '/Images/profile-avatar-account-icon.png' },
-    { id: 2, user: 'Mike Chen', action: 'Left 5-star review', venue: 'Conference Center', time: '5 min ago', avatar: '/Images/profile-avatar-account-icon.png' },
-    { id: 3, user: 'Emma Wilson', action: 'Made payment', venue: 'Grand Theater', time: '15 min ago', avatar: '/Images/profile-avatar-account-icon.png' },
-    { id: 4, user: 'James Brown', action: 'Cancelled booking', venue: 'Conference Center', time: '1 hour ago', avatar: '/Images/profile-avatar-account-icon.png' }
-  ]
-};
+// Interfaces
+// Interfaces
+interface Venue {
+  id: string;
+  name: string;
+  location: string;
+  capacity: number;
+  status: 'active' | 'inactive' | 'maintenance';
+  image?: string;
+  description?: string;
+  amenities?: string[];
+  totalEvents?: number;
+  rating?: number;
+}
+
+interface VenueStats {
+  totalVenues: number;
+  activeVenues: number;
+  totalEvents: number;
+  monthlyRevenue: number;
+  avgOccupancy: number;
+  totalCapacity: number;
+}
 
 interface StatCardProps {
   title: string;
@@ -99,6 +84,7 @@ interface StatCardProps {
   subtitle?: string;
 }
 
+// StatCard Component
 const StatCard: React.FC<StatCardProps> = ({ title, value, icon, trend, color, subtitle }) => {
   const TrendIcon = trend && trend > 0 ? TrendingUp : TrendingDown;
   const trendColor = trend && trend > 0 ? 'text-green-500' : 'text-red-500';
@@ -107,15 +93,14 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, trend, color, s
     <motion.div
       variants={itemVariants}
       whileHover={{ scale: 1.02, y: -2 }}
-      className="backdrop-blur-xl border rounded-2xl p-4 shadow-xl hover:shadow-md transition-all duration-200"
-      style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '50', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}
+      className="bg-card backdrop-blur-xl border border-border rounded-2xl p-4 shadow-lg hover:shadow-xl transition-all duration-200"
     >
       <div className="flex items-center justify-between">
         <div className="flex-1">
-          <p className="text-sm font-medium mb-1" style={{ color: '#fff' }}>{title}</p>
-          <div className="text-2xl font-bold mb-1" style={{ color: '#ABA8A9' }}>{value}</div>
+          <p className="text-sm font-medium mb-1 text-muted-foreground">{title}</p>
+          <div className="text-2xl font-bold mb-1 text-foreground">{value}</div>
           {subtitle && (
-            <p className="text-xs" style={{ color: '#ABA8A9' }}>{subtitle}</p>
+            <p className="text-xs text-muted-foreground">{subtitle}</p>
           )}
           {trend && (
             <div className="flex items-center mt-2">
@@ -126,7 +111,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, trend, color, s
             </div>
           )}
         </div>
-        <div className="rounded-lg p-3 ml-4" style={{ backgroundColor: '#D8DFEE' + '40' }}>
+        <div className="bg-primary/10 rounded-lg p-3 ml-4 text-primary">
           {icon}
         </div>
       </div>
@@ -135,74 +120,179 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, trend, color, s
 };
 
 export default function VenueOwnerDashboard() {
-  const [venues, setVenues] = useState(mockVenueOwnerData.venues);
-  const [stats, setStats] = useState(mockVenueOwnerData.stats);
-  const [recentActivity, setRecentActivity] = useState(mockVenueOwnerData.recentActivity);
-  const [loading, setLoading] = useState(false);
+  const { firebaseUser, isLoading: authLoading } = useAuth();
+  const [venues, setVenues] = useState<Venue[]>([]);
+  const [stats, setStats] = useState<VenueStats>({
+    totalVenues: 0,
+    activeVenues: 0,
+    totalEvents: 0,
+    monthlyRevenue: 0,
+    avgOccupancy: 0,
+    totalCapacity: 0
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedFilter, setSelectedFilter] = useState('all');
   const [refreshing, setRefreshing] = useState(false);
 
-  const handleRefresh = () => {
+  useEffect(() => {
+    const loadVenues = async () => {
+      if (authLoading) return;
+      
+      if (!firebaseUser) {
+        setLoading(false);
+        setError('Please sign in to view your dashboard');
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await fetchmyVenues();
+        
+        // Transform venue data
+        const transformedVenues: Venue[] = response.data.map((venue: any) => ({
+          id: venue.id.toString(),
+          name: venue.name || 'Unnamed Venue',
+          location: venue.location || 'Location not specified',
+          capacity: parseInt(venue.capacity?.toString() || '0'),
+          status: venue.status || 'active',
+          image: venue.images?.[0] || venue.image || '/Images/events/banners/m1.jpeg',
+          description: venue.description || '',
+          amenities: venue.amenities || [],
+          totalEvents: venue.totalEvents || 0,
+          rating: venue.rating || 4.5
+        }));
+
+        setVenues(transformedVenues);
+
+        // Calculate real stats from venue data
+        const activeVenues = transformedVenues.filter((v: Venue) => v.status === 'active').length;
+        const totalEvents = transformedVenues.reduce((sum: number, v: Venue) => sum + (v.totalEvents || 0), 0);
+        const totalCapacity = transformedVenues.reduce((sum: number, v: Venue) => sum + v.capacity, 0);
+        const avgOccupancy = transformedVenues.length > 0 
+          ? Math.round((activeVenues / transformedVenues.length) * 100) 
+          : 0;
+
+        setStats({
+          totalVenues: transformedVenues.length,
+          activeVenues,
+          totalEvents,
+          monthlyRevenue: totalEvents * 5000, // Estimate based on events
+          avgOccupancy,
+          totalCapacity
+        });
+      } catch (err) {
+        console.error('Error fetching venues:', err);
+        setError('Failed to load venues. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadVenues();
+  }, [firebaseUser, authLoading]);
+
+  // Recent activity mock data (can be replaced with real API later)
+  const recentActivity = [
+    {
+      id: '1',
+      type: 'booking',
+      venue: venues[0]?.name || 'Venue',
+      event: 'Recent Event',
+      date: new Date().toISOString().split('T')[0],
+      revenue: 15000,
+    },
+    {
+      id: '2',
+      type: 'update',
+      venue: venues[1]?.name || 'Venue',
+      description: 'Venue details updated',
+      date: new Date(Date.now() - 86400000).toISOString().split('T')[0],
+    },
+  ];
+
+  const handleRefresh = async () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 2000);
+    try {
+      const response = await fetchmyVenues();
+      const transformedVenues: Venue[] = response.data.map((venue: any) => ({
+        id: venue.id.toString(),
+        name: venue.name || 'Unnamed Venue',
+        location: venue.location || 'Location not specified',
+        capacity: parseInt(venue.capacity?.toString() || '0'),
+        status: venue.status || 'active',
+        image: venue.images?.[0] || venue.image || '/Images/events/banners/m1.jpeg',
+        description: venue.description || '',
+        amenities: venue.amenities || [],
+        totalEvents: venue.totalEvents || 0,
+        rating: venue.rating || 4.5
+      }));
+      setVenues(transformedVenues);
+    } catch (err) {
+      console.error('Error refreshing venues:', err);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const venueStats = [
     {
       title: 'Total Venues',
       value: stats.totalVenues,
-      icon: <Building2 size={24} style={{ color: '#CBF83E' }} />,
+      icon: <Building2 size={24} />,
       trend: 12.5,
-      color: '#CBF83E',
-      subtitle: `${venues.filter(v => v.status === 'active').length} active venues`
+      color: '#000',
+      subtitle: `${stats.activeVenues} active venues`
     },
     {
       title: 'Total Events',
       value: stats.totalEvents,
-      icon: <Calendar size={24} style={{ color: '#CBF83E' }} />,
+      icon: <Calendar size={24} />,
       trend: 8.2,
-      color: '#CBF83E',
-      subtitle: `${venues.reduce((sum, v) => sum + v.recentBookings, 0)} this week`
+      color: '#000',
+      subtitle: 'All time events'
     },
     {
       title: 'Monthly Revenue',
       value: `LKR ${(stats.monthlyRevenue / 1000).toFixed(0)}K`,
-      icon: <DollarSign size={24} style={{ color: '#CBF83E' }} />,
+      icon: <DollarSign size={24} />,
       trend: 15.8,
-      color: '#CBF83E',
-      subtitle: 'Target: LKR 50K'
+      color: '#000',
+      subtitle: 'Estimated from events'
     },
     {
       title: 'Avg. Rating',
-      value: stats.avgRating,
-      icon: <Star size={24} style={{ color: '#CBF83E' }} />,
+      value: venues.length > 0 ? (venues.reduce((sum: number, v: Venue) => sum + (v.rating || 0), 0) / venues.length).toFixed(1) : '0.0',
+      icon: <Star size={24} />,
       trend: 2.1,
-      color: '#CBF83E',
-      subtitle: `From ${stats.totalBookings} bookings`
+      color: '#000',
+      subtitle: `From ${venues.length} venues`
     },
     {
       title: 'Occupancy Rate',
-      value: `${stats.occupancyRate}%`,
-      icon: <TrendingUp size={24} style={{ color: '#CBF83E' }} />,
+      value: `${stats.avgOccupancy}%`,
+      icon: <TrendingUp size={24} />,
       trend: 5.4,
-      color: '#CBF83E',
-      subtitle: 'Above industry avg'
+      color: '#000',
+      subtitle: 'Venue utilization'
     },
     {
-      title: 'Total Bookings',
-      value: stats.totalBookings,
-      icon: <Activity size={24} style={{ color: '#CBF83E' }} />,
+      title: 'Total Capacity',
+      value: stats.totalCapacity,
+      icon: <Activity size={24} />,
       trend: 23.1,
-      color: '#CBF83E',
-      subtitle: `${venues.reduce((sum, v) => sum + v.recentBookings, 0)} today`
+      color: '#000',
+      subtitle: 'Combined seats'
     }
   ];
 
   return (
-    <div className="min-h-screen" style={{ background: '#191C24' }}>
+    <div className="min-h-screen bg-background">
       {/* Background Elements */}
-      <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-20" style={{ backgroundColor: '#ABA8A9' }}></div>
-      <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-15" style={{ backgroundColor: '#D8DFEE' }}></div>
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl opacity-10" style={{ backgroundColor: '#ABA8A9' }}></div>
+      <div className="absolute top-0 right-0 w-80 h-80 bg-primary/5 rounded-full blur-3xl opacity-50"></div>
+      <div className="absolute bottom-0 left-0 w-80 h-80 bg-secondary/5 rounded-full blur-3xl opacity-40"></div>
+      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-muted/10 rounded-full blur-3xl opacity-30"></div>
       
       {/* Content Container */}
       <div className="relative z-10 pt-8 px-8">
@@ -213,16 +303,15 @@ export default function VenueOwnerDashboard() {
           className="max-w-7xl mx-auto"
         >
           {/* Header */}
-          <motion.div variants={itemVariants} className="mb-12 h-25">
-            <div className="border rounded-2xl p-6 shadow-lg" style={{ backgroundColor: '#0D6EFD', borderColor: '#000' }}>
+          <motion.div variants={itemVariants} className="mb-12">
+            <div className="bg-gradient-to-r from-primary to-primary/80 border border-primary/20 rounded-2xl p-6 shadow-lg">
               <div className="flex items-center justify-between">
                 <div>
                   <motion.h1 
                     initial={{ opacity: 0, x: -30 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.6, ease: "easeOut" }}
-                    className="text-3xl font-bold mb-2"
-                    style={{ color: '#fff' }}
+                    className="text-3xl font-bold mb-2 text-primary-foreground"
                   >
                     Venue Owner Dashboard
                   </motion.h1>
@@ -230,8 +319,7 @@ export default function VenueOwnerDashboard() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2, duration: 0.5 }}
-                    className="text-lg font-normal"
-                    style={{ color: '#fff' }}
+                    className="text-lg font-normal text-primary-foreground/90"
                   >
                     Welcome back! Manage your venues and track performance.
                   </motion.p>
@@ -295,14 +383,14 @@ export default function VenueOwnerDashboard() {
             {/* My Venues */}
             <motion.div variants={itemVariants} className="lg:col-span-2">
               <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl" 
-                style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '50', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}>
+                >
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-semibold" style={{ color: '#fff' }}>My Venues</h2>
+                  <h2 className="text-2xl font-semibold" >My Venues</h2>
                   <Link href="/venue-owner/venues">
                     <Button 
                       variant="outline" 
                       size="sm"
-                      className="border-[#39FD48] text-[#39FD48] hover:bg-[#39FD48] hover:text-black"
+                      className=" text-foreground  hover:text-black"
                     >
                       <Eye className="h-4 w-4 mr-2" />
                       View All
@@ -311,79 +399,109 @@ export default function VenueOwnerDashboard() {
                 </div>
 
                 <div className="space-y-4">
-                  {venues.map((venue, index) => (
-                    <motion.div
-                      key={venue.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      className="border rounded-xl p-4 hover:shadow-lg transition-all duration-300"
-                      style={{ backgroundColor: '#0D6EFD' + '20', borderColor: '#0D6EFD' + '30' }}
-                    >
-                      <div className="flex items-center space-x-4">
-                        <div className="relative">
-                          <img
-                            src={venue.image}
-                            alt={venue.name}
-                            className="w-16 h-16 rounded-lg object-cover"
-                          />
-                          <div className="absolute -top-1 -right-1 w-4 h-4 bg-[#39FD48] rounded-full border-2 border-[#191C24]"></div>
-                        </div>
-                        
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between">
-                            <h3 className="font-semibold text-lg" style={{ color: '#fff' }}>{venue.name}</h3>
-                            <div className="flex items-center space-x-1 text-[#39FD48]">
-                              <Star className="h-4 w-4 fill-current" />
-                              <span className="text-sm font-medium">{venue.rating}</span>
-                            </div>
+                  {loading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      <span className="ml-2 text-muted-foreground">Loading venues...</span>
+                    </div>
+                  ) : error ? (
+                    <div className="text-center py-12">
+                      <p className="text-red-500 mb-4">{error}</p>
+                      <Button onClick={handleRefresh} variant="outline">
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Retry
+                      </Button>
+                    </div>
+                  ) : venues.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground mb-4">No venues found</p>
+                      <Link href="/venue-owner/venues/new">
+                        <Button>
+                          <Plus className="mr-2 h-4 w-4" />
+                          Add Your First Venue
+                        </Button>
+                      </Link>
+                    </div>
+                  ) : (
+                    venues.map((venue: Venue, index: number) => (
+                      <motion.div
+                        key={venue.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        className="bg-card border border-border rounded-xl p-4 hover:shadow-lg transition-all duration-300 shadow-md"
+                      >
+                        <div className="flex items-center space-x-4">
+                          <div className="relative">
+                            <img
+                              src={venue.image}
+                              alt={venue.name}
+                              className="w-16 h-16 rounded-lg object-cover"
+                            />
+                            <div 
+                              className={`absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-background ${
+                                venue.status === 'active' ? 'bg-green-500' : 'bg-gray-400'
+                              }`}
+                            ></div>
                           </div>
                           
-                          <div className="flex items-center text-sm mt-1" style={{ color: '#ABA8A9' }}>
-                            <MapPin className="h-4 w-4 mr-1" />
-                            {venue.location}
-                            <Users className="h-4 w-4 ml-4 mr-1" />
-                            {venue.capacity} capacity
-                          </div>
-                          
-                          <div className="flex items-center justify-between mt-3">
-                            <div className="flex items-center space-x-4 text-sm">
-                              <span className="text-[#39FD48] font-medium">
-                                {venue.totalEvents} events
-                              </span>
-                              <span className="text-[#0D6EFD] font-medium">
-                                LKR {venue.monthlyRevenue.toLocaleString()}/mo
-                              </span>
-                              <span className="font-medium" style={{ color: '#ABA8A9' }}>
-                                {venue.occupancyRate}% occupied
-                              </span>
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <h3 className="font-semibold text-lg text-foreground">{venue.name}</h3>
+                              <div className="flex items-center space-x-1 text-foreground">
+                                <Star className="h-4 w-4 fill-current text-yellow-500" />
+                                <span className="text-sm font-medium">{venue.rating}</span>
+                              </div>
                             </div>
                             
-                            <div className="flex items-center space-x-2">
-                              <Link href={`/venues/${venue.id}`}>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  className="text-[#ABA8A9] hover:text-[#39FD48] hover:bg-[#39FD48]/10"
-                                >
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                              </Link>
-                              <Link href={`/venue-owner/venues/${venue.id}/edit`}>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  className="text-[#ABA8A9] hover:text-[#0D6EFD] hover:bg-[#0D6EFD]/10"
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                              </Link>
+                            <div className="flex items-center text-sm mt-1 text-muted-foreground">
+                              <MapPin className="h-4 w-4 mr-1" />
+                              {venue.location}
+                              <Users className="h-4 w-4 ml-4 mr-1" />
+                              {venue.capacity} capacity
+                            </div>
+                            
+                            <div className="flex items-center justify-between mt-3">
+                              <div className="flex items-center space-x-4 text-sm">
+                                <span className="text-foreground font-medium">
+                                  {venue.totalEvents || 0} events
+                                </span>
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  venue.status === 'active' 
+                                    ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                                    : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                                }`}>
+                                  {venue.status}
+                                </span>
+                              </div>
+                              
+                              <div className="flex items-center space-x-2">
+                                <Link href={`/venues/${venue.id}`}>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    className="text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                </Link>
+                                <Link href={`/venue-owner/venues/${venue.id}/edit`}>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    className="text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                </Link>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    </motion.div>
-                  ))}
+                      </motion.div>
+                    ))
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -391,34 +509,52 @@ export default function VenueOwnerDashboard() {
             {/* Recent Activity */}
             <motion.div variants={itemVariants}>
               <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl" 
-                style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '50', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}>
-                <h2 className="text-2xl font-semibold mb-6" style={{ color: '#fff' }}>Recent Activity</h2>
+                >
+                <h2 className="text-2xl font-semibold mb-6 text-foreground">Recent Activity</h2>
                 
                 <div className="space-y-4">
-                  {recentActivity.map((activity, index) => (
+                  {recentActivity.map((activity: any, index: number) => (
                     <motion.div
                       key={activity.id}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.1 }}
-                      className="flex items-start space-x-3 p-3 rounded-lg transition-colors"
-                      style={{ backgroundColor: '#0D6EFD' + '10' }}
+                      className="flex items-start space-x-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
                     >
-                      <img
-                        src={activity.avatar}
-                        alt={activity.user}
-                        className="w-8 h-8 rounded-full object-cover flex-shrink-0"
-                      />
+                      <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                        {activity.type === 'booking' ? (
+                          <Calendar className="h-4 w-4 text-primary" />
+                        ) : (
+                          <Activity className="h-4 w-4 text-primary" />
+                        )}
+                      </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium" style={{ color: '#fff' }}>
-                          <span className="text-white">{activity.user}</span> {activity.action}
+                        <p className="text-sm font-medium text-foreground">
+                          {activity.type === 'booking' ? (
+                            <>
+                              New booking at <span className="text-primary">{activity.venue}</span>
+                            </>
+                          ) : (
+                            <>
+                              {activity.description} at <span className="text-primary">{activity.venue}</span>
+                            </>
+                          )}
                         </p>
-                        <p className="text-xs" style={{ color: '#0D6EFD' }}>
-                          {activity.venue}
-                        </p>
-                        <div className="flex items-center text-xs mt-1" style={{ color: '#ABA8A9' }}>
+                        {activity.event && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Event: {activity.event}
+                          </p>
+                        )}
+                        <div className="flex items-center text-xs mt-1 text-muted-foreground">
                           <Clock className="h-3 w-3 mr-1" />
-                          {activity.time}
+                          {activity.date}
+                          {activity.revenue && (
+                            <>
+                              <span className="mx-2">•</span>
+                              <DollarSign className="h-3 w-3 mr-1" />
+                              LKR {activity.revenue.toLocaleString()}
+                            </>
+                          )}
                         </div>
                       </div>
                     </motion.div>
@@ -426,12 +562,11 @@ export default function VenueOwnerDashboard() {
                 </div>
 
                 {/* Quick Actions */}
-                {/* <div className="mt-6 pt-6 border-t" style={{ borderColor: '#39FD48' + '20' }}>
-                  <h3 className="text-lg font-medium mb-4" style={{ color: '#fff' }}>Quick Actions</h3>
+                {/* <div className="mt-6 pt-6 border-t border-border">
+                  <h3 className="text-lg font-medium mb-4 text-foreground">Quick Actions</h3>
                   <div className="space-y-2">
                     <Link href="/venue-owner/venues/new">
-                      <Button className="w-full justify-start text-white hover:opacity-90 transition-opacity"
-                        style={{ background: 'linear-gradient(135deg, #39FD48, #0D6EFD)' }}>
+                      <Button className="w-full justify-start">
                         <Plus className="h-4 w-4 mr-2" />
                         Add New Venue
                       </Button>
