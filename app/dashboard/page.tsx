@@ -45,7 +45,7 @@ export default function DashboardPage() {
   useEffect(() => {
   const loadProfile = async () => {
     try {
-      const res = await secureFetch('http://localhost:4001/profile');
+      const res = await secureFetch(`${process.env.NEXT_PUBLIC_API_GATEWAY_URL}/user_service/profile`);
       const data = await res.json();
       console.log('🔥 Backend profile:', data);
     } catch (err) {

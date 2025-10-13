@@ -1,8 +1,10 @@
 "use client"
 import * as React from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { Loading } from '@/components/ui/loading';
+import { ErrorDisplay } from '@/components/ui/error-display';
 import { 
   ArrowLeft, 
   Save,
@@ -11,9 +13,11 @@ import {
   Clock,
   DollarSign,
   Users,
-  Tag
+  Tag,
+  AlertCircle,
+  CheckCircle
 } from 'lucide-react';
-import { mockEvents, mockVenues } from '@/lib/mock-data';
+import { fetchEventById, updateEventDetails, fetchVenues } from '@/lib/api';
 
 interface EventEditPageProps {
   params: {
@@ -22,33 +26,92 @@ interface EventEditPageProps {
 }
 
 export default function EventEditPage({ params }: EventEditPageProps) {
-  const event = mockEvents.find(e => e.id === params.id);
-  
+  const [event, setEvent] = useState<any>(null);
+  const [venues, setVenues] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
   const [formData, setFormData] = useState({
-    title: event?.title || '',
-    description: event?.description || '',
-    date: event?.date || '',
-    time: event?.time || '',
-    venue: event?.venue || '',
-    venueId: event?.venueId || '',
-    price: event?.price || 0,
-    category: event?.category || '',
-    capacity: event?.capacity || 0,
-    organizer: event?.organizer || '',
-    tags: event?.tags?.join(', ') || ''
+    title: '',
+    description: '',
+    date: '',
+    time: '',
+    venue: '',
+    venueId: '',
+    price: 0,
+    category: '',
+    capacity: 0,
+    organizer: '',
+    tags: ''
   });
 
-  const [isSaving, setIsSaving] = useState(false);
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Load both event and venues in parallel
+        const [eventData, venuesData] = await Promise.all([
+          fetchEventById(params.id),
+          fetchVenues()
+        ]);
+        
+        setEvent(eventData);
+        setVenues(venuesData);
+        
+        // Initialize form with event data
+        setFormData({
+          title: eventData.title || '',
+          description: eventData.description || '',
+          date: eventData.date || eventData.startDate || '',
+          time: eventData.time || eventData.startTime || '',
+          venue: eventData.venue || '',
+          venueId: eventData.venueId || '',
+          price: eventData.ticketPrice || eventData.price || 0,
+          category: eventData.category || '',
+          capacity: eventData.capacity || 0,
+          organizer: eventData.organizer || '',
+          tags: eventData.tags?.join(', ') || ''
+        });
+      } catch (err) {
+        console.error('Failed to load data:', err);
+        setError('Failed to load event details');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  if (!event) {
+    if (params.id) {
+      loadData();
+    }
+  }, [params.id]);
+
+  if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Event Not Found</h1>
-          <Link href="/organizer/dashboard">
-            <Button>Back to Dashboard</Button>
-          </Link>
-        </div>
+        <Loading 
+          size="lg" 
+          text="Loading event details..." 
+          className="text-foreground"
+        />
+      </div>
+    );
+  }
+
+  if (error || !event) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <ErrorDisplay
+          type="error"
+          title="Event Not Found"
+          message={error || "The event you're looking for doesn't exist or has been removed."}
+          variant="card"
+          className="max-w-md"
+        />
       </div>
     );
   }
@@ -62,13 +125,44 @@ export default function EventEditPage({ params }: EventEditPageProps) {
   };
 
   const handleSave = async () => {
-    setIsSaving(true);
-    // Here you would typically send the data to your backend
-    setTimeout(() => {
+    try {
+      setIsSaving(true);
+      setSaveError(null);
+      setSaveSuccess(false);
+      
+      // Prepare data for API
+      const eventData = {
+        title: formData.title,
+        description: formData.description,
+        startDate: formData.date,
+        startTime: formData.time,
+        venueId: formData.venueId,
+        ticketPrice: Number(formData.price),
+        category: formData.category,
+        capacity: Number(formData.capacity),
+        tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag)
+      };
+      
+      await updateEventDetails(params.id, eventData);
+      setSaveSuccess(true);
+      
+      // Refresh event data
+      const updatedEvent = await fetchEventById(params.id);
+      setEvent(updatedEvent);
+      
+    } catch (err) {
+      console.error('Failed to update event:', err);
+      setSaveError('Failed to save changes. Please try again.');
+    } finally {
       setIsSaving(false);
-      // Show success message or redirect
-      alert('Event updated successfully!');
-    }, 1000);
+      
+      // Clear success message after 3 seconds
+      if (!saveError) {
+        setTimeout(() => {
+          setSaveSuccess(false);
+        }, 3000);
+      }
+    }
   };
 
   const categories = [
@@ -220,7 +314,7 @@ export default function EventEditPage({ params }: EventEditPageProps) {
                     name="venueId"
                     value={formData.venueId}
                     onChange={(e) => {
-                      const selectedVenue = mockVenues.find(v => v.id === e.target.value);
+                      const selectedVenue = venues.find((v: any) => v.id === e.target.value);
                       setFormData(prev => ({
                         ...prev,
                         venueId: e.target.value,
@@ -231,9 +325,9 @@ export default function EventEditPage({ params }: EventEditPageProps) {
                     className="w-full px-3 py-2 border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Select venue</option>
-                    {mockVenues.map(venue => (
+                    {venues.map((venue: any) => (
                       <option key={venue.id} value={venue.id}>
-                        {venue.name} - {venue.city}, {venue.state}
+                        {venue.name} - {venue.city || ''}, {venue.state || ''}
                       </option>
                     ))}
                   </select>
@@ -303,6 +397,21 @@ export default function EventEditPage({ params }: EventEditPageProps) {
             </div>
           </div>
 
+          {/* Notification messages */}
+          {saveSuccess && (
+            <div className="bg-green-50 border border-green-200 text-green-800 rounded-md p-4 flex items-center mb-6 dark:bg-green-900/30 dark:border-green-800 dark:text-green-300">
+              <CheckCircle className="h-5 w-5 mr-2 text-green-500" />
+              <span>Event details saved successfully!</span>
+            </div>
+          )}
+          
+          {saveError && (
+            <div className="bg-red-50 border border-red-200 text-red-800 rounded-md p-4 flex items-center mb-6 dark:bg-red-900/30 dark:border-red-800 dark:text-red-300">
+              <AlertCircle className="h-5 w-5 mr-2 text-red-500" />
+              <span>{saveError}</span>
+            </div>
+          )}
+          
           {/* Action Buttons */}
           <div className="flex items-center justify-end space-x-4 mt-8 pt-6 border-t">
             <Link href={`/organizer/events/${params.id}/view`}>
