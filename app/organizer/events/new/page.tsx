@@ -16,7 +16,7 @@ function NewEventPageInner() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  const totalSteps = 5;
+  const totalSteps = 6;
   const [currentStep, setCurrentStep] = useState(1);
   const [form, setForm] = useState({
     title: "",
@@ -823,6 +823,200 @@ function NewEventPageInner() {
 
           {currentStep === 3 && (
             <div className="space-y-6">
+              <h3 className="text-2xl font-semibold" style={{ color: '#fff' }}>Time Selection & Seating</h3>
+              <div className="space-y-4">
+                <div>
+                  {form.venueId ? (
+                  <div className="space-y-6">
+                    {/* Selected Venue Info */}
+                    <div className="rounded-xl border p-4" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30' }}>
+                      <h4 className="font-semibold text-white mb-2">Selected Venue</h4>
+                      {(() => {
+                        const v = venues.find((vv: VenueCard) => String(vv.id) === String(form.venueId));
+                        return v ? (
+                          <div className="flex items-center space-x-4">
+                            <div className="w-12 h-12 overflow-hidden rounded-lg border" style={{ backgroundColor: '#191C24', borderColor: greenBorder }}>
+                              {v.featuredImage || v.image ? <img src={v.featuredImage || v.image} alt="Venue" className="w-full h-full object-cover" /> : <div className="text-sm" style={{ color: '#ABA8A9' }}>No img</div>}
+                            </div>
+                            <div>
+                              <div className="font-semibold text-white">{v.name}</div>
+                              <div className="text-sm" style={{ color: '#ABA8A9' }}>{v.location || '—'}</div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-gray-400">Venue details not found</div>
+                        );
+                      })()}
+                    </div>
+
+                    {/* Time Selection */}
+                    <div className="rounded-lg p-6" style={{ backgroundColor: '#191C24', borderColor: greenBorder + '30', border: '1px solid' }}>
+                      <h4 className="font-semibold text-white mb-4">Event Times</h4>
+                      <p className="text-sm text-gray-400 mb-4">Set the start and end times for your event. These times will apply to all selected dates.</p>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <label className="block text-sm font-medium mb-2" style={{ color: '#fff' }}>Start Time *</label>
+                          <div className="flex gap-2">
+                            <select 
+                              value={form.startHour || ''} 
+                              onChange={e => onChange("startHour", e.target.value)} 
+                              className="px-3 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 w-24"
+                              style={{ 
+                                backgroundColor: '#23262F', 
+                                borderColor: greenBorder, 
+                                color: '#fff'
+                              }}
+                            >
+                              <option value="" style={{ backgroundColor: '#23262F', color: '#fff' }}>HH</option>
+                              {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map(h => 
+                                <option key={h} value={h} style={{ backgroundColor: '#23262F', color: '#fff' }}>{h}</option>
+                              )}
+                            </select>
+                            <select 
+                              value={form.startMinute || ''} 
+                              onChange={e => onChange("startMinute", e.target.value)} 
+                              className="px-3 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 w-24"
+                              style={{ 
+                                backgroundColor: '#23262F', 
+                                borderColor: greenBorder, 
+                                color: '#fff'
+                              }}
+                            >
+                              <option value="" style={{ backgroundColor: '#23262F', color: '#fff' }}>MM</option>
+                              {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m => 
+                                <option key={m} value={m} style={{ backgroundColor: '#23262F', color: '#fff' }}>{m}</option>
+                              )}
+                            </select>
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium mb-2" style={{ color: '#fff' }}>End Time (optional)</label>
+                          <div className="flex gap-2">
+                            <select 
+                              value={form.endHour || ''} 
+                              onChange={e => onChange("endHour", e.target.value)} 
+                              className="px-3 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 w-24"
+                              style={{ 
+                                backgroundColor: '#23262F', 
+                                borderColor: greenBorder, 
+                                color: '#fff'
+                              }}
+                            >
+                              <option value="" style={{ backgroundColor: '#23262F', color: '#fff' }}>HH</option>
+                              {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map(h => 
+                                <option key={h} value={h} style={{ backgroundColor: '#23262F', color: '#fff' }}>{h}</option>
+                              )}
+                            </select>
+                            <select 
+                              value={form.endMinute || ''} 
+                              onChange={e => onChange("endMinute", e.target.value)} 
+                              className="px-3 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 w-24"
+                              style={{ 
+                                backgroundColor: '#23262F', 
+                                borderColor: greenBorder, 
+                                color: '#fff'
+                              }}
+                            >
+                              <option value="" style={{ backgroundColor: '#23262F', color: '#fff' }}>MM</option>
+                              {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m => 
+                                <option key={m} value={m} style={{ backgroundColor: '#23262F', color: '#fff' }}>{m}</option>
+                              )}
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Show selected times */}
+                      {(form.startHour && form.startMinute) && (
+                        <div className="mt-4 p-3 rounded-lg" style={{ backgroundColor: '#39FD48' + '10', borderColor: '#39FD48' + '30', border: '1px solid' }}>
+                          <div className="text-sm text-white">
+                            Start Time: {form.startHour}:{form.startMinute}
+                          </div>
+                          {form.endHour && form.endMinute && (
+                            <div className="text-sm text-white">
+                              End Time: {form.endHour}:{form.endMinute}
+                            </div>
+                          )}
+                          <div className="text-xs text-gray-400 mt-1">
+                            This time applies to all selected dates: {form.startDateDate} {form.endDateDate ? `to ${form.endDateDate}` : ''}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Seat Selection */}
+                    {seatMapData && (
+                      <div className="rounded-xl border p-6" style={{ backgroundColor: '#191C24', borderColor: greenBorder + '30' }}>
+                        <h4 className="font-semibold text-white mb-4 flex items-center">
+                          <Grid3X3 className="h-5 w-5 mr-2" style={{ color: '#39FD48' }} />
+                          Seat Selection
+                        </h4>
+                        
+                        {/* Seat Map Display */}
+                        <div className="flex justify-center mb-4">
+                          <div className="inline-block p-4 rounded-xl border" 
+                            style={{ backgroundColor: '#0D6EFD' + '10', borderColor: '#0D6EFD' + '30' }}>
+                            <div 
+                              className="grid gap-1"
+                              style={{
+                                gridTemplateColumns: `repeat(${Math.min(Number(seatMapData.columns) || 10, 30)}, 1fr)`
+                              }}
+                            >
+                              {Array.from({ 
+                                length: Math.min((Number(seatMapData.rows) || 10) * (Number(seatMapData.columns) || 10), 600) 
+                              }).map((_, index) => {
+                                const columns = Number(seatMapData.columns) || 10;
+                                const row = Math.floor(index / columns);
+                                const col = index % columns;
+                                
+                                // Find which section this seat belongs to
+                                const section = Array.isArray(seatMapData.sections) ? seatMapData.sections.find((s: SeatMapSection) =>
+                                  row >= s.startRow && row < s.startRow + s.rows &&
+                                  col >= s.startCol && col < s.startCol + s.columns
+                                ) : null;                                
+                                const isAisle = Array.isArray(seatMapData.aisles) ? seatMapData.aisles.includes(row) : false;
+                                const isWheelchairAccessible = Array.isArray(seatMapData.wheelchair_accessible) ? 
+                                  seatMapData.wheelchair_accessible.includes(row) : false;
+
+                                return (
+                                  <div
+                                    key={`${row}-${col}`}
+                                    className={`w-4 h-4 rounded-sm flex items-center justify-center text-xs font-bold ${
+                                      isAisle ? 'opacity-50' : ''
+                                    }`}
+                                    style={{
+                                      backgroundColor: section ? section.color : '#39FD48',
+                                      opacity: section ? 1 : 0.3,
+                                      border: isWheelchairAccessible ? '1px solid #FFF' : 'none'
+                                    }}
+                                    title={`Row ${row + 1}, Seat ${col + 1}${section ? ` - ${section.name}` : ''}${isWheelchairAccessible ? ' (Wheelchair Accessible)' : ''}`}
+                                  >
+                                    {isWheelchairAccessible ? '♿' : ''}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                          
+                          <p className="text-sm text-gray-400 text-center">Click on seats to select/deselect them for your event</p>
+                        </div>
+                      )}
+                    )}
+                  ) : (
+                    <div className="text-center py-12">
+                      <Building2 className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+                      <h4 className="text-lg font-bold mb-2 text-white">No Venue Selected</h4>
+                      <p className="text-gray-400">Please go back to the previous step and select a venue first.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+          )}
+
+          {currentStep === 4 && (
+            <div className="space-y-6">
               <h3 className="text-2xl font-semibold text-foreground">Event Poster</h3>
               <div className="space-y-4">
                 <label className="block text-sm text-foreground mb-2">Upload Poster</label>
@@ -854,7 +1048,7 @@ function NewEventPageInner() {
             </div>
           )}
 
-          {currentStep === 4 && (
+          {currentStep === 5 && (
             <div className="space-y-6">
               <h3 className="text-2xl font-semibold text-foreground">Staff</h3>
               <div>
@@ -879,7 +1073,7 @@ function NewEventPageInner() {
             </div>
           )}
 
-          {currentStep === 5 && (
+          {currentStep === 6 && (
             <div className="space-y-6 text-foreground">
               <h3 className="text-2xl font-semibold">Review & Submit</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
