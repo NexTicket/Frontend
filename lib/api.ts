@@ -14,6 +14,7 @@ function getEventServiceUrl(endpoint: string): string {
 function getUserServiceUrl(endpoint: string): string {
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   return `${API_GATEWAY_URL}/user_service${cleanEndpoint}`;
+}
 // Utility function to construct venue service URLs (these might not need /api)
 function getVenueServiceUrl(endpoint: string): string {
   const rawBase = process.env.NEXT_PUBLIC_EVENT_VENUE_SERVICE_URL || process.env.NEXT_PUBLIC_API_URL || '';
@@ -49,9 +50,9 @@ function getApiUrl(endpoint: string): string {
 }
 
 // Legacy function for backward compatibility - now routes through gateway
-function getVenueServiceUrl(endpoint: string): string {
-  return getEventServiceUrl(endpoint);
-}
+// function getVenueServiceUrl(endpoint: string): string {
+//   return getEventServiceUrl(endpoint);
+// }
 
 // Public fetch function for endpoints that don't require authentication
 export async function publicFetch(url: string, options: RequestInit = {}) {
