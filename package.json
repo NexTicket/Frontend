@@ -6,7 +6,12 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "cypress": "cypress open",
+    "cypress:headless": "cypress run",
+    "cypress:auth": "cypress run --spec 'cypress/e2e/01-auth/**/*'",
+    "test": "start-server-and-test dev http://localhost:3000 cypress:headless",
+    "test:auth": "start-server-and-test dev http://localhost:3000 cypress:auth"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -34,13 +39,16 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
+    "@testing-library/cypress": "^10.1.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "autoprefixer": "^10.4.21",
+    "cypress": "^15.4.0",
     "eslint": "^9",
     "eslint-config-next": "15.4.1",
     "postcss": "^8.5.6",
+    "start-server-and-test": "^2.1.2",
     "tailwindcss": "^4.1.11",
     "typescript": "^5"
   }
