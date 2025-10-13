@@ -693,7 +693,7 @@ export default function CreateVenue() {
       });
 
       const createResponse = await createVenue(venuePayload);
-      console.log(' Venue created successfully:', createResponse);
+      console.log('✅ Venue created successfully:', createResponse);
       
       if (!createResponse || !createResponse.data) {
         throw new Error(createResponse?.message || 'Failed to create venue');
@@ -704,8 +704,8 @@ export default function CreateVenue() {
 
       // Step 2: Upload image if any exists
       if (imageFiles.length > 0) {
-        console.log(` Step 2: Uploading single image to venue ${newVenueId}...`);
-        console.log(' Image file details:', {
+        console.log(`🖼️ Step 2: Uploading single image to venue ${newVenueId}...`);
+        console.log('🖼️ Image file details:', {
           name: imageFiles[0].name,
           size: imageFiles[0].size,
           type: imageFiles[0].type
@@ -714,25 +714,25 @@ export default function CreateVenue() {
         try {
           // Use the single image upload function
           const uploadResponse = await uploadVenueImage(newVenueId.toString(), imageFiles[0]);
-          console.log(' Image uploaded successfully:', uploadResponse);
+          console.log('✅ Image uploaded successfully:', uploadResponse);
           
           // Show success message
-          // alert(`Venue "${createResponse.data.name}" created successfully with image!`);
+          alert(`✅ Venue "${createResponse.data.name}" created successfully with image!`);
         } catch (imageError) {
-          console.warn(' Venue created but image upload failed:', imageError);
-          // alert(` Venue "${createResponse.data.name}" was created successfully, but image upload failed. You can add images later by editing the venue.`);
+          console.warn('⚠️ Venue created but image upload failed:', imageError);
+          alert(`⚠️ Venue "${createResponse.data.name}" was created successfully, but image upload failed. You can add images later by editing the venue.`);
         }
       } else {
         // Success without images
-        // alert(` Venue "${createResponse.data.name}" created successfully!`);
+        alert(`✅ Venue "${createResponse.data.name}" created successfully!`);
       }
       
       // Navigate to venues page
       router.push('/venue-owner/venues');
       
     } catch (error: any) {
-      console.error(' Error creating venue:', error);
-      console.error(' Error details:', {
+      console.error('❌ Error creating venue:', error);
+      console.error('❌ Error details:', {
         message: error.message,
         stack: error.stack
       });

@@ -49,11 +49,6 @@ function getApiUrl(endpoint: string): string {
   return getEventServiceUrl(endpoint);
 }
 
-<<<<<<< HEAD
-// Legacy function for backward compatibility - now routes through gateway
-=======
-// // Legacy function for backward compatibility - now routes through gateway
->>>>>>> master
 // function getVenueServiceUrl(endpoint: string): string {
 //   return getEventServiceUrl(endpoint);
 // }
