@@ -145,6 +145,28 @@ function NewEventPageInner() {
     }
   }, [showVenueModal]);
 
+  // Auto-suggest venue type based on event category
+  useEffect(() => {
+    if (form.category && venueFilters.type === 'all') {
+      const categoryToVenueType: Record<string, string> = {
+        'Conference': 'Conference Centers',
+        'Concert': 'Theatres',
+        'Sports': 'Stadiums - Outdoor',
+        'Workshop': 'Conference Centers',
+        'Comedy': 'Theatres',
+        'Festival': 'Parks and Gardens',
+        'Theater': 'Theatres',
+        'Meetup': 'Conference Centers',
+        'Other': 'all'
+      };
+      
+      const suggestedType = categoryToVenueType[form.category] || 'all';
+      if (suggestedType !== 'all') {
+        setVenueFilters(prev => ({ ...prev, type: suggestedType }));
+      }
+    }
+  }, [form.category, venueFilters.type]);
+
   const loadVenueDetails = useCallback(async (venueId: string | number) => {
     try {
       setSelectedVenueDetails(null);
@@ -371,21 +393,7 @@ function NewEventPageInner() {
         title: form.title,
         description: form.description,
         // Normalize to backend enum values
-        category: ((): string => {
-          const c = form.category.trim().toUpperCase();
-          switch (c) {
-            case 'MUSIC':
-            case 'SPORTS':
-            case 'THEATER':
-            case 'COMEDY':
-            case 'CONFERENCE':
-            case 'FESTIVAL':
-            case 'WORKSHOP':
-              return c;
-            default:
-              return 'OTHER';
-          }
-        })(),
+        category: form.category.trim().toLowerCase(),
         type: 'EVENT',
         startDate: startDateIso,
         endDate: endDateIso,
@@ -416,7 +424,7 @@ function NewEventPageInner() {
     <div className="mb-8">
       <div className="flex items-center justify-between mb-4">
         {Array.from({ length: totalSteps }, (_, i) => (
-          <div key={i} className="flex items-center w-full">
+          <div key={i} className="flex items-center">
             <div
               className={`w-12 h-12 rounded-full flex items-center justify-center font-semibold transition-all duration-300 ${
                 currentStep > i + 1
@@ -434,7 +442,7 @@ function NewEventPageInner() {
             </div>
             {i < totalSteps - 1 && (
               <div
-                className={`flex-1 h-1 mx-4 rounded-full transition-all duration-300`}
+                className={`w-24 h-1 mx-4 rounded-full transition-all duration-300`}
                 style={{ backgroundColor: currentStep > i + 1 ? '#39FD48' : '#2a2d34' }}
               />
             )}
@@ -515,6 +523,7 @@ function NewEventPageInner() {
                   <option value="Festival" style={{ backgroundColor: '#191C24', color: '#fff' }}>Festival</option>
                   <option value="Theater" style={{ backgroundColor: '#191C24', color: '#fff' }}>Theater</option>
                   <option value="Meetup" style={{ backgroundColor: '#191C24', color: '#fff' }}>Meetup</option>
+                  <option value="Other" style={{ backgroundColor: '#191C24', color: '#fff' }}>Other</option>
                 </select>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

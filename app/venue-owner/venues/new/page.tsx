@@ -28,6 +28,7 @@ import {
   Circle
 } from 'lucide-react';
 import Link from 'next/link';
+import { Dropdown } from '@/components/ui/dropdown';
 
 // Types for seating layout
 interface SeatSection {
@@ -826,19 +827,13 @@ export default function CreateVenue() {
                     <label className="block text-sm font-medium text-foreground mb-2">
                       Venue Type *
                     </label>
-                    <select
+                    <Dropdown
+                      options={venueTypes.map(type => ({ value: type, label: type }))}
                       value={formData.type}
-                      onChange={(e) => handleInputChange('type', e.target.value)}
-                      className="w-full px-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                      required
-                    >
-                      <option value="">Select venue type</option>
-                      {venueTypes.map((type) => (
-                        <option key={type} value={type}>
-                          {type}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(value) => handleInputChange('type', value)}
+                      placeholder="Select venue type"
+                      className="w-full"
+                    />
                   </div>
 
                   <div>
@@ -1254,7 +1249,7 @@ export default function CreateVenue() {
                       onClick={() => applyPredefinedLayout(layout.id)}
                       className={`p-6 border-2 rounded-xl cursor-pointer transition-all duration-300 ${
                         selectedLayout === layout.id
-                          ? 'border-primary bg-primary/10 shadow-lg'
+                          ? 'border-primary bg-primary/10'
                           : 'border-border hover:border-primary/50 bg-background/50'
                       }`}
                     >
