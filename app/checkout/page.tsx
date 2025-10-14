@@ -73,7 +73,7 @@ export default function CheckoutPage() {
   // Calculate subtotal based on fetched seats and bulk_ticket_info
   const pricePerSeat = bulkTicketInfo?.price_per_seat || 75; // Default to 75 if no bulk price
   const subtotal = selectedSeats.length * pricePerSeat;
-  const serviceFee = 5;
+  const serviceFee = 25;
   const total = subtotal + serviceFee;
 
   // Fetch user's locked seats when the component mounts

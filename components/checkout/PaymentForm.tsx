@@ -140,8 +140,6 @@ export default function PaymentForm({ onPaymentSuccess, onPaymentError }: Paymen
         // Call the success callback
         onPaymentSuccess();
         
-        // Redirect to home page after successful payment
-        window.location.href = '/';
       }
     } catch (error) {
       console.error('Payment error:', error);
