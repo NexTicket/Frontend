@@ -159,9 +159,27 @@ const LocationPickerInner: React.FC<Omit<LocationPickerProps, 'apiKey'>> = ({
     }
   }, [onLocationSelect]);
 
+  // Auto-hide instructions after 4 seconds (increased from 2)
+  // useEffect(() => {
+  //   const timer = setTimeout(() => {
+  //     setShowInstructions(false);
+  //   }, 4000);
+  //   return () => clearTimeout(timer);
+  // }, []);
+
+  // Show instructions again when user starts typing in search
+  const handleInputFocus = useCallback(() => {
+    // setShowInstructions(true);
+    // Reset the timer when user focuses on input
+    // setTimeout(() => setShowInstructions(false), 4000);
+  }, []);
+
   const handleMapClick = useCallback(async (latLng: google.maps.LatLngLiteral) => {
     console.log('Map clicked at:', latLng);
     setIsSearching(true);
+    // Show instructions briefly when user interacts with map
+    // setShowInstructions(true);
+    // setTimeout(() => setShowInstructions(false), 2000);
     try {
       const geocoder = new google.maps.Geocoder();
       const response = await geocoder.geocode({ location: latLng });
@@ -191,17 +209,41 @@ const LocationPickerInner: React.FC<Omit<LocationPickerProps, 'apiKey'>> = ({
     <div className={`space-y-4 ${className}`}>
       {/* Search Input */}
       <div className="space-y-2">
-        <label className="text-sm font-medium text-foreground">Search for a location</label>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             ref={inputRef}
             type="text"
             placeholder="Enter an address or place name..."
+            onFocus={handleInputFocus}
             className="w-full pl-10 pr-3 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
           />
         </div>
       </div>
+
+      {/* Instructions */}
+      <div className="animate-in slide-in-from-top-2 duration-2000 ease-out p-4 bg-blue-600 dark:bg-blue-800 border-2 border-blue-700 dark:border-blue-900 rounded-lg shadow-lg relative overflow-hidden">
+          {/* Animated background gradient */}
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 via-blue-300/20 to-indigo-400/20 animate-pulse"></div>
+          
+          {/* Sparkle effect */}
+          <div className="absolute top-2 right-2 w-2 h-2 bg-white rounded-full animate-ping"></div>
+          <div className="absolute top-4 right-6 w-1 h-1 bg-blue-200 rounded-full animate-ping" style={{animationDelay: '0.5s'}}></div>
+          
+          <div className="flex items-start gap-3 relative">
+            <div className="p-2 bg-white dark:bg-blue-200 rounded-full shadow-md animate-bounce">
+              <MapPin className="h-5 w-5 text-blue-600 dark:text-blue-800" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-bold text-white dark:text-blue-100 mb-1 animate-pulse">
+                How to select a location
+              </p>
+              <p className="text-sm text-blue-100 dark:text-blue-200 font-medium">
+                Click on the map below or search for an address above!
+              </p>
+            </div>
+          </div>
+        </div>
 
       {/* Map */}
       <div className="relative">
@@ -236,9 +278,6 @@ const LocationPickerInner: React.FC<Omit<LocationPickerProps, 'apiKey'>> = ({
         </div>
       )}
 
-      <p className="text-xs text-muted-foreground">
-        Click on the map to select a location, or search for an address above.
-      </p>
     </div>
   );
 };
