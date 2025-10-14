@@ -166,37 +166,61 @@ export default function CheckoutPage() {
 
   if (orderComplete) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4 bg-background">
-        {/* Background Elements */}
-        <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-20 bg-muted"></div>
-        <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-15 bg-muted/50"></div>
-        
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
+      <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-background via-background to-primary/15 px-4">
+        <div className="absolute inset-0 -z-10 opacity-60">
+          <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-primary/20 blur-3xl"></div>
+          <div className="absolute bottom-10 left-10 h-56 w-56 rounded-full bg-secondary/20 blur-3xl"></div>
+          <div className="absolute top-1/2 left-1/3 h-40 w-40 -translate-y-1/2 rounded-full bg-muted/20 blur-3xl"></div>
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0, scale: 0.92 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.6 }}
-          className="max-w-md w-full text-center relative z-10"
+          transition={{ duration: 0.6, ease: 'easeOut' }}
+          className="relative z-10 w-full max-w-lg"
         >
-          <div className="backdrop-blur-xl border rounded-2xl p-8 shadow-xl bg-card border-border">
-            <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 bg-primary/20">
-              <Check className="h-8 w-8 text-primary" />
+          <div className="group relative overflow-hidden rounded-3xl border border-primary/20 bg-card/80 p-10 shadow-2xl backdrop-blur-xl">
+            <div className="absolute inset-0 z-[-1] bg-gradient-to-br from-primary/20 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100"></div>
+            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-lg">
+              <Check className="h-9 w-9" />
             </div>
-            <h1 className="text-2xl font-bold mb-2 text-foreground">Order Complete!</h1>
-            <p className="mb-6 text-muted-foreground">
-              Your tickets have been sent to your email address.
-            </p>
-            <div className="space-y-3">
-              <Link href="/profile">
-                <Button 
-                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
-                >
+            <div className="space-y-2 text-center">
+              <p className="text-xs uppercase tracking-[0.3em] text-primary/80">Payment successful</p>
+              <h1 className="text-3xl font-bold text-foreground">Order Complete!</h1>
+              <p className="text-sm text-muted-foreground">
+                Your tickets are on their way to your email. We also saved them in your profile for easy access.
+              </p>
+            </div>
+
+            <div className="mt-6 grid gap-4 rounded-2xl border border-border/60 bg-background/40 p-6 text-left">
+              <div className="flex items-center justify-between text-sm text-muted-foreground">
+                <span className="flex items-center gap-2 font-medium text-foreground">
+                  <ShoppingCart className="h-4 w-4 text-primary" />
+                  Order ID
+                </span>
+                <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary/80">
+                  #{orderId.toString().padStart(6, '0')}
+                </span>
+              </div>
+              <div className="flex items-start gap-3 rounded-xl bg-muted/10 p-3 text-sm text-muted-foreground">
+                <Calendar className="mt-1 h-4 w-4 text-primary" />
+                <div>
+                  <p className="font-medium text-foreground">What&apos;s next?</p>
+                  <p>Your QR tickets are ready in your profile. Present them at the venue for swift entry.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-8 space-y-3">
+              <Link href="/profile" className="block">
+                <Button className="w-full bg-gradient-to-r from-primary via-primary/90 to-primary/80 text-primary-foreground shadow-lg shadow-primary/40 transition-all duration-300 hover:shadow-xl hover:shadow-primary/40">
                   View My Tickets
                 </Button>
               </Link>
-              <Link href="/events">
-                <Button 
-                  variant="outline" 
-                  className="w-full border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+              <Link href="/events" className="block">
+                <Button
+                  variant="outline"
+                  className="w-full border-primary/40 text-primary transition-colors duration-300 hover:bg-primary/10"
                 >
                   Browse More Events
                 </Button>
