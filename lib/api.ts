@@ -49,7 +49,6 @@ function getApiUrl(endpoint: string): string {
   return getEventServiceUrl(endpoint);
 }
 
-// // Legacy function for backward compatibility - now routes through gateway
 // function getVenueServiceUrl(endpoint: string): string {
 //   return getEventServiceUrl(endpoint);
 // }
@@ -140,6 +139,44 @@ export async function fetchVenues() {
   const url = `${API_GATEWAY_URL}/public/api/venues`;
   const res = await publicFetch(url);
   if (!res.ok) throw new Error("Failed to fetch venues");
+  return res.json();
+}
+
+export async function fetchFilteredVenues(filters: { 
+  type?: string; 
+  location?: { latitude: number; longitude: number; address: string } | null; 
+  amenities?: string[] 
+}) {
+  // Build query string from filters
+  const params = new URLSearchParams();
+  if (filters.type && filters.type !== 'all') params.append('type', filters.type);
+  if (filters.location) {
+    params.append('latitude', filters.location.latitude.toString());
+    params.append('longitude', filters.location.longitude.toString());
+    params.append('radius', '10'); // Default 10km radius
+  }
+  if (filters.amenities && filters.amenities.length > 0) {
+    filters.amenities.forEach(amenity => params.append('amenities', amenity));
+  }
+  
+  const queryString = params.toString();
+  const url = getVenueServiceUrl(`/api/venues/filter${queryString ? `?${queryString}` : ''}`);
+  const res = await publicFetch(url);
+  if (!res.ok) throw new Error("Failed to fetch filtered venues");
+  return res.json();
+}
+
+export async function fetchVenueAvailability(venueId: string | number, date: string, startTime?: string, endTime?: string) {
+  const params = new URLSearchParams();
+  params.append('venueId', venueId.toString());
+  params.append('date', date);
+  if (startTime) params.append('startTime', startTime);
+  if (endTime) params.append('endTime', endTime);
+  
+  const queryString = params.toString();
+  const url = getVenueServiceUrl(`/api/venues/${venueId}/availability?${queryString}`);
+  const res = await publicFetch(url);
+  if (!res.ok) throw new Error("Failed to fetch venue availability");
   return res.json();
 }
 
