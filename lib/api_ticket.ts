@@ -280,3 +280,59 @@ export async function createBulkTicket(ticketData: CreateBulkTicketRequest): Pro
     throw error;
   }
 }
+
+export interface BulkTicket {
+  id: number;
+  event_id: number;
+  venue_id: number;
+  seat_type: string;
+  price: number;
+  total_seats: number;
+  available_seats: number;
+  created_at: string;
+  seat_prefix: string;
+}
+
+export async function getEventBulkTickets(eventId: number): Promise<BulkTicket[]> {
+  try {
+    if (typeof window === 'undefined') {
+      throw new Error('This function can only be called on the client side');
+    }
+
+    const { getAuth, onAuthStateChanged } = await import('firebase/auth');
+    const auth = getAuth();
+
+    const user = await new Promise<any>((resolve) => {
+      const unsubscribe = onAuthStateChanged(auth, (authUser) => {
+        unsubscribe();
+        resolve(authUser);
+      });
+    });
+
+    if (!user) {
+      console.warn('No authenticated user found. Cannot fetch bulk tickets without authentication.');
+      throw new Error('User not authenticated');
+    }
+
+    const token = await user.getIdToken();
+
+    const response = await fetch(`http://localhost:5000/ticket_service/api/venues-events/events/${eventId}/bulk-tickets`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching event bulk tickets:', error);
+    throw error;
+  }
+}

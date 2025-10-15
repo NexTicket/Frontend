@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { fetchMyAssignedEvents, fetchCheckinOfficers, updateEventDetails } from '@/lib/api';
 import CreateTicketForm from '@/components/ui/event/create-ticket-form';
+import BulkTicketsDisplay from '@/components/ui/event/bulk-tickets-display';
 
 // Theme to match other admin pages
 const darkBg = "#181A20";
@@ -76,6 +77,7 @@ export default function EventDetailPage() {
   const [updatingOfficer, setUpdatingOfficer] = useState<string | null>(null);
   const [showCreateTicket, setShowCreateTicket] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [refreshBulkTickets, setRefreshBulkTickets] = useState(0);
 
   // Mock checkin officers data (fallback)
   const mockOfficers: CheckinOfficer[] = [
@@ -362,6 +364,7 @@ export default function EventDetailPage() {
 
   const handleTicketCreationSuccess = () => {
     setShowSuccessMessage(true);
+    setRefreshBulkTickets(prev => prev + 1); // Trigger refresh of bulk tickets
     setTimeout(() => {
       setShowSuccessMessage(false);
     }, 5000);
@@ -600,6 +603,16 @@ export default function EventDetailPage() {
                 />
               )}
             </AnimatePresence>
+
+            {/* Bulk Tickets Display */}
+            <BulkTicketsDisplay 
+              key={refreshBulkTickets}
+              eventId={event.id}
+              onRefresh={() => {
+                // Optional: reload event data or show notification
+                console.log('Bulk tickets refreshed');
+              }}
+            />
           </div>
 
           {/* Sidebar - Team Management */}
