@@ -2,7 +2,7 @@ import { secureFetch } from "@/utils/secureFetch";
 import { getAuth } from 'firebase/auth';
 
 // Base API Gateway URL
-const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || 'http://localhost:5000';
+const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || 'http://localhost:5050';
 
 // Utility function to construct Event/Venue Service URLs through API Gateway
 function getEventServiceUrl(endpoint: string): string {
@@ -356,7 +356,7 @@ export async function rejectEvent(id: string) {
 
 // Fetch events assigned to the current event admin
 export async function fetchMyAssignedEvents() {
-  const res = await secureFetch('http://localhost:4000/api/events/my-assigned-events');
+  const res = await secureFetch(getEventServiceUrl('/api/events/my-assigned-events'));
   if (!res.ok) throw new Error("Failed to fetch assigned events");
   return res.json();
 }
@@ -507,7 +507,7 @@ export async function fetchFirebaseUsers(role?: string) {
 // Ensure current user has a tenant record - now uses User Service
 export async function ensureUserTenant() {
 
-  const res = await secureFetch('http://localhost:4000/api/users/ensure-tenant', {
+  const res = await secureFetch(getUserServiceUrl('/api/users/ensure-tenant'), {
 
     method: 'POST'
   });
