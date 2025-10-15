@@ -1,10 +1,11 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element, @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Dropdown } from "@/components/ui/dropdown";
-import { createEvent, fetchVenues, uploadEventImage, fetchVenueSeatMap, fetchVenueById, fetchFilteredVenues, fetchVenueAvailability } from "@/lib/api";
+import { createEvent, fetchVenues, uploadEventImage, fetchVenueSeatMap, fetchVenueById, fetchFilteredVenues, fetchVenueAvailability, fetchFirebaseUsers } from "@/lib/api";
 import { useAuth } from "@/components/auth/auth-provider";
 import dynamic from "next/dynamic";
 import { ArrowLeft, ArrowRight, Image as ImageIcon, X, MapPin, Users, Building2, Grid3X3, Eye, Check } from "lucide-react";
@@ -17,6 +18,14 @@ const LocationPicker = dynamic(() => import("@/components/ui/location-picker").t
 });
 
 function NewEventPageInner() {
+  // Types for venue availability data
+  interface VenueAvailability {
+    dailyAvailability: Array<{
+      date: string;
+      isAvailableForEvent: boolean;
+      events: Array<{ title: string; startTime: string; endTime?: string }>;
+    }>;
+  }
   const router = useRouter();
   const { } = useAuth();
 
@@ -75,7 +84,6 @@ function NewEventPageInner() {
     columns?: number;
     sections?: SeatMapSection[];
     aisles?: number[];
-    wheelchair_accessible?: number[];
     special_features?: string[];
   };
 
@@ -90,8 +98,15 @@ function NewEventPageInner() {
   const [checkInEmails, setCheckInEmails] = useState<string[]>([""]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
+  // Staff selection states
+  const [availableEventAdmins, setAvailableEventAdmins] = useState<Array<{uid: string, email: string, displayName?: string}>>([]);
+  const [availableCheckinOfficers, setAvailableCheckinOfficers] = useState<Array<{uid: string, email: string, displayName?: string}>>([]);
+  const [selectedEventAdmin, setSelectedEventAdmin] = useState("");
+  const [selectedCheckinOfficers, setSelectedCheckinOfficers] = useState<string[]>([]);
+  const [loadingStaff, setLoadingStaff] = useState(false);
+
   // Venue availability states
-  const [venueAvailability, setVenueAvailability] = useState<any>(null);
+  const [venueAvailability, setVenueAvailability] = useState<VenueAvailability | null>(null);
   const [loadingAvailability, setLoadingAvailability] = useState(false);
   const [availabilityLoaded, setAvailabilityLoaded] = useState(false);
 
@@ -102,8 +117,8 @@ function NewEventPageInner() {
     amenities: [] as string[]
   });
   const [availableAmenities, setAvailableAmenities] = useState<string[]>([
-    'WiFi', 'Parking', 'Air Conditioning', 'Sound System', 'Stage Lighting', 
-    'Catering', 'Bar Service', 'Wheelchair Accessible', 'Restrooms', 'Security'
+  'WiFi', 'Parking', 'Air Conditioning', 'Sound System', 'Stage Lighting', 
+  'Catering', 'Bar Service', 'Restrooms', 'Security'
   ]);
 
   const categoryOptions = [
@@ -133,6 +148,10 @@ function NewEventPageInner() {
     { value: "Theatres", label: "Theatres" },
     { value: "Universities and University Halls", label: "Universities and University Halls" }
   ];
+
+  // Define options for time dropdowns
+  const hourOptions = Array.from({ length: 24 }, (_, i) => ({ value: String(i).padStart(2, '0'), label: String(i).padStart(2, '0') }));
+  const minuteOptions = Array.from({ length: 60 }, (_, i) => ({ value: String(i).padStart(2, '0'), label: String(i).padStart(2, '0') }));
 
   useEffect(() => {
     async function loadVenues() {
@@ -197,6 +216,50 @@ function NewEventPageInner() {
       }
     }
   }, [form.category, venueFilters.type]);
+
+  // Load staff when step 5 is reached
+  useEffect(() => {
+    if (currentStep === 5) {
+      loadStaff();
+    }
+  }, [currentStep]);
+
+  const loadStaff = async () => {
+    setLoadingStaff(true);
+    try {
+      console.log('🔍 Starting to load staff...');
+      
+      // Load event admins
+      console.log('📞 Calling fetchFirebaseUsers for event_admin...');
+      const eventAdminsRes = await fetchFirebaseUsers('event_admin');
+      console.log('📥 Event admins response:', eventAdminsRes);
+      
+      if (eventAdminsRes?.data) {
+        setAvailableEventAdmins(eventAdminsRes.data);
+        console.log('✅ Set event admins:', eventAdminsRes.data.length, 'users');
+      } else {
+        console.log('⚠️ No event admins data received');
+      }
+
+      // Load check-in officers
+      console.log('📞 Calling fetchFirebaseUsers for checkin_officer...');
+      const checkinOfficersRes = await fetchFirebaseUsers('checkin_officer');
+      console.log('📥 Checkin officers response:', checkinOfficersRes);
+      
+      if (checkinOfficersRes?.data) {
+        setAvailableCheckinOfficers(checkinOfficersRes.data);
+        console.log('✅ Set checkin officers:', checkinOfficersRes.data.length, 'users');
+      } else {
+        console.log('⚠️ No checkin officers data received');
+      }
+    } catch (error) {
+      console.error('❌ Failed to load staff:', error);
+      setError(`Failed to load staff: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setLoadingStaff(false);
+      console.log('🏁 Staff loading complete');
+    }
+  };
 
   const loadVenueDetails = useCallback(async (venueId: string | number) => {
     try {
@@ -483,7 +546,6 @@ function NewEventPageInner() {
   );
 
   // Theme colors matching admin dashboard
-  const greenBorder = "#39FD48" + '50';
 
   if (!mounted) return null;
 
@@ -602,8 +664,8 @@ function NewEventPageInner() {
               </h2>
               
               {/* Venue filtering info */}
-              <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                <p className="text-sm text-blue-800 font-medium">
+              <div className="bg-blue-600 rounded-lg p-4 border border-blue-700">
+                <p className="text-sm text-white font-medium">
                   Choose your preferred venue type, location, or amenities to explore venues for your event
                 </p>
               </div>
@@ -716,7 +778,7 @@ function NewEventPageInner() {
                       <div
                         key={v.id}
                         className={`rounded-xl border p-4 cursor-pointer transition-all duration-200 hover:scale-105 ${
-                          selected ? 'ring-2 ring-primary bg-primary/5' : 'bg-background/50'
+                          selected ? 'ring-2 ring-blue-500 border-blue-500 bg-primary/5' : 'bg-background/50'
                         }`}
                         onClick={() => {
                           console.log('🎯 Venue card clicked:', { venueId: v.id, venueIdType: typeof v.id });
@@ -734,17 +796,27 @@ function NewEventPageInner() {
                           <Button
                             type="button"
                             variant="outline"
+                            size="sm"
+                            className="flex items-center space-x-2 px-3 py-1 rounded-lg border border-primary text-primary hover:bg-primary/10 focus:ring-2 focus:ring-primary transition"
                             onClick={async (e) => {
                               e.stopPropagation();
-                              await loadVenueDetails(v.id);
-                              setShowVenueModal(true);
-                              // Reset availability loaded state for new venue
-                              setAvailabilityLoaded(false);
-                              setVenueAvailability(null);
+                              console.log('View Details clicked for venue:', v.id);
+                              try {
+                                await loadVenueDetails(v.id);
+                                // Automatically fetch availability if dates are set
+                                if (form.startDateDate) {
+                                  setAvailabilityLoaded(true);
+                                  loadVenueAvailability(v.id);
+                                }
+                                setShowVenueModal(true);
+                                console.log('Modal opened and availability requested');
+                              } catch (error) {
+                                console.error('Failed to load venue details:', error);
+                              }
                             }}
                           >
-                            <Eye className="h-4 w-4 mr-2" />
-                            View Details
+                            <Eye className="h-4 w-4" />
+                            <span>View Details</span>
                           </Button>
                         </div>
                       </div>
@@ -755,7 +827,7 @@ function NewEventPageInner() {
 
               {/* Selected venue preview */}
               {form.venueId && (
-                <div className="rounded-xl border p-4 grid grid-cols-1 md:grid-cols-3 gap-4 bg-background/30" style={{ borderColor: 'rgb(57 253 72 / 40%)' }}>
+                <div className="rounded-xl border p-4 grid grid-cols-1 md:grid-cols-3 gap-4 bg-background/30" style={{ borderColor: 'rgb(59 130 246 / 40%)' }}>
                   {(() => {
                     const v: VenueCard | undefined = venues.find((vv: VenueCard) => String(vv.id) === String(form.venueId));
                     const img = v?.featuredImage || v?.image || (v?.images?.[0] ?? '');
@@ -782,20 +854,25 @@ function NewEventPageInner() {
 
               {/* Venue Details Modal */}
               {showVenueModal && selectedVenueDetails && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-                  <div className="bg-card/95 backdrop-blur-xl rounded-2xl border max-w-6xl w-full max-h-[90vh] overflow-y-auto" 
-                    style={{ borderColor: 'rgb(57 253 72 / 50)', backgroundColor: '#191C24' }}>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+                  <div className="bg-background/95 backdrop-blur-xl rounded-2xl border border-border/40 max-w-5xl w-full max-h-[85vh] overflow-y-auto shadow-2xl">
                     
                     {/* Modal Header */}
-                    <div className="flex items-center justify-between p-6 border-b" style={{ borderColor: 'rgb(57 253 72 / 30)' }}>
+                    <div className="flex items-center justify-between p-6 border-b border-border/20">
                       <div>
-                        <h2 className="text-2xl font-bold text-white">{selectedVenueDetails.name}</h2>
-                        <div className="flex items-center text-gray-400 mt-1">
-                          <MapPin className="h-4 w-4 mr-1" />
+                        <h2 className="text-2xl font-bold text-foreground">{selectedVenueDetails.name}</h2>
+                        <div className="flex items-center text-muted-foreground mt-1">
+                          <MapPin className="h-4 w-4 mr-2" />
                           {selectedVenueDetails.location || 'Location not specified'}
                         </div>
                       </div>
-                      <Button type="button" variant="outline" onClick={() => setShowVenueModal(false)}>
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => setShowVenueModal(false)}
+                        className="hover:bg-muted/50"
+                      >
                         <X className="h-4 w-4" />
                       </Button>
                     </div>
@@ -803,7 +880,7 @@ function NewEventPageInner() {
                     <div className="p-6 space-y-6">
                       {/* Venue Image */}
                       {(selectedVenueDetails.featuredImage || selectedVenueDetails.image) && (
-                        <div className="w-full h-64 overflow-hidden rounded-xl">
+                        <div className="w-full h-64 overflow-hidden rounded-xl border border-border/20">
                           <img 
                             src={selectedVenueDetails.featuredImage || selectedVenueDetails.image} 
                             alt={selectedVenueDetails.name} 
@@ -815,23 +892,33 @@ function NewEventPageInner() {
                       {/* Venue Info Grid */}
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="md:col-span-1 space-y-4">
-                          <div className="p-4 rounded-xl border" style={{ backgroundColor: '#0D6EFD' + '10', borderColor: '#0D6EFD' + '30' }}>
+                          <div className="p-4 rounded-xl border border-border/20 bg-muted/10">
                             <div className="flex items-center mb-2">
-                              <Users className="h-5 w-5 mr-2" style={{ color: '#0D6EFD' }} />
-                              <span className="font-medium text-white">Capacity</span>
+                              <Users className="h-5 w-5 mr-2 text-primary" />
+                              <span className="font-medium text-foreground">Capacity</span>
                             </div>
-                            <span className="text-2xl font-bold" style={{ color: '#39FD48' }}>
+                            <span className="text-2xl font-bold text-primary">
                               {selectedVenueDetails.capacity ? Number(selectedVenueDetails.capacity).toLocaleString() : 'N/A'}
                             </span>
                           </div>
 
                           {selectedVenueDetails.tenant && (
-                            <div className="p-4 rounded-xl border" style={{ backgroundColor: '#39FD48' + '10', borderColor: '#39FD48' + '30' }}>
+                            <div className="p-4 rounded-xl border border-border/20 bg-muted/10">
                               <div className="flex items-center mb-2">
-                                <Building2 className="h-5 w-5 mr-2" style={{ color: '#39FD48' }} />
-                                <span className="font-medium text-white">Managed by</span>
+                                <Building2 className="h-5 w-5 mr-2 text-primary" />
+                                <span className="font-medium text-foreground">Managed by</span>
                               </div>
-                              <span className="text-white">{selectedVenueDetails.tenant.name}</span>
+                              <span className="text-foreground">{selectedVenueDetails.tenant.name}</span>
+                            </div>
+                          )}
+
+                          {selectedVenueDetails.type && (
+                            <div className="p-4 rounded-xl border border-border/20 bg-muted/10">
+                              <div className="flex items-center mb-2">
+                                <Building2 className="h-5 w-5 mr-2 text-primary" />
+                                <span className="font-medium text-foreground">Type</span>
+                              </div>
+                              <span className="text-foreground">{selectedVenueDetails.type.replace('_', ' ')}</span>
                             </div>
                           )}
                         </div>
@@ -840,8 +927,8 @@ function NewEventPageInner() {
                         <div className="md:col-span-2">
                           {seatMapData && typeof seatMapData === 'object' && 'rows' in seatMapData ? (
                             <div className="space-y-4">
-                              <h3 className="text-xl font-bold text-white flex items-center">
-                                <Grid3X3 className="h-5 w-5 mr-2" style={{ color: '#39FD48' }} />
+                              <h3 className="text-xl font-bold text-foreground flex items-center">
+                                <Grid3X3 className="h-5 w-5 mr-2 text-primary" />
                                 Seating Layout
                               </h3>
 
@@ -849,10 +936,9 @@ function NewEventPageInner() {
                               {seatMapData.sections && Array.isArray(seatMapData.sections) && seatMapData.sections.length > 0 ? (
                                 <div className="flex flex-wrap gap-2">
                                   {seatMapData.sections.map((section: SeatMapSection) => (
-                                    <div key={section.id} className="flex items-center space-x-2 px-3 py-1 rounded-lg border text-sm"
-                                      style={{ backgroundColor: section.color + '20', borderColor: section.color + '50' }}>
+                                    <div key={section.id} className="flex items-center space-x-2 px-3 py-1 rounded-lg border border-border/20 text-sm bg-muted/10">
                                       <div className="w-3 h-3 rounded" style={{ backgroundColor: section.color }}></div>
-                                      <span className="text-white font-medium">
+                                      <span className="text-foreground font-medium">
                                         {section.name} (×{section.price_multiplier})
                                       </span>
                                     </div>
@@ -861,25 +947,23 @@ function NewEventPageInner() {
                               ) : null}
 
                               {/* Stage */}
-                              <div className="rounded-lg p-4 text-center text-white font-bold" 
-                                style={{ background: 'linear-gradient(135deg, #0D6EFD, #39FD48)' }}>
+                              <div className="w-fit mx-auto mb-4 rounded-lg px-4 py-1 text-sm text-center text-white font-semibold bg-gradient-to-r from-primary to-blue-600">
                                 🎭 STAGE
                               </div>
 
-                              {/* Seat Grid */}
+                              {/* Seat Grid - Simplified */}
                               <div className="flex justify-center">
-                                <div className="inline-block p-4 rounded-xl border" 
-                                  style={{ backgroundColor: '#0D6EFD' + '10', borderColor: '#0D6EFD' + '30' }}>
+                                <div className="inline-block p-4 rounded-xl border border-border/20 bg-muted/5">
                                   <div 
                                     className="grid gap-1"
                                     style={{
-                                      gridTemplateColumns: `repeat(${Math.min(Number(seatMapData.columns) || 10, 30)}, 1fr)`
+                                      gridTemplateColumns: `repeat(${Math.min(Number(seatMapData.columns) || 10, 20)}, 1fr)`
                                     }}
                                   >
                                     {Array.from({ 
-                                      length: Math.min((Number(seatMapData.rows) || 10) * (Number(seatMapData.columns) || 10), 600) 
+                                      length: Math.min((Number(seatMapData.rows) || 10) * (Number(seatMapData.columns) || 10), 200) 
                                     }).map((_, index) => {
-                                      const columns = Number(seatMapData.columns) || 10;
+                                      const columns = Math.min(Number(seatMapData.columns) || 10, 20);
                                       const row = Math.floor(index / columns);
                                       const col = index % columns;
                                       
@@ -887,25 +971,18 @@ function NewEventPageInner() {
                                       const section = Array.isArray(seatMapData.sections) ? seatMapData.sections.find((s: SeatMapSection) =>
                                         row >= s.startRow && row < s.startRow + s.rows &&
                                         col >= s.startCol && col < s.startCol + s.columns
-                                      ) : null;                                      const isAisle = Array.isArray(seatMapData.aisles) ? seatMapData.aisles.includes(row) : false;
-                                      const isWheelchairAccessible = Array.isArray(seatMapData.wheelchair_accessible) ? 
-                                        seatMapData.wheelchair_accessible.includes(row) : false;
+                                      ) : null;
 
                                       return (
                                         <div
                                           key={`${row}-${col}`}
-                                          className={`w-4 h-4 rounded-sm flex items-center justify-center text-xs font-bold ${
-                                            isAisle ? 'opacity-50' : ''
-                                          }`}
+                                          className="w-3 h-3 rounded-sm"
                                           style={{
-                                            backgroundColor: section ? section.color : '#39FD48',
-                                            opacity: section ? 1 : 0.3,
-                                            border: isWheelchairAccessible ? '1px solid #FFF' : 'none'
+                                            backgroundColor: section ? section.color : 'hsl(var(--primary))',
+                                            opacity: section ? 0.8 : 0.6,
                                           }}
-                                          title={`Row ${row + 1}, Seat ${col + 1}${section ? ` - ${section.name}` : ''}${isWheelchairAccessible ? ' (Wheelchair Accessible)' : ''}`}
-                                        >
-                                          {isWheelchairAccessible ? '♿' : ''}
-                                        </div>
+                                          title={`Row ${row + 1}, Seat ${col + 1}${section ? ` - ${section.name}` : ''}`}
+                                        />
                                       );
                                     })}
                                   </div>
@@ -913,57 +990,36 @@ function NewEventPageInner() {
                               </div>
 
                               {/* Seating Stats */}
-                              <div className="grid grid-cols-3 gap-4 text-center">
-                                <div className="p-3 rounded-lg border" style={{ backgroundColor: '#39FD48' + '10', borderColor: '#39FD48' + '30' }}>
-                                  <div className="text-lg font-bold" style={{ color: '#39FD48' }}>
+                              <div className="grid grid-cols-2 gap-4 text-center">
+                                <div className="p-3 rounded-lg border border-border/20 bg-muted/10">
+                                  <div className="text-lg font-bold text-primary">
                                     {(Number(seatMapData.rows) || 0) * (Number(seatMapData.columns) || 0)}
                                   </div>
-                                  <div className="text-xs text-gray-400">Total Seats</div>
+                                  <div className="text-xs text-muted-foreground">Total Seats</div>
                                 </div>
-                                <div className="p-3 rounded-lg border" style={{ backgroundColor: '#0D6EFD' + '10', borderColor: '#0D6EFD' + '30' }}>
-                                  <div className="text-lg font-bold" style={{ color: '#0D6EFD' }}>
+                                <div className="p-3 rounded-lg border border-border/20 bg-muted/10">
+                                  <div className="text-lg font-bold text-primary">
                                     {Array.isArray(seatMapData.sections) ? seatMapData.sections.length : 0}
                                   </div>
-                                  <div className="text-xs text-gray-400">Sections</div>
-                                </div>
-                                <div className="p-3 rounded-lg border" style={{ backgroundColor: '#39FD48' + '10', borderColor: '#39FD48' + '30' }}>
-                                  <div className="text-lg font-bold" style={{ color: '#39FD48' }}>
-                                    {Array.isArray(seatMapData.wheelchair_accessible) ? seatMapData.wheelchair_accessible.length : 0}
-                                  </div>
-                                  <div className="text-xs text-gray-400">♿ Accessible</div>
+                                  <div className="text-xs text-muted-foreground">Sections</div>
                                 </div>
                               </div>
-
-                              {/* Special Features */}
-                              {seatMapData.special_features && Array.isArray(seatMapData.special_features) && seatMapData.special_features.length > 0 ? (
-                                <div className="p-4 rounded-xl border" style={{ backgroundColor: '#0D6EFD' + '10', borderColor: '#0D6EFD' + '30' }}>
-                                  <h4 className="font-bold mb-2 text-white">Special Features</h4>
-                                  <div className="flex flex-wrap gap-2">
-                                    {(seatMapData.special_features as string[]).map((feature: string, index: number) => (
-                                      <span key={index} className="px-2 py-1 rounded text-xs border"
-                                        style={{ backgroundColor: '#39FD48' + '20', borderColor: '#39FD48', color: '#39FD48' }}>
-                                        {String(feature).replace('_', ' ')}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                              ) : null}
                             </div>
                           ) : (
-                            <div className="text-center py-12">
-                              <Grid3X3 className="h-16 w-16 mx-auto mb-4 text-gray-400" />
-                              <h4 className="text-lg font-bold mb-2 text-white">No Seating Data</h4>
-                              <p className="text-gray-400">No seating layout found for this venue</p>
+                            <div className="text-center py-12 border border-border/20 rounded-xl bg-muted/5">
+                              <Grid3X3 className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+                              <h4 className="text-lg font-bold mb-2 text-foreground">No Seating Data</h4>
+                              <p className="text-muted-foreground">No seating layout found for this venue</p>
                             </div>
                           )}
                         </div>
                       </div>
 
                       {/* Venue Availability */}
-                      <div className="p-4 rounded-xl border" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30' }}>
+                      <div className="p-4 rounded-xl border border-border/20 bg-muted/5">
                         <div className="flex items-center justify-between mb-3">
-                          <h4 className="font-bold text-white flex items-center">
-                            <Eye className="h-5 w-5 mr-2" style={{ color: '#39FD48' }} />
+                          <h4 className="font-bold text-foreground flex items-center">
+                            <Eye className="h-5 w-5 mr-2 text-primary" />
                             Availability Overview
                           </h4>
                           {!availabilityLoaded && selectedVenueDetails && (
@@ -976,11 +1032,6 @@ function NewEventPageInner() {
                                 loadVenueAvailability(selectedVenueDetails.id);
                               }}
                               disabled={loadingAvailability}
-                              style={{ 
-                                backgroundColor: 'transparent', 
-                                borderColor: greenBorder, 
-                                color: '#fff' 
-                              }}
                             >
                               {loadingAvailability ? 'Loading...' : 'Check Availability'}
                             </Button>
@@ -989,65 +1040,69 @@ function NewEventPageInner() {
                         
                         {loadingAvailability ? (
                           <div className="text-center py-4">
-                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-500 mx-auto"></div>
-                            <p className="text-gray-400 mt-2">Checking availability...</p>
+                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
+                            <p className="text-muted-foreground mt-2">Checking availability...</p>
                           </div>
                         ) : venueAvailability && availabilityLoaded ? (
-                          <div className="space-y-4">
+                          <div className="space-y-3 max-h-48 overflow-y-auto">
                             {/* Show availability for each day in the range */}
                             {venueAvailability.dailyAvailability && venueAvailability.dailyAvailability.length > 0 ? (
-                              venueAvailability.dailyAvailability.map((day: any, dayIndex: number) => (
-                                <div key={dayIndex} className="border rounded-lg p-3" style={{ borderColor: '#39FD48' + '20' }}>
-                                  <h5 className="font-medium text-white mb-2">
-                                    {new Date(day.date).toLocaleDateString('en-US', { 
-                                      weekday: 'long', 
-                                      year: 'numeric', 
-                                      month: 'long', 
-                                      day: 'numeric' 
-                                    })}
-                                  </h5>
+                              venueAvailability.dailyAvailability.map((day, dayIndex: number) => (
+                                <div key={dayIndex} className="border border-border/20 rounded-lg p-3 bg-background/50">
+                                  <div className="flex justify-between items-center mb-2">
+                                    <h5 className="font-medium text-foreground">
+                                      {new Date(day.date).toLocaleDateString('en-US', { 
+                                        weekday: 'short', 
+                                        month: 'short', 
+                                        day: 'numeric' 
+                                      })}
+                                    </h5>
+                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                      day.isAvailableForEvent ? 'bg-green-500/20 text-green-600' : 'bg-red-500/20 text-red-600'
+                                    }`}>
+                                      {day.isAvailableForEvent ? 'Available' : 'Conflict'}
+                                    </span>
+                                  </div>
                                   
                                   {day.events && day.events.length > 0 ? (
-                                    <div className="space-y-2">
-                                      <p className="text-sm text-gray-400">Scheduled events:</p>
-                                      {day.events.map((event: any, eventIndex: number) => (
-                                        <div key={eventIndex} className="flex justify-between items-center p-2 bg-gray-700/30 rounded text-sm">
-                                          <span className="font-medium text-white">{event.title}</span>
-                                          <span className="text-gray-400">
-                                            {event.startTime} - {event.endTime || 'End of day'}
+                                    <div className="space-y-1">
+                                      {day.events.slice(0, 2).map((event, eventIndex: number) => (
+                                        <div key={eventIndex} className="flex justify-between items-center p-2 bg-muted/20 rounded text-sm">
+                                          <span className="font-medium text-foreground truncate">{event.title}</span>
+                                          <span className="text-muted-foreground text-xs">
+                                            {event.startTime} - {event.endTime || 'EOD'}
                                           </span>
                                         </div>
                                       ))}
-                                      
-                                      {/* Show available time slots */}
-                                      {day.availableSlots && day.availableSlots.length > 0 && (
-                                        <div className="mt-3">
-                                          <p className="text-sm text-green-400 mb-2">Available time slots:</p>
-                                          <div className="flex flex-wrap gap-2">
-                                            {day.availableSlots.map((slot: any, slotIndex: number) => (
-                                              <span key={slotIndex} className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs border border-green-500/30">
-                                                {slot.start} - {slot.end}
-                                              </span>
-                                            ))}
-                                          </div>
+                                      {day.events.length > 2 && (
+                                        <div className="text-xs text-muted-foreground pl-2">
+                                          +{day.events.length - 2} more events
                                         </div>
                                       )}
                                     </div>
                                   ) : (
-                                    <p className="text-green-400 text-sm">🎉 Fully available - no events scheduled</p>
+                                    <p className="text-green-600 text-sm">✅ Fully available</p>
                                   )}
                                 </div>
                               ))
                             ) : (
-                              <p className="text-green-400 text-sm">🎉 Venue appears to be available for your selected dates</p>
+                              <p className="text-green-600 text-sm">✅ Venue appears to be available for your selected dates</p>
                             )}
                           </div>
                         ) : availabilityLoaded ? (
-                          <p className="text-gray-400 text-sm">No availability data available</p>
+                          <p className="text-muted-foreground text-sm">No availability data available</p>
                         ) : (
-                          <p className="text-gray-400 text-sm">Click &quot;Check Availability&quot; to see venue availability for your selected dates</p>
+                          <p className="text-muted-foreground text-sm">Click &quot;Check Availability&quot; to see venue availability for your selected dates</p>
                         )}
                       </div>
+
+                      {/* Description */}
+                      {selectedVenueDetails.description && (
+                        <div className="p-4 rounded-xl border border-border/20 bg-muted/5">
+                          <h4 className="font-bold text-foreground mb-2">Description</h4>
+                          <p className="text-muted-foreground leading-relaxed">{selectedVenueDetails.description}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1088,126 +1143,61 @@ function NewEventPageInner() {
                   {/* Time Selection */}
                   <div className="bg-background/50 rounded-lg p-6 border">
                     <h4 className="font-semibold mb-4">Event Times</h4>
-                    <p className="text-sm text-muted-foreground mb-4">Set the start and end times for your event. These times will apply to all selected dates.</p>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
                         <label className="block text-sm font-medium text-foreground mb-2">Start Time *</label>
                         <div className="flex gap-2">
-                          <select
-                            value={form.startHour || ''}
-                            onChange={e => onChange("startHour", e.target.value)}
-                            className="px-3 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all w-24"
-                          >
-                            <option value="">HH</option>
-                            {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map(h =>
-                              <option key={h} value={h}>{h}</option>
-                            )}
-                          </select>
-                          <select
-                            value={form.startMinute || ''}
-                            onChange={e => onChange("startMinute", e.target.value)}
-                            className="px-3 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all w-24"
-                          >
-                            <option value="">MM</option>
-                            {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m =>
-                              <option key={m} value={m}>{m}</option>
-                            )}
-                          </select>
+                          <Dropdown
+                            options={hourOptions}
+                            value={form.startHour}
+                            placeholder="HH"
+                            onChange={v => onChange("startHour", v)}
+                            className="w-24"
+                          />
+                          <Dropdown
+                            options={minuteOptions}
+                            value={form.startMinute}
+                            placeholder="MM"
+                            onChange={v => onChange("startMinute", v)}
+                            className="w-24"
+                          />
                         </div>
                       </div>
-
                       <div>
                         <label className="block text-sm font-medium text-foreground mb-2">End Time *</label>
                         <div className="flex gap-2">
-                          <select
-                            value={form.endHour || ''}
-                            onChange={e => onChange("endHour", e.target.value)}
-                            className="px-3 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all w-24"
-                          >
-                            <option value="">HH</option>
-                            {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map(h =>
-                              <option key={h} value={h}>{h}</option>
-                            )}
-                          </select>
-                          <select
-                            value={form.endMinute || ''}
-                            onChange={e => onChange("endMinute", e.target.value)}
-                            className="px-3 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all w-24"
-                          >
-                            <option value="">MM</option>
-                            {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m =>
-                              <option key={m} value={m}>{m}</option>
-                            )}
-                          </select>
+                          <Dropdown
+                            options={hourOptions}
+                            value={form.endHour}
+                            placeholder="HH"
+                            onChange={v => onChange("endHour", v)}
+                            className="w-24"
+                          />
+                          <Dropdown
+                            options={minuteOptions}
+                            value={form.endMinute}
+                            placeholder="MM"
+                            onChange={v => onChange("endMinute", v)}
+                            className="w-24"
+                          />
                         </div>
                       </div>
                     </div>
                     
                     {/* Show selected times */}
                     {(form.startHour && form.startMinute) && (
-                      <div className="mt-4 p-3 rounded-lg" style={{ backgroundColor: '#39FD48' + '10', borderColor: '#39FD48' + '30', border: '1px solid' }}>
-                        <div className="text-sm text-white">
+                      <div className="mt-4 p-3 rounded-lg bg-blue-600 border border-blue-700">
+                        <div className="text-sm text-white font-medium">
                           <strong>Event Duration:</strong> {form.startHour}:{form.startMinute.padStart(2, '0')}
                           {form.endHour && form.endMinute ? ` - ${form.endHour}:${form.endMinute.padStart(2, '0')}` : ' (open-ended)'}
                         </div>
-                        <div className="text-xs text-gray-400 mt-1">
+                        <div className="text-xs text-white/80 mt-1">
                           This time applies to all selected dates: {form.startDateDate}{form.endDateDate ? ` to ${form.endDateDate}` : ''}
                         </div>
                       </div>
                     )}
                   </div>
-
-                  {/* Seat Selection */}
-                  {seatMapData && (
-                    <div className="rounded-xl border p-6" style={{ backgroundColor: '#191C24', borderColor: greenBorder + '30' }}>
-                      <h4 className="font-semibold text-white mb-4 flex items-center">
-                        <Grid3X3 className="h-5 w-5 mr-2" style={{ color: '#39FD48' }} />
-                        Seat Selection
-                      </h4>
-                      
-                      {/* Seat Map Display */}
-                      <div className="flex justify-center mb-4">
-                        <div className="inline-block p-4 rounded-xl border" 
-                          style={{ backgroundColor: '#0D6EFD' + '10', borderColor: '#0D6EFD' + '30' }}>
-                          <div 
-                            className="grid gap-1"
-                            style={{
-                              gridTemplateColumns: `repeat(${Math.min(Number(seatMapData.columns) || 10, 30)}, 1fr)`
-                            }}
-                          >
-                            {Array.from({ 
-                              length: Math.min((Number(seatMapData.rows) || 10) * (Number(seatMapData.columns) || 10), 600) 
-                            }).map((_, index) => {
-                              const columns = Number(seatMapData.columns) || 10;
-                              const row = Math.floor(index / columns);
-                              const col = index % columns;
-                              
-                              const section = Array.isArray(seatMapData.sections) ? seatMapData.sections.find((s: any) =>
-                                row >= s.startRow && row < s.startRow + s.rows &&
-                                col >= s.startCol && col < s.startCol + s.columns
-                              ) : null;
-                              
-                              return (
-                                <div
-                                  key={`${row}-${col}`}
-                                  className="w-4 h-4 rounded-sm flex items-center justify-center text-xs font-bold cursor-pointer hover:scale-110 transition-transform"
-                                  style={{
-                                    backgroundColor: section ? section.color : '#39FD48',
-                                    opacity: 0.8
-                                  }}
-                                  title={`Row ${row + 1}, Seat ${col + 1}${section ? ` - ${section.name}` : ''}`}
-                                >
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <p className="text-sm text-gray-400 text-center">Click on seats to select/deselect them for your event</p>
-                    </div>
-                  )}
                 </div>
               ) : (
                 <div className="text-center py-12">
@@ -1221,101 +1211,288 @@ function NewEventPageInner() {
 
           {currentStep === 4 && (
             <div className="space-y-6">
-              <h3 className="text-2xl font-semibold text-white">Event Poster</h3>
+              <h2 className="text-2xl font-semibold mb-6 flex items-center">
+                <ImageIcon className="h-6 w-6 mr-3 text-primary" />
+                Event Poster
+              </h2>
+              
               <div className="space-y-4">
-                <label className="block text-sm text-foreground mb-2">Upload Poster *</label>
-                <div className="border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300 border-border hover:border-primary/50 bg-background/50">
-                  <ImageIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    onChange={e => handlePosterChange(e.target.files)} 
-                    className="hidden" 
-                    id="poster-upload" 
-                  />
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    className="cursor-pointer"
+                <label className="block text-sm font-medium text-foreground mb-2">Upload Poster (Optional)</label>
+                
+                {!form.poster ? (
+                  <div 
+                    className="border-2 border-dashed rounded-xl p-12 text-center transition-all duration-300 border-border hover:border-primary/50 bg-background/50 cursor-pointer group"
                     onClick={() => document.getElementById('poster-upload')?.click()}
                   >
-                    Choose Image
-                  </Button>
-                  {form.poster && (
-                    <div className="mt-4 relative inline-block">
-                      <img src={form.poster} alt="Poster" className="w-40 h-40 object-cover rounded-lg border" />
-                      <button type="button" onClick={() => { removePoster(); setSelectedFile(null); }} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"><X className="h-4 w-4" /></button>
+                    <div className="flex flex-col items-center space-y-4">
+                      <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                        <ImageIcon className="h-8 w-8 text-primary" />
+                      </div>
+                      <div>
+                        <h4 className="text-lg font-semibold text-foreground mb-2">Upload Event Poster</h4>
+                        <p className="text-sm text-muted-foreground">Click to browse or drag and drop your image here</p>
+                        <p className="text-xs text-muted-foreground mt-1">PNG, JPG, GIF up to 10MB</p>
+                      </div>
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        className="cursor-pointer"
+                      >
+                        Choose Image
+                      </Button>
                     </div>
-                  )}
-                </div>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={e => handlePosterChange(e.target.files)} 
+                      className="hidden" 
+                      id="poster-upload" 
+                    />
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Image Preview */}
+                      <div className="space-y-4">
+                        <h4 className="font-semibold text-foreground">Preview</h4>
+                        <div className="relative rounded-xl overflow-hidden border border-border bg-background/50">
+                          <img src={form.poster} alt="Event Poster" className="w-full h-64 object-cover" />
+                          <button 
+                            type="button" 
+                            onClick={() => { removePoster(); setSelectedFile(null); }} 
+                            className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-2 transition-colors shadow-lg"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {/* Upload Actions */}
+                      <div className="space-y-4">
+                        <h4 className="font-semibold text-foreground">Actions</h4>
+                        <div className="space-y-3">
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            className="w-full"
+                            onClick={() => document.getElementById('poster-upload')?.click()}
+                          >
+                            <ImageIcon className="h-4 w-4 mr-2" />
+                            Change Image
+                          </Button>
+                          <Button 
+                            type="button" 
+                            variant="destructive" 
+                            className="w-full"
+                            onClick={() => { removePoster(); setSelectedFile(null); }}
+                          >
+                            <X className="h-4 w-4 mr-2" />
+                            Remove Image
+                          </Button>
+                        </div>
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          onChange={e => handlePosterChange(e.target.files)} 
+                          className="hidden" 
+                          id="poster-upload" 
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
 
           {currentStep === 5 && (
             <div className="space-y-6">
-              <h3 className="text-2xl font-semibold text-white">Staff</h3>
-              <div>
-                <label className="block text-sm text-foreground mb-2">Event Admin Email *</label>
-                <input value={eventAdminEmail} onChange={e => setEventAdminEmail(e.target.value)} placeholder="admin@example.com" className="w-full px-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all" />
-            </div>
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm text-foreground">Check-in Officers (*, up to 10)</label>
-                  <Button type="button" variant="outline" onClick={() => setCheckInEmails(prev => (prev.length < 10 ? [...prev, ""] : prev))}>Add</Button>
-                </div>
-                <div className="space-y-2">
-                  {checkInEmails.map((email, idx) => (
-                    <div key={idx} className="flex gap-2">
-                      <input value={email} onChange={e => setCheckInEmails(prev => prev.map((v, i) => i === idx ? e.target.value : v))} placeholder={`officer${idx+1}@example.com`} className="flex-1 px-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all" />
-                      <Button type="button" variant="outline" onClick={() => setCheckInEmails(prev => prev.filter((_, i) => i !== idx))}>Remove</Button>
-                    </div>
-                  ))}
-                </div>
+              <h2 className="text-2xl font-semibold mb-6 flex items-center">
+                <Users className="h-6 w-6 mr-3 text-primary" />
+                Staff Assignment (Optional)
+              </h2>
+              
+              <div className="bg-blue-600 rounded-lg p-4 border border-blue-700 mb-6">
+                <p className="text-sm text-white font-medium">
+                  Assign staff members to manage your event. You can skip this step and assign staff later from the dashboard.
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground">Note: Staff emails are currently collected for UI; backend assignment endpoint can be added next.</p>
+
+              {loadingStaff ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Loading staff members...</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Debug Info */}
+                  {process.env.NODE_ENV === 'development' && (
+                    <div className="bg-muted/20 rounded-lg p-3 border border-border/20 text-xs space-y-1">
+                      <p className="text-muted-foreground">🔍 Debug Info:</p>
+                      <p className="text-muted-foreground">Available Event Admins: {availableEventAdmins.length}</p>
+                      <p className="text-muted-foreground">Available Checkin Officers: {availableCheckinOfficers.length}</p>
+                      <p className="text-muted-foreground">Loading Staff: {loadingStaff ? 'Yes' : 'No'}</p>
+                    </div>
+                  )}
+
+                  {/* Event Admin Selection */}
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">Event Admin</label>
+                    <Dropdown
+                      options={[
+                        { value: "", label: "Select an event admin (optional)" },
+                        ...availableEventAdmins.map(admin => ({
+                          value: admin.uid,
+                          label: `${admin.displayName || admin.email} (${admin.email})`
+                        }))
+                      ]}
+                      value={selectedEventAdmin}
+                      placeholder="Select an event admin"
+                      onChange={(value) => setSelectedEventAdmin(value)}
+                      className="w-full"
+                    />
+                    {availableEventAdmins.length === 0 && (
+                      <p className="text-xs text-orange-500 mt-1">
+                        ⚠️ No event admins found. Check if users have the &apos;event_admin&apos; role assigned.
+                      </p>
+                    )}
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Event admins can manage all aspects of this event
+                    </p>
+                  </div>
+
+                  {/* Check-in Officers Selection */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-foreground">Check-in Officers</label>
+                      <span className="text-xs text-muted-foreground">
+                        {selectedCheckinOfficers.length} selected
+                      </span>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      {availableCheckinOfficers.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-64 overflow-y-auto border border-border rounded-lg p-4">
+                          {availableCheckinOfficers.map(officer => (
+                            <label key={officer.uid} className="flex items-center space-x-3 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={selectedCheckinOfficers.includes(officer.uid)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedCheckinOfficers(prev => [...prev, officer.uid]);
+                                  } else {
+                                    setSelectedCheckinOfficers(prev => prev.filter(id => id !== officer.uid));
+                                  }
+                                }}
+                                className="rounded border-border text-primary focus:ring-primary/50"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-medium text-foreground truncate">
+                                  {officer.displayName || officer.email}
+                                </div>
+                                <div className="text-xs text-muted-foreground truncate">
+                                  {officer.email}
+                                </div>
+                              </div>
+                            </label>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <Users className="h-12 w-12 mx-auto mb-2 text-muted-foreground/50" />
+                          <p>No check-in officers available</p>
+                          <p className="text-xs text-orange-500 mt-2">
+                            ⚠️ Check if users have the &apos;checkin_officer&apos; role assigned.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Check-in officers can scan tickets and manage event entry
+                    </p>
+                  </div>
+
+                  {/* Selected Staff Summary */}
+                  {(selectedEventAdmin || selectedCheckinOfficers.length > 0) && (
+                    <div className="bg-background/50 rounded-lg p-4 border">
+                      <h4 className="font-medium text-foreground mb-3">Selected Staff</h4>
+                      <div className="space-y-2">
+                        {selectedEventAdmin && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-muted-foreground">Event Admin:</span>
+                            <span className="text-sm text-foreground">
+                              {availableEventAdmins.find(a => a.uid === selectedEventAdmin)?.displayName || 
+                               availableEventAdmins.find(a => a.uid === selectedEventAdmin)?.email}
+                            </span>
+                          </div>
+                        )}
+                        {selectedCheckinOfficers.length > 0 && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-muted-foreground">Check-in Officers:</span>
+                            <span className="text-sm text-foreground">{selectedCheckinOfficers.length} selected</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
           {currentStep === 6 && (
-            <div className="space-y-6 text-white">
-              <h3 className="text-2xl font-semibold">Review & Submit</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <div className="text-sm text-muted-foreground">Title</div>
-                  <div className="font-medium">{form.title || '-'}</div>
+            <div className="space-y-6">
+              <h3 className="text-2xl font-semibold text-foreground">Review & Submit</h3>
+              <div className="p-6 bg-background/50 rounded-xl border border-border/20 space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <div className="text-sm text-muted-foreground">Title</div>
+                    <div className="font-medium text-foreground">{form.title || '-'}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-muted-foreground">Venue</div>
+                    <div className="font-medium text-foreground">{venues.find(v => String(v.id) === String(form.venueId))?.name || `Not selected (ID: ${form.venueId})`}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-muted-foreground">Start Date & Time</div>
+                    <div className="font-medium text-foreground">{form.startDateDate && form.startHour && form.startMinute ? `${form.startDateDate} ${form.startHour}:${form.startMinute}` : '-'}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-muted-foreground">End Date & Time</div>
+                    <div className="font-medium text-foreground">{form.endDateDate && form.endHour && form.endMinute ? `${form.endDateDate} ${form.endHour}:${form.endMinute}` : '-'}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-muted-foreground">Category</div>
+                    <div className="font-medium text-foreground">{form.category || '-'}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-muted-foreground">Event Admin</div>
+                    <div className="font-medium text-foreground">{eventAdminEmail || '-'}</div>
+                  </div>
+                  <div className="md:col-span-2">
+                    <div className="text-sm text-muted-foreground">Check-in Officers</div>
+                    <div className="font-medium text-foreground">{checkInEmails.filter(Boolean).join(', ') || '-'}</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-sm text-muted-foreground">Venue</div>
-                  <div className="font-medium">{venues.find(v => String(v.id) === String(form.venueId))?.name || `Not selected (ID: ${form.venueId})`}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-muted-foreground">Start Date & Time</div>
-                  <div className="font-medium">{form.startDateDate && form.startHour && form.startMinute ? `${form.startDateDate} ${form.startHour}:${form.startMinute}` : '-'}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-muted-foreground">End Date & Time</div>
-                  <div className="font-medium">{form.endDateDate && form.endHour && form.endMinute ? `${form.endDateDate} ${form.endHour}:${form.endMinute}` : '-'}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-muted-foreground">Category</div>
-                  <div className="font-medium">{form.category || '-'}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-muted-foreground">Event Admin</div>
-                  <div className="font-medium">{eventAdminEmail || '-'}</div>
-                </div>
-                <div className="md:col-span-2">
-                  <div className="text-sm text-muted-foreground">Check-in Officers</div>
-                  <div className="font-medium">{checkInEmails.filter(Boolean).join(', ') || '-'}</div>
-                </div>
+                {form.description && (
+                  <div>
+                    <div className="text-sm text-muted-foreground">Description</div>
+                    <div className="font-medium text-foreground">{form.description}</div>
+                  </div>
+                )}
+                {form.poster && (
+                  <div>
+                    <div className="text-sm text-muted-foreground">Event Poster</div>
+                    <img
+                      src={form.poster}
+                      alt="Event Poster"
+                      className="mt-2 max-w-xs rounded-lg border border-border/20"
+                    />
+                  </div>
+                )}
               </div>
-              {form.description && (
-                <div>
-                  <div className="text-sm text-muted-foreground">Description</div>
-                  <div className="font-medium">{form.description}</div>
-                </div>
-              )}
             </div>
           )}
 
