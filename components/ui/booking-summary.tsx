@@ -161,7 +161,7 @@ export function BookingSummary({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.95 }}
             transition={{ duration: 0.3, ease: 'easeOut' }}
-            className="fixed top-4 right-4 z-50 max-w-md"
+            className="fixed top-20 right-4 z-50 max-w-md"
           >
             <div className="relative overflow-hidden rounded-2xl border border-red-500/30 bg-gradient-to-br from-red-950/95 to-red-900/95 backdrop-blur-xl shadow-2xl shadow-red-500/20">
               {/* Animated background gradient */}
