@@ -54,6 +54,8 @@ export interface UserTicketResponse {
   bulk_ticket: BulkTicketInfo;
 }
 
+const TICKET_APIGATEWAY_URL = (process.env.APIGATEWAY_URL || 'http://localhost:5000')+ '/ticket_service/api';
+
 export async function getUserLockedSeats(): Promise<UserLockedSeatsResponse> {
   try {
     // Ensure we're on the client side
@@ -95,7 +97,7 @@ export async function getUserLockedSeats(): Promise<UserLockedSeatsResponse> {
     
     const token = await user.getIdToken();
 
-    const response = await fetch('http://localhost:5000/ticket_service/api/ticket-locking/locked-seats', {
+    const response = await fetch(`${TICKET_APIGATEWAY_URL}/ticket-locking/locked-seats`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -147,7 +149,7 @@ export async function lockSeats({
     
     const token = await user.getIdToken();
 
-    const response = await fetch('http://localhost:5000/ticket_service/api/ticket-locking/lock-seats', {
+    const response = await fetch(`${TICKET_APIGATEWAY_URL}/ticket-locking/lock-seats`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -195,7 +197,7 @@ export async function getUserTickets(): Promise<UserTicketResponse[]> {
 
     const token = await user.getIdToken();
 
-    const response = await fetch('http://localhost:5000/ticket_service/api/tickets/user/tickets', {
+    const response = await fetch(`${TICKET_APIGATEWAY_URL}/tickets/user/tickets`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -259,7 +261,7 @@ export async function createBulkTicket(ticketData: CreateBulkTicketRequest): Pro
 
     const token = await user.getIdToken();
 
-    const response = await fetch('http://localhost:5000/ticket_service/api/venues-events/bulk-tickets', {
+    const response = await fetch(`${TICKET_APIGATEWAY_URL}/venues-events/bulk-tickets/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -316,7 +318,7 @@ export async function getEventBulkTickets(eventId: number): Promise<BulkTicket[]
 
     const token = await user.getIdToken();
 
-    const response = await fetch(`http://localhost:5000/ticket_service/api/venues-events/events/${eventId}/bulk-tickets`, {
+    const response = await fetch(`${TICKET_APIGATEWAY_URL}/venues-events/events/${eventId}/bulk-tickets`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
