@@ -163,7 +163,17 @@ export async function lockSeats({
     });
     
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      // Handle 409 Conflict specifically
+      if (response.status === 409) {
+        const errorData = await response.json();
+        const errorMessage = errorData.detail || 'Seats already locked by other users';
+        throw new Error(`HTTP 409: ${errorMessage}`);
+      }
+      
+      // Handle other errors
+      const errorData = await response.json().catch(() => null);
+      const errorMessage = errorData?.detail || errorData?.message || `HTTP error! status: ${response.status}`;
+      throw new Error(errorMessage);
     }
     
     const data = await response.json();

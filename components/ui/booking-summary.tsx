@@ -5,9 +5,11 @@ import Link from 'next/link';
 import { 
   Users, 
   X,
-  ShoppingCart
+  ShoppingCart,
+  AlertCircle,
+  XCircle
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { lockSeats } from '@/lib/api_ticket';
 import { useState, useEffect } from 'react';
 
@@ -57,6 +59,15 @@ export function BookingSummary({
 }: BookingSummaryProps) {
   const [isLocking, setIsLocking] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [errorToast, setErrorToast] = useState<{
+    show: boolean;
+    message: string;
+    conflictedSeats?: string[];
+  }>({
+    show: false,
+    message: '',
+    conflictedSeats: []
+  });
 
   useEffect(() => {
     setIsMounted(true);
@@ -69,6 +80,8 @@ export function BookingSummary({
     }
 
     setIsLocking(true);
+    setErrorToast({ show: false, message: '', conflictedSeats: [] });
+    
     try {
       const seatIds = selectedSeatsData.map(seat => `${seat.section}${seat.row}${seat.number}`);
       console.log('Locking seats:', seatIds);
@@ -93,9 +106,41 @@ export function BookingSummary({
       } else {
         throw new Error('Invalid response from server');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to lock seats:', error);
-      alert('Failed to lock seats. Please try again.');
+      
+      // Check if it's a 409 Conflict error (seats already locked)
+      if (error?.message?.includes('409') || error?.message?.toLowerCase().includes('conflict') || 
+          error?.message?.toLowerCase().includes('already locked')) {
+        
+        // Try to extract conflicted seats from error message
+        const conflictMatch = error.message.match(/Seats already locked by other users: \[(.*?)\]/i);
+        const conflictedSeats = conflictMatch ? conflictMatch[1].split(',').map((s: string) => s.trim().replace(/['"]/g, '')) : [];
+        
+        setErrorToast({
+          show: true,
+          message: conflictedSeats.length > 0 
+            ? `Some seats are no longer available` 
+            : 'Some of your selected seats have been booked by another customer',
+          conflictedSeats: conflictedSeats
+        });
+        
+        // Auto-hide after 8 seconds
+        setTimeout(() => {
+          setErrorToast({ show: false, message: '', conflictedSeats: [] });
+        }, 8000);
+      } else {
+        // Generic error
+        setErrorToast({
+          show: true,
+          message: 'Unable to lock seats. Please try again or contact support.',
+          conflictedSeats: []
+        });
+        
+        setTimeout(() => {
+          setErrorToast({ show: false, message: '', conflictedSeats: [] });
+        }, 6000);
+      }
     } finally {
       setIsLocking(false);
     }
@@ -107,33 +152,111 @@ export function BookingSummary({
   }
 
   return (
-    <motion.div 
-      variants={itemVariants} 
-      className={`lg:col-span-1 ${className}`}
-    >
-      <div 
-        className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl sticky top-8 bg-card border-border"
+    <>
+      {/* Error Toast Notification */}
+      <AnimatePresence>
+        {errorToast.show && (
+          <motion.div
+            initial={{ opacity: 0, y: -50, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+            className="fixed top-20 right-4 z-50 max-w-md"
+          >
+            <div className="relative overflow-hidden rounded-2xl border border-red-500/30 bg-gradient-to-br from-red-950/95 to-red-900/95 backdrop-blur-xl shadow-2xl shadow-red-500/20">
+              {/* Animated background gradient */}
+              <div className="absolute inset-0 bg-gradient-to-r from-red-500/10 via-transparent to-red-500/10 animate-pulse"></div>
+              
+              <div className="relative p-5">
+                <div className="flex items-start gap-4">
+                  {/* Icon */}
+                  <div className="flex-shrink-0">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-500/20 ring-2 ring-red-500/50">
+                      <AlertCircle className="h-6 w-6 text-red-400" />
+                    </div>
+                  </div>
+                  
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <h3 className="text-base font-semibold text-red-100">
+                        Seats No Longer Available
+                      </h3>
+                      <button
+                        onClick={() => setErrorToast({ show: false, message: '', conflictedSeats: [] })}
+                        className="flex-shrink-0 rounded-lg p-1 hover:bg-red-500/20 transition-colors"
+                      >
+                        <XCircle className="h-5 w-5 text-red-300" />
+                      </button>
+                    </div>
+                    
+                    <p className="text-sm text-red-200/90 mb-3">
+                      {errorToast.message}
+                    </p>
+                    
+                    {errorToast.conflictedSeats && errorToast.conflictedSeats.length > 0 && (
+                      <div className="rounded-lg bg-red-950/50 border border-red-500/20 p-3 mb-3">
+                        <p className="text-xs font-medium text-red-300 mb-2">Unavailable seats:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {errorToast.conflictedSeats.map((seat, idx) => (
+                            <span 
+                              key={idx}
+                              className="inline-flex items-center gap-1 rounded-md bg-red-500/20 px-2 py-1 text-xs font-medium text-red-200 ring-1 ring-red-500/30"
+                            >
+                              <X className="h-3 w-3" />
+                              {seat}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <p className="text-xs text-red-300/80">
+                      Please select different seats and try again.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Progress bar */}
+              <motion.div
+                initial={{ width: '100%' }}
+                animate={{ width: '0%' }}
+                transition={{ duration: errorToast.conflictedSeats && errorToast.conflictedSeats.length > 0 ? 8 : 6, ease: 'linear' }}
+                className="h-1 bg-gradient-to-r from-red-500 to-red-400"
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <motion.div 
+        variants={itemVariants} 
+        className={`lg:col-span-1 ${className}`}
       >
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-foreground">
-            Booking Summary
-          </h3>
-          <div className="flex items-center space-x-2">
-            <p className="text-sm text-muted-foreground">
-              {selectedSeatsData.length} seat{selectedSeatsData.length !== 1 ? 's' : ''} selected
-            </p>
-            {selectedSeatsData.length > 0 && onClearAllSeats && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onClearAllSeats}
-                className="h-6 px-2 text-xs hover:bg-red-500/20 transition-colors duration-200 text-destructive"
-              >
-                Clear All
-              </Button>
-            )}
+        <div 
+          className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl sticky top-8 bg-card border-border"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-foreground">
+              Booking Summary
+            </h3>
+            <div className="flex items-center space-x-2">
+              <p className="text-sm text-muted-foreground">
+                {selectedSeatsData.length} seat{selectedSeatsData.length !== 1 ? 's' : ''} selected
+              </p>
+              {selectedSeatsData.length > 0 && onClearAllSeats && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onClearAllSeats}
+                  className="h-6 px-2 text-xs hover:bg-red-500/20 transition-colors duration-200 text-destructive"
+                >
+                  Clear All
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
         
         {selectedSeatsData.length > 0 ? (
           <div className="space-y-4">
@@ -215,5 +338,6 @@ export function BookingSummary({
         </div>
       </div>
     </motion.div>
+    </>
   );
 }
