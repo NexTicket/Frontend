@@ -461,57 +461,57 @@ function NewEventPageInner() {
   const darkBg = "#181A20";
   const blueHeader = "#1877F2";
   const cardBg = "#23262F";
-  const greenBorder = "#39FD48" + '50';
+  const greenBorder = "#000" ;
   const cardShadow = "0 2px 16px 0 rgba(57,253,72,0.08)";
 
   if (!mounted) return null;
 
   return (
-    <div className="min-h-screen" style={{ background: darkBg }}>
+    <div className="min-h-screen" >
       {/* Simple Background Elements */}
-      <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-20" style={{ backgroundColor: '#ABA8A9' }}></div>
-      <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-15" style={{ backgroundColor: '#D8DFEE' }}></div>
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl opacity-10" style={{ backgroundColor: '#ABA8A9' }}></div>
+      <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-20" ></div>
+      <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-15" ></div>
+      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl opacity-10" ></div>
       
       {/* Content Container */}
       <div className="relative z-10 pt-8 px-8">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
-          <div className="rounded-2xl p-6 shadow-lg mb-8" style={{ backgroundColor: blueHeader, borderColor: greenBorder, boxShadow: cardShadow }}>
-            <h2 className="text-3xl font-bold mb-2" style={{ color: '#fff' }}>Create New Event</h2>
-            <p className="text-lg font-normal" style={{ color: '#fff' }}>Set up your event in a few guided steps</p>
+          <div className="rounded-2xl p-6 shadow-lg mb-8" style={{  borderColor: greenBorder, boxShadow: cardShadow }}>
+            <h2 className="text-3xl font-bold mb-2" >Create New Event</h2>
+            <p className="text-lg font-normal" >Set up your event in a few guided steps</p>
           </div>
 
           <StepBar />
 
-          <div className="backdrop-blur-xl border rounded-2xl p-8 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
+          <div className="backdrop-blur-xl border rounded-2xl p-8 shadow-xl" style={{  borderColor: greenBorder, boxShadow: cardShadow }}>
         {currentStep === 1 && (
             <div className="space-y-6">
-              <h3 className="text-2xl font-semibold" style={{ color: '#fff' }}>Basic Information</h3>
+              <h3 className="text-2xl font-semibold" >Basic Information</h3>
               <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: '#fff' }}>Title *</label>
+                <label className="block text-sm font-medium mb-2" >Title *</label>
                 <input 
                   value={form.title} 
                   onChange={e => onChange("title", e.target.value)} 
                   className="w-full px-4 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2"
                   style={{ 
-                    backgroundColor: '#191C24', 
+                     
                     borderColor: greenBorder, 
-                    color: '#fff'
+                    
                   }}
                   placeholder="Enter event title"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: '#fff' }}>Category *</label>
+                <label className="block text-sm font-medium mb-2" >Category *</label>
                 <select 
                   value={form.category} 
                   onChange={e => onChange("category", e.target.value)} 
                   className="w-full px-4 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2"
                   style={{ 
-                    backgroundColor: '#191C24', 
+                     
                     borderColor: greenBorder, 
-                    color: '#fff'
+                    
                   }}
                 >
                   <option value="" style={{ backgroundColor: '#191C24', color: '#fff' }}>Select category</option>
@@ -528,7 +528,7 @@ function NewEventPageInner() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: '#fff' }}>Start Date *</label>
+                  <label className="block text-sm font-medium mb-2" >Start Date *</label>
                   <input 
                     type="date" 
                     value={form.startDateDate} 
@@ -536,14 +536,14 @@ function NewEventPageInner() {
                     min={new Date().toISOString().split('T')[0]} // Prevent selecting past dates
                     className="w-full px-4 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2"
                     style={{ 
-                      backgroundColor: '#191C24', 
+                       
                       borderColor: greenBorder, 
-                      color: '#fff'
+                      
                     }}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: '#fff' }}>End Date (optional)</label>
+                  <label className="block text-sm font-medium mb-2" >End Date (optional)</label>
                   <input 
                     type="date" 
                     value={form.endDateDate} 
@@ -551,25 +551,25 @@ function NewEventPageInner() {
                     min={form.startDateDate || new Date().toISOString().split('T')[0]} // End date must be at least the start date
                     className="w-full px-4 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2"
                     style={{ 
-                      backgroundColor: '#191C24', 
+                       
                       borderColor: greenBorder, 
-                      color: '#fff'
+                      
                     }}
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: '#fff' }}>Description</label>
+                <label className="block text-sm font-medium mb-2" >Description</label>
                 <textarea 
                   value={form.description} 
                   onChange={e => onChange("description", e.target.value)} 
                   rows={4} 
                   className="w-full px-4 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 resize-none"
                   style={{ 
-                    backgroundColor: '#191C24', 
+                     
                     borderColor: greenBorder, 
-                    color: '#fff'
+                    
                   }}
                   placeholder="Describe your event..."
                 />
@@ -579,32 +579,32 @@ function NewEventPageInner() {
 
           {currentStep === 2 && (
             <div className="space-y-6">
-              <h3 className="text-2xl font-semibold" style={{ color: '#fff' }}>Venue Selection</h3>
+              <h3 className="text-2xl font-semibold" >Venue Selection</h3>
               
               {/* Venue filtering info */}
               {form.category && (
-                <div className="rounded-lg p-4" style={{ backgroundColor: '#191C24', borderColor: greenBorder, border: '1px solid' }}>
-                  <p className="text-sm" style={{ color: '#ABA8A9' }}>
-                    Showing venues suitable for <span className="font-semibold" style={{ color: '#fff' }}>{form.category}</span> events
+                <div className="rounded-lg p-4" style={{  borderColor: greenBorder, border: '1px solid' }}>
+                  <p className="text-sm" >
+                    Showing venues suitable for <span className="font-semibold" >{form.category}</span> events
                   </p>
                 </div>
               )}
 
               {/* Venue Filters */}
-              <div className="rounded-lg p-6" style={{ backgroundColor: '#191C24', borderColor: greenBorder, border: '1px solid' }}>
-                <h4 className="text-lg font-semibold mb-4" style={{ color: '#fff' }}>Filter Venues</h4>
+              <div className="rounded-lg p-6" style={{  borderColor: greenBorder, border: '1px solid' }}>
+                <h4 className="text-lg font-semibold mb-4" >Filter Venues</h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* Venue Type Filter */}
                   <div>
-                    <label className="block text-sm font-medium mb-2" style={{ color: '#fff' }}>Venue Type</label>
+                    <label className="block text-sm font-medium mb-2" >Venue Type</label>
                     <select 
                       value={venueFilters.type}
                       onChange={(e) => setVenueFilters(prev => ({ ...prev, type: e.target.value }))}
                       className="w-full px-4 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2"
                       style={{ 
-                        backgroundColor: '#23262F', 
+                         
                         borderColor: greenBorder, 
-                        color: '#fff'
+                        
                       }}
                     >
                       <option value="all" style={{ backgroundColor: '#23262F', color: '#fff' }}>All Types</option>
@@ -624,7 +624,7 @@ function NewEventPageInner() {
 
                   {/* Location Filter with Google Maps */}
                   <div>
-                    <label className="block text-sm font-medium mb-2" style={{ color: '#fff' }}>Location</label>
+                    <label className="block text-sm font-medium mb-2" >Location</label>
                     <div className="space-y-2">
                       <LocationPicker
                         apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''}
@@ -635,7 +635,7 @@ function NewEventPageInner() {
                         className="w-full"
                       />
                       {venueFilters.location && (
-                        <div className="text-sm" style={{ color: '#ABA8A9' }}>
+                        <div className="text-sm" >
                           Selected: {venueFilters.location.address}
                         </div>
                       )}
@@ -647,7 +647,7 @@ function NewEventPageInner() {
                         style={{ 
                           backgroundColor: 'transparent', 
                           borderColor: greenBorder, 
-                          color: '#fff' 
+                           
                         }}
                       >
                         Clear Location
@@ -657,7 +657,7 @@ function NewEventPageInner() {
 
                   {/* Amenities Filter */}
                   <div>
-                    <label className="block text-sm font-medium mb-2" style={{ color: '#fff' }}>Amenities</label>
+                    <label className="block text-sm font-medium mb-2" >Amenities</label>
                     <div className="space-y-2 max-h-32 overflow-y-auto">
                       {availableAmenities.map(amenity => (
                         <label key={amenity} className="flex items-center space-x-2 cursor-pointer">
@@ -707,7 +707,7 @@ function NewEventPageInner() {
               {/* Venue cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {loadingVenues ? (
-                  <div className="text-center py-8" style={{ color: '#fff' }}>Loading venues...</div>
+                  <div className="text-center py-8" >Loading venues...</div>
                 ) : venues.length === 0 ? (
                   <div className="text-center py-8 col-span-full" style={{ color: '#ABA8A9' }}>
                     No venues found matching your filters. Try adjusting your filter criteria.
@@ -733,7 +733,7 @@ function NewEventPageInner() {
                         <div className="w-full h-32 overflow-hidden rounded-lg border mb-3 flex items-center justify-center" style={{ backgroundColor: '#191C24', borderColor: greenBorder }}>
                           {img ? <img src={img} alt="Venue" className="w-full h-full object-cover" /> : <div className="text-sm" style={{ color: '#ABA8A9' }}>No image</div>}
                         </div>
-                        <div className="font-semibold" style={{ color: '#fff' }}>{v.name}</div>
+                        <div className="font-semibold" >{v.name}</div>
                         <div className="text-sm" style={{ color: '#ABA8A9' }}>{v.location || '—'}</div>
                         <div className="text-sm" style={{ color: '#ABA8A9' }}>Capacity: {v.capacity ?? '—'}</div>
                         {v.type && <div className="text-xs px-2 py-1 rounded mt-1 inline-block" style={{ backgroundColor: '#39FD48', color: '#000' }}>{v.type.replace('_', ' ')}</div>}
@@ -1069,7 +1069,7 @@ function NewEventPageInner() {
 
           {currentStep === 3 && (
             <div className="space-y-6">
-              <h3 className="text-2xl font-semibold" style={{ color: '#fff' }}>Time Selection & Seating</h3>
+              <h3 className="text-2xl font-semibold" >Time Selection & Seating</h3>
               
               {form.venueId ? (
                 <div className="space-y-6">
@@ -1101,7 +1101,7 @@ function NewEventPageInner() {
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <label className="block text-sm font-medium mb-2" style={{ color: '#fff' }}>Start Time *</label>
+                        <label className="block text-sm font-medium mb-2" >Start Time *</label>
                         <div className="flex gap-2">
                           <select 
                             value={form.startHour || ''} 
@@ -1137,7 +1137,7 @@ function NewEventPageInner() {
                       </div>
                       
                       <div>
-                        <label className="block text-sm font-medium mb-2" style={{ color: '#fff' }}>End Time (optional)</label>
+                        <label className="block text-sm font-medium mb-2" >End Time (optional)</label>
                         <div className="flex gap-2">
                           <select 
                             value={form.endHour || ''} 
@@ -1307,7 +1307,7 @@ function NewEventPageInner() {
           )}
 
           {currentStep === 6 && (
-            <div className="space-y-6 text-white">
+            <div className="space-y-6 text-foreground">
               <h3 className="text-2xl font-semibold">Review & Submit</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
@@ -1396,7 +1396,7 @@ function NewEventPageInner() {
 
           </div>
           <div className="flex justify-end mt-4">
-            <Button variant="ghost" onClick={() => router.push('/organizer/dashboard')} style={{ color: '#fff' }}>Cancel</Button>
+            <Button variant="ghost" onClick={() => router.push('/organizer/dashboard')} >Cancel</Button>
         </div>
         </div>
       </div>

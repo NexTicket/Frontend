@@ -23,10 +23,10 @@ import {
   fetchVenues,
   createEvent,
   createVenue,
-  fetchEventsByOrganizer,
 } from "@/lib/api";
 import { Event } from "@/lib/mock-data";
 import { AnimatePresence } from "framer-motion";
+import axios from "axios";
 
 const containerVariants = {
   hidden: { opacity: 0, scale: 0.98 },
@@ -84,13 +84,10 @@ export default function OrganizerDashboard() {
         setEventsLoading(true);
         // Fetch events for this organizer from event_and_venue_service backend
         if (userProfile?.uid) {
-          const response = await fetchEventsByOrganizer(userProfile.uid);
-          const eventsData = Array.isArray(response?.data) 
-            ? response.data 
-            : Array.isArray(response) 
-            ? response 
-            : [];
-          setEvents(eventsData);
+          const response = await axios.get(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/events?organizerId=${userProfile.uid}`
+          );
+          setEvents(Array.isArray(response.data) ? response.data : []);
         } else {
           setEvents([]);
         }

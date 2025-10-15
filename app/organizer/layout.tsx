@@ -3,8 +3,8 @@
 import { useAuth } from '@/components/auth/auth-provider';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Loading } from '@/components/ui/loading';
 import { fetchEventsByOrganizer } from '@/lib/api';
+import { Loading } from '@/components/ui/loading';
 
 export default function OrganizerLayout({ children }: { children: React.ReactNode }) {
   const { firebaseUser, userProfile, isLoading } = useAuth();
@@ -24,15 +24,13 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
         console.log("here 2");
         router.replace('/');
       } else if (userProfile && userProfile.role === 'organizer') {
-        // Fetch events for this organizer from event_and_venue_service
-        const fetchOrganizerEventsData = async () => {
+        // Fetch events for this organizer
+        const fetchOrganizerEvents = async () => {
           setEventsLoading(true);
           try {
-            // Use the API function that routes through API Gateway
-            const response = await fetchEventsByOrganizer(userProfile.uid);
-            const events = Array.isArray(response.data?.data) ? response.data.data : 
-                          Array.isArray(response.data) ? response.data : 
-                          Array.isArray(response) ? response : [];
+            // Use the proper API function that goes through API Gateway with authentication
+            const response = await fetchEventsByOrganizer(firebaseUser.uid);
+            const events = Array.isArray(response?.data) ? response.data : [];
             setEvents(events);
           } catch (error) {
             setEvents([]);
@@ -41,7 +39,7 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
             setEventsLoading(false);
           }
         };
-        fetchOrganizerEventsData();
+        fetchOrganizerEvents();
       }
     }
   }, [firebaseUser, userProfile, isLoading, router]);
