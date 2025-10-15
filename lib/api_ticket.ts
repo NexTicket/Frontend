@@ -54,7 +54,7 @@ export interface UserTicketResponse {
   bulk_ticket: BulkTicketInfo;
 }
 
-const APIGATEWAY_TICKET_URL = (process.env.API_GATEWAY_URL || 'http://localhost:5000' ) + '/ticket_service';
+const TICKET_APIGATEWAY_URL = (process.env.APIGATEWAY_URL || 'http://localhost:5000')+ '/ticket_service/api';
 
 export async function getUserLockedSeats(): Promise<UserLockedSeatsResponse> {
   try {
@@ -97,7 +97,7 @@ export async function getUserLockedSeats(): Promise<UserLockedSeatsResponse> {
     
     const token = await user.getIdToken();
 
-    const response = await fetch(`${APIGATEWAY_TICKET_URL}/api/ticket-locking/locked-seats`, {
+    const response = await fetch(`${TICKET_APIGATEWAY_URL}/ticket-locking/locked-seats`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -149,7 +149,7 @@ export async function lockSeats({
     
     const token = await user.getIdToken();
 
-    const response = await fetch(`${APIGATEWAY_TICKET_URL}/api/ticket-locking/lock-seats`, {
+    const response = await fetch(`${TICKET_APIGATEWAY_URL}/ticket-locking/lock-seats`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -207,7 +207,7 @@ export async function getUserTickets(): Promise<UserTicketResponse[]> {
 
     const token = await user.getIdToken();
 
-    const response = await fetch(`${APIGATEWAY_TICKET_URL}/api/tickets/user/tickets`, {
+    const response = await fetch(`${TICKET_APIGATEWAY_URL}/tickets/user/tickets`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -228,6 +228,123 @@ export async function getUserTickets(): Promise<UserTicketResponse[]> {
     return data as UserTicketResponse[];
   } catch (error) {
     console.error('Error fetching user tickets:', error);
+    throw error;
+  }
+}
+
+interface CreateBulkTicketRequest {
+  event_id: number;
+  venue_id: number;
+  seat_type: string;
+  price: number;
+  total_seats: number;
+  available_seats: number;
+  seat_prefix: string;
+}
+
+interface CreateBulkTicketResponse {
+  success?: boolean;
+  message?: string;
+  data?: any;
+}
+
+export async function createBulkTicket(ticketData: CreateBulkTicketRequest): Promise<CreateBulkTicketResponse> {
+  try {
+    if (typeof window === 'undefined') {
+      throw new Error('This function can only be called on the client side');
+    }
+
+    const { getAuth, onAuthStateChanged } = await import('firebase/auth');
+    const auth = getAuth();
+
+    const user = await new Promise<any>((resolve) => {
+      const unsubscribe = onAuthStateChanged(auth, (authUser) => {
+        unsubscribe();
+        resolve(authUser);
+      });
+    });
+
+    if (!user) {
+      console.warn('No authenticated user found. Cannot create bulk ticket without authentication.');
+      throw new Error('User not authenticated');
+    }
+
+    const token = await user.getIdToken();
+
+    const response = await fetch(`${TICKET_APIGATEWAY_URL}/venues-events/bulk-tickets/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(ticketData)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error creating bulk ticket:', error);
+    throw error;
+  }
+}
+
+export interface BulkTicket {
+  id: number;
+  event_id: number;
+  venue_id: number;
+  seat_type: string;
+  price: number;
+  total_seats: number;
+  available_seats: number;
+  created_at: string;
+  seat_prefix: string;
+}
+
+export async function getEventBulkTickets(eventId: number): Promise<BulkTicket[]> {
+  try {
+    if (typeof window === 'undefined') {
+      throw new Error('This function can only be called on the client side');
+    }
+
+    const { getAuth, onAuthStateChanged } = await import('firebase/auth');
+    const auth = getAuth();
+
+    const user = await new Promise<any>((resolve) => {
+      const unsubscribe = onAuthStateChanged(auth, (authUser) => {
+        unsubscribe();
+        resolve(authUser);
+      });
+    });
+
+    if (!user) {
+      console.warn('No authenticated user found. Cannot fetch bulk tickets without authentication.');
+      throw new Error('User not authenticated');
+    }
+
+    const token = await user.getIdToken();
+
+    const response = await fetch(`${TICKET_APIGATEWAY_URL}/venues-events/events/${eventId}/bulk-tickets`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching event bulk tickets:', error);
     throw error;
   }
 }
