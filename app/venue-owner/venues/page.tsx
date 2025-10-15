@@ -490,11 +490,11 @@ export default function VenueOwnerVenues() {
                         {venue.amenities.slice(0, 4).map((amenity: string, idx: number) => (
                           <span
                             key={idx}
-                            className="px-2 py-1 rounded-full text-xs font-medium border"
+                            className="px-2 py-1 bg-blue-400 rounded-full text-xs text-foreground font-medium border"
                             style={{
-                              backgroundColor: '#39FD48' + '20',
+                              
                               borderColor: '#39FD48' + '50',
-                              color: '#39FD48'
+                              
                             }}
                           >
                             {amenity}
