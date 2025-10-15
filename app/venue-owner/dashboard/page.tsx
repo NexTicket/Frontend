@@ -20,9 +20,6 @@ import {
   Clock,
   Star,
   Activity,
-  BarChart3,
-  PieChart,
-  AlertTriangle,
   RefreshCw,
   Loader2
 } from 'lucide-react';

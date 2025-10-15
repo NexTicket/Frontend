@@ -14,8 +14,23 @@ export const secureFetch = async (url: string, options: RequestInit = {}) => {
   console.log('👤 User found:', { uid: user.uid, email: user.email });
 
   try {
-    const token = await user.getIdToken(true); // Force refresh token
-    console.log('🎫 Token obtained, length:', token.length);
+    console.log('🔄 Attempting to get Firebase ID token...');
+    
+    // Check if user is properly initialized
+    if (!user.uid) {
+      throw new Error('User not properly initialized');
+    }
+    
+    // Try to get token without forcing refresh first
+    let token: string;
+    try {
+      token = await user.getIdToken(false);
+      console.log('🎫 Token obtained (cached), length:', token.length);
+    } catch (tokenError) {
+      console.log('⚠️ Cached token failed, trying refresh...', tokenError);
+      token = await user.getIdToken(true);
+      console.log('🎫 Token obtained (refreshed), length:', token.length);
+    }
     
     // Don't set Content-Type if body is FormData - let the browser set it with boundary
     const headers: Record<string, string> = {
@@ -42,15 +57,26 @@ export const secureFetch = async (url: string, options: RequestInit = {}) => {
 
     console.log('📤 Making request with headers:', { ...headers, Authorization: 'Bearer [REDACTED]' });
     
-    const response = fetch(url, {
+    // Add timeout to the fetch request
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000); // 120 second timeout
+    
+    const response = await fetch(url, {
       ...options,
-      headers
+      headers,
+      signal: controller.signal
     });
     
+    clearTimeout(timeoutId);
     console.log('📨 Request sent, awaiting response...');
     return response;
   } catch (error) {
     console.error('❌ Failed to get authentication token:', error);
+    console.error('❌ Error details:', {
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
     throw new Error('Authentication failed - please sign in again');
   }
 };

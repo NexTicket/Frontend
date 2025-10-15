@@ -2,7 +2,7 @@ import { secureFetch } from "@/utils/secureFetch";
 import { getAuth } from 'firebase/auth';
 
 // Base API Gateway URL
-const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || 'http://localhost:5050';
+const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || 'http://localhost:5051';
 
 // Utility function to construct Event/Venue Service URLs through API Gateway
 function getEventServiceUrl(endpoint: string): string {
@@ -409,17 +409,26 @@ export async function createEvent(eventData: {
     image: eventData.image ?? undefined
   };
 
-  const res = await secureFetch(getEventServiceUrl('/api/events'), {
+  console.log('🎯 Creating event with body:', body);
+
+  // Use API Gateway instead of direct connection
+  const url = getEventServiceUrl('/api/events');
+  console.log('🎯 Using API Gateway URL:', url);
+  
+  const res = await secureFetch(url, {
     method: 'POST',
     body: JSON.stringify(body)
   });
 
   if (!res.ok) {
     const text = await res.text();
+    console.error('❌ Event creation failed:', res.status, text);
     throw new Error(`Failed to create event: ${res.status} ${text}`);
   }
 
-  return res.json();
+  const result = await res.json();
+  console.log('✅ Event created successfully:', result);
+  return result;
 }
 
 // Delete event by id
