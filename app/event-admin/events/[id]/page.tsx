@@ -17,12 +17,7 @@ import {
   UserPlus,
   UserMinus,
   CheckCircle,
-  XCircle,
-  AlertCircle,
-  Plus,
-  Trash2,
-  Mail,
-  Phone
+  Plus
 } from 'lucide-react';
 import { fetchMyAssignedEvents, fetchCheckinOfficers, updateEventDetails } from '@/lib/api';
 
@@ -41,12 +36,12 @@ interface Event {
   endDate: string;
   startTime: string;
   endTime: string;
-  capacity: number;
   status: string;
   venue?: {
     id: number;
     name: string;
     location: string;
+    capacity?: number;
   };
   organizer?: {
     name: string;
@@ -76,6 +71,7 @@ export default function EventDetailPage() {
   const [availableOfficers, setAvailableOfficers] = useState<CheckinOfficer[]>([]);
   const [showAddOfficer, setShowAddOfficer] = useState(false);
   const [loadingOfficers, setLoadingOfficers] = useState(false);
+  const [updatingOfficer, setUpdatingOfficer] = useState<string | null>(null);
 
   // Mock checkin officers data (fallback)
   const mockOfficers: CheckinOfficer[] = [
@@ -210,7 +206,6 @@ export default function EventDetailPage() {
         endDate: editedEvent.endDate,
         startTime: editedEvent.startTime,
         endTime: editedEvent.endTime,
-        capacity: editedEvent.capacity,
         checkinOfficerUids: editedEvent.checkinOfficerUids
       };
       
@@ -219,9 +214,26 @@ export default function EventDetailPage() {
       
       setEvent(editedEvent);
       setEditing(false);
-    } catch (error) {
+      
+      // Show success message
+      // alert('✅ Event updated successfully!');
+    } catch (error: any) {
       console.error('❌ Failed to save event:', error);
-      alert('Failed to save event. Please try again.');
+      
+      // Parse error message
+      let errorMessage = 'Failed to save event. Please try again.';
+      
+      if (error.message) {
+        if (error.message.includes('not authorized')) {
+          errorMessage = '⛔ You are not authorized to edit this event. Only assigned event admins, organizers, or admins can edit events.';
+        } else if (error.message.includes('404')) {
+          errorMessage = '❌ Event not found.';
+        } else {
+          errorMessage = `❌ ${error.message}`;
+        }
+      }
+      
+      alert(errorMessage);
     } finally {
       setSaving(false);
     }
@@ -235,31 +247,99 @@ export default function EventDetailPage() {
     });
   };
 
-  const addCheckinOfficer = (officer: CheckinOfficer) => {
-    setCheckinOfficers([...checkinOfficers, officer]);
-    setAvailableOfficers(availableOfficers.filter(o => o.uid !== officer.uid));
+  const addCheckinOfficer = async (officer: CheckinOfficer) => {
+    if (updatingOfficer) return; // Prevent multiple simultaneous updates
     
-    // Update edited event
-    if (editedEvent) {
-      const newUids = [...(editedEvent.checkinOfficerUids || []), officer.uid];
-      setEditedEvent({
-        ...editedEvent,
+    try {
+      setUpdatingOfficer(officer.uid);
+      
+      // Optimistically update UI
+      setCheckinOfficers([...checkinOfficers, officer]);
+      setAvailableOfficers(availableOfficers.filter(o => o.uid !== officer.uid));
+      
+      // Prepare new UIDs array
+      const newUids = [...(event.checkinOfficerUids || []), officer.uid];
+      
+      // Save to database immediately
+      console.log('➕ Adding checkin officer:', officer.name, officer.uid);
+      const updateData = {
         checkinOfficerUids: newUids
-      });
+      };
+      
+      await updateEventDetails(eventId as string, updateData);
+      console.log('✅ Checkin officer added successfully');
+      
+      // Update both event and editedEvent state
+      const updatedEvent = { ...event, checkinOfficerUids: newUids };
+      setEvent(updatedEvent);
+      if (editedEvent) {
+        setEditedEvent({
+          ...editedEvent,
+          checkinOfficerUids: newUids
+        });
+      }
+      
+      // Show success feedback (optional)
+      // alert(`✅ ${officer.name} has been assigned as checkin officer`);
+      
+    } catch (error) {
+      console.error('❌ Failed to add checkin officer:', error);
+      
+      // Revert UI changes on error
+      setCheckinOfficers(checkinOfficers);
+      setAvailableOfficers([...availableOfficers, officer]);
+      
+      alert('Failed to assign checkin officer. Please try again.');
+    } finally {
+      setUpdatingOfficer(null);
     }
   };
 
-  const removeCheckinOfficer = (officer: CheckinOfficer) => {
-    setCheckinOfficers(checkinOfficers.filter(o => o.uid !== officer.uid));
-    setAvailableOfficers([...availableOfficers, officer]);
+  const removeCheckinOfficer = async (officer: CheckinOfficer) => {
+    if (updatingOfficer) return; // Prevent multiple simultaneous updates
     
-    // Update edited event
-    if (editedEvent) {
-      const newUids = (editedEvent.checkinOfficerUids || []).filter(uid => uid !== officer.uid);
-      setEditedEvent({
-        ...editedEvent,
+    try {
+      setUpdatingOfficer(officer.uid);
+      
+      // Optimistically update UI
+      setCheckinOfficers(checkinOfficers.filter(o => o.uid !== officer.uid));
+      setAvailableOfficers([...availableOfficers, officer]);
+      
+      // Prepare new UIDs array
+      const newUids = (event.checkinOfficerUids || []).filter(uid => uid !== officer.uid);
+      
+      // Save to database immediately
+      console.log('➖ Removing checkin officer:', officer.name, officer.uid);
+      const updateData = {
         checkinOfficerUids: newUids
-      });
+      };
+      
+      await updateEventDetails(eventId as string, updateData);
+      console.log('✅ Checkin officer removed successfully');
+      
+      // Update both event and editedEvent state
+      const updatedEvent = { ...event, checkinOfficerUids: newUids };
+      setEvent(updatedEvent);
+      if (editedEvent) {
+        setEditedEvent({
+          ...editedEvent,
+          checkinOfficerUids: newUids
+        });
+      }
+      
+      // Show success feedback (optional)
+      // alert(`✅ ${officer.name} has been removed from checkin officers`);
+      
+    } catch (error) {
+      console.error('❌ Failed to remove checkin officer:', error);
+      
+      // Revert UI changes on error
+      setCheckinOfficers([...checkinOfficers, officer]);
+      setAvailableOfficers(availableOfficers.filter(o => o.uid !== officer.uid));
+      
+      alert('Failed to remove checkin officer. Please try again.');
+    } finally {
+      setUpdatingOfficer(null);
     }
   };
 
@@ -424,23 +504,11 @@ export default function EventDetailPage() {
 
                   <div>
                     <label className="block text-sm font-medium mb-2" style={{ color: '#ABA8A9' }}>
-                      Capacity
+                      Venue Capacity
                     </label>
-                    {editing ? (
-                      <input
-                        type="number"
-                        value={editedEvent?.capacity || ''}
-                        onChange={(e) => handleInputChange('capacity', parseInt(e.target.value))}
-                        className="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        style={{ 
-                          backgroundColor: '#1f222a', 
-                          borderColor: greenBorder, 
-                          color: '#fff'
-                        }}
-                      />
-                    ) : (
-                      <p style={{ color: '#fff' }}>{event.capacity} attendees</p>
-                    )}
+                    <p style={{ color: '#fff' }}>
+                      {event.venue?.capacity ? `${event.venue.capacity} attendees` : 'Not specified'}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -524,9 +592,14 @@ export default function EventDetailPage() {
                             <Button 
                               onClick={() => addCheckinOfficer(officer)}
                               size="sm"
-                              style={{ background: '#0D6EFD', color: '#fff' }}
+                              disabled={updatingOfficer === officer.uid}
+                              style={{ background: '#0D6EFD', color: '#fff', opacity: updatingOfficer === officer.uid ? 0.6 : 1 }}
                             >
-                              <UserPlus className="w-3 h-3" />
+                              {updatingOfficer === officer.uid ? (
+                                <span className="text-xs">Adding...</span>
+                              ) : (
+                                <UserPlus className="w-3 h-3" />
+                              )}
                             </Button>
                           </div>
                         ))
@@ -560,9 +633,19 @@ export default function EventDetailPage() {
                         onClick={() => removeCheckinOfficer(officer)}
                         size="sm"
                         variant="outline"
-                        style={{ borderColor: '#ff6b35', color: '#ff6b35', backgroundColor: 'transparent' }}
+                        disabled={updatingOfficer === officer.uid}
+                        style={{ 
+                          borderColor: '#ff6b35', 
+                          color: '#ff6b35', 
+                          backgroundColor: 'transparent',
+                          opacity: updatingOfficer === officer.uid ? 0.6 : 1 
+                        }}
                       >
-                        <UserMinus className="w-3 h-3" />
+                        {updatingOfficer === officer.uid ? (
+                          <span className="text-xs">Removing...</span>
+                        ) : (
+                          <UserMinus className="w-3 h-3" />
+                        )}
                       </Button>
                     </div>
                   ))
@@ -595,8 +678,8 @@ export default function EventDetailPage() {
                   <span style={{ color: '#fff' }}>{checkinOfficers.length}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span style={{ color: '#ABA8A9' }}>Capacity</span>
-                  <span style={{ color: '#fff' }}>{event.capacity}</span>
+                  <span style={{ color: '#ABA8A9' }}>Venue Capacity</span>
+                  <span style={{ color: '#fff' }}>{event.venue?.capacity || 'N/A'}</span>
                 </div>
               </div>
             </motion.div>

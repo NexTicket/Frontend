@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Wrapper, Status } from '@googlemaps/react-wrapper';
-import { MapPin, Loader2 } from 'lucide-react';
+import { MapPin, Loader2, Search } from 'lucide-react';
 
 interface LocationPickerProps {
   onLocationSelect: (location: {
@@ -191,13 +191,16 @@ const LocationPickerInner: React.FC<Omit<LocationPickerProps, 'apiKey'>> = ({
     <div className={`space-y-4 ${className}`}>
       {/* Search Input */}
       <div className="space-y-2">
-        <label className="text-sm font-medium text-gray-700">Search for a location</label>
-        <input
-          ref={inputRef}
-          type="text"
-          placeholder="Enter an address or place name..."
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        />
+        <label className="text-sm font-medium text-foreground">Search for a location</label>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <input
+            ref={inputRef}
+            type="text"
+            placeholder="Enter an address or place name..."
+            className="w-full pl-10 pr-3 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+          />
+        </div>
       </div>
 
       {/* Map */}
@@ -217,21 +220,23 @@ const LocationPickerInner: React.FC<Omit<LocationPickerProps, 'apiKey'>> = ({
 
       {/* Selected Location Display */}
       {selectedLocation && (
-        <div className="p-3 bg-gray-50 rounded-lg">
-          <div className="flex items-start gap-2">
-            <MapPin className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="text-sm font-medium text-gray-900">Selected Location</p>
-              <p className="text-sm text-gray-600">{selectedLocation.address}</p>
-              <p className="text-xs text-gray-500">
-                {selectedLocation.latitude.toFixed(6)}, {selectedLocation.longitude.toFixed(6)}
+        <div className="p-4 bg-muted/50 border border-border rounded-lg">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-primary/10 rounded-full">
+              <MapPin className="h-4 w-4 text-primary" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-foreground mb-1">Selected Location</p>
+              <p className="text-sm text-muted-foreground mb-1">{selectedLocation.address}</p>
+              <p className="text-xs text-muted-foreground">
+                Coordinates: {selectedLocation.latitude.toFixed(6)}, {selectedLocation.longitude.toFixed(6)}
               </p>
             </div>
           </div>
         </div>
       )}
 
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-muted-foreground">
         Click on the map to select a location, or search for an address above.
       </p>
     </div>

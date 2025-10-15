@@ -34,7 +34,25 @@ interface UserLockedSeatsResponse {
   };
 }
 
-const APIGATEWAY_TICKET_URL = (process.env.API_GATEWAY_URL || 'http://localhost:5000' ) + '/ticket_service';
+interface BulkTicketInfo {
+  id: string | number;
+  event_id: number;
+  venue_id: number;
+  seat_type: string;
+  price: number;
+  seat_prefix: string;
+}
+
+export interface UserTicketResponse {
+  id: string | number;
+  order_id: string | number;
+  qr_code_data: string;
+  seat_id: string;
+  price_paid: number;
+  status: string;
+  created_at: string;
+  bulk_ticket: BulkTicketInfo;
+}
 
 export async function getUserLockedSeats(): Promise<UserLockedSeatsResponse> {
   try {
@@ -150,6 +168,54 @@ export async function lockSeats({
     return data;
   } catch (error) {
     console.error('Error locking seats:', error);
+    throw error;
+  }
+}
+
+export async function getUserTickets(): Promise<UserTicketResponse[]> {
+  try {
+    if (typeof window === 'undefined') {
+      throw new Error('This function can only be called on the client side');
+    }
+
+    const { getAuth, onAuthStateChanged } = await import('firebase/auth');
+    const auth = getAuth();
+
+    const user = await new Promise<any>((resolve) => {
+      const unsubscribe = onAuthStateChanged(auth, (authUser) => {
+        unsubscribe();
+        resolve(authUser);
+      });
+    });
+
+    if (!user) {
+      console.warn('No authenticated user found. Returning empty ticket list.');
+      return [];
+    }
+
+    const token = await user.getIdToken();
+
+    const response = await fetch('http://localhost:5000/ticket_service/api/tickets/user/tickets', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (!Array.isArray(data)) {
+      throw new Error('Unexpected response format when fetching user tickets');
+    }
+
+    return data as UserTicketResponse[];
+  } catch (error) {
+    console.error('Error fetching user tickets:', error);
     throw error;
   }
 }
