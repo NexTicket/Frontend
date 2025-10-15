@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/components/auth/auth-provider';
 import { useRouter, useParams } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { 
   Calendar,
@@ -17,9 +17,11 @@ import {
   UserPlus,
   UserMinus,
   CheckCircle,
-  Plus
+  Plus,
+  Ticket
 } from 'lucide-react';
 import { fetchMyAssignedEvents, fetchCheckinOfficers, updateEventDetails } from '@/lib/api';
+import CreateTicketForm from '@/components/ui/event/create-ticket-form';
 
 // Theme to match other admin pages
 const darkBg = "#181A20";
@@ -72,6 +74,8 @@ export default function EventDetailPage() {
   const [showAddOfficer, setShowAddOfficer] = useState(false);
   const [loadingOfficers, setLoadingOfficers] = useState(false);
   const [updatingOfficer, setUpdatingOfficer] = useState<string | null>(null);
+  const [showCreateTicket, setShowCreateTicket] = useState(false);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
   // Mock checkin officers data (fallback)
   const mockOfficers: CheckinOfficer[] = [
@@ -356,8 +360,35 @@ export default function EventDetailPage() {
     return timeString;
   };
 
+  const handleTicketCreationSuccess = () => {
+    setShowSuccessMessage(true);
+    setTimeout(() => {
+      setShowSuccessMessage(false);
+    }, 5000);
+  };
+
   return (
     <div className="min-h-screen" style={{ background: darkBg }}>
+      {/* Success Message */}
+      <AnimatePresence>
+        {showSuccessMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -50 }}
+            className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50"
+          >
+            <div
+              className="px-6 py-4 rounded-lg shadow-xl flex items-center space-x-3"
+              style={{ backgroundColor: '#CBF83E', color: '#000' }}
+            >
+              <CheckCircle className="w-5 h-5" />
+              <span className="font-medium">Tickets created successfully!</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Background Elements */}
       <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-20" style={{ backgroundColor: '#ABA8A9' }}></div>
       <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-15" style={{ backgroundColor: '#D8DFEE' }}></div>
@@ -541,7 +572,34 @@ export default function EventDetailPage() {
                   <span>{formatTime(event.startTime)} - {formatTime(event.endTime)}</span>
                 </div>
               </div>
+
+              {/* Create Tickets Button */}
+              <div className="mt-6">
+                {!showCreateTicket ? (
+                  <Button
+                    onClick={() => setShowCreateTicket(true)}
+                    className="w-full"
+                    style={{ background: '#CBF83E', color: '#000' }}
+                  >
+                    <Ticket className="w-4 h-4 mr-2" />
+                    Create Tickets
+                  </Button>
+                ) : null}
+              </div>
             </motion.div>
+
+            {/* Create Ticket Form */}
+            <AnimatePresence>
+              {showCreateTicket && event.venue?.id && (
+                <CreateTicketForm
+                  eventId={event.id}
+                  venueId={event.venue.id}
+                  venueCapacity={event.venue?.capacity || 1000}
+                  onSuccess={handleTicketCreationSuccess}
+                  onClose={() => setShowCreateTicket(false)}
+                />
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Sidebar - Team Management */}
