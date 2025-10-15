@@ -54,6 +54,8 @@ export interface UserTicketResponse {
   bulk_ticket: BulkTicketInfo;
 }
 
+const APIGATEWAY_TICKET_URL = (process.env.API_GATEWAY_URL || 'http://localhost:5000' ) + '/ticket_service';
+
 export async function getUserLockedSeats(): Promise<UserLockedSeatsResponse> {
   try {
     // Ensure we're on the client side
@@ -161,7 +163,17 @@ export async function lockSeats({
     });
     
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      // Handle 409 Conflict specifically
+      if (response.status === 409) {
+        const errorData = await response.json();
+        const errorMessage = errorData.detail || 'Seats already locked by other users';
+        throw new Error(`HTTP 409: ${errorMessage}`);
+      }
+      
+      // Handle other errors
+      const errorData = await response.json().catch(() => null);
+      const errorMessage = errorData?.detail || errorData?.message || `HTTP error! status: ${response.status}`;
+      throw new Error(errorMessage);
     }
     
     const data = await response.json();
@@ -195,7 +207,7 @@ export async function getUserTickets(): Promise<UserTicketResponse[]> {
 
     const token = await user.getIdToken();
 
-    const response = await fetch('http://localhost:5000/ticket_service/api/tickets/user/tickets', {
+    const response = await fetch(`${APIGATEWAY_TICKET_URL}/api/tickets/user/tickets`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
