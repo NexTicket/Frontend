@@ -138,15 +138,16 @@ export const updateEventDetails = async (eventId: string | number, eventData: an
 };
 
 export const fetchVenueSeatMap = async (id: number | string) => {
-  const url = getEventServiceUrl(`/api/venues/${id}/seats`);
+  // Use public route for seat map - needed for customers to view available seats
+  const url = `${API_GATEWAY_URL}/public/api/venues/${id}/seats`;
   const res = await publicFetch(url);
   if (!res.ok) throw new Error("Failed to fetch venue seat map");
   return res.json();
 };
 
 export async function fetchVenues() {
-  // Use publicFetch since venues should be accessible to everyone
-  const url = getPublicUrl('/api/venues');
+  // Use public route - accessible to everyone without auth
+  const url = `${API_GATEWAY_URL}/public/api/venues`;
   const res = await publicFetch(url);
   if (!res.ok) throw new Error("Failed to fetch venues");
   return res.json();
@@ -183,9 +184,8 @@ export async function fetchVenueAvailability(venueId: string | number, date: str
   if (startTime) params.append('startTime', startTime);
   if (endTime) params.append('endTime', endTime);
 
-  //////////
   const queryString = params.toString();
-  const url = getEventServiceUrl(`/api/venues/${venueId}/availability?${queryString}`);
+  const url = getVenueServiceUrl(`/api/venues/${venueId}/availability?${queryString}`);
   const res = await publicFetch(url);
   if (!res.ok) throw new Error("Failed to fetch venue availability");
   return res.json();
@@ -210,7 +210,8 @@ export async function createVenue(venueData: any) {
 }
 
 export async function updateVenue(id: string, venueData: any) {
-  const url = getEventServiceUrl(`/api/venues/${id}`);
+  // Backend route expects /api/venues/updatevenue/:id
+  const url = getEventServiceUrl(`/api/venues/updatevenue/${id}`);
   const res = await secureFetch(url, {
     method: 'PUT',
     body: JSON.stringify(venueData)
@@ -306,8 +307,10 @@ export async function uploadVenueImages(id: string, imageFiles: File[]) {
 }
 
 export async function fetchEvents(status?: string) {
-  const url = status ? getPublicUrl(`/api/events?status=${status}`) : getPublicUrl('/api/events');
-  const res = await publicFetch(url);
+  // Use optionalAuthFetch - allows admins to see PENDING events when filtering
+  // Public users will only see APPROVED events
+  const url = status ? `${API_GATEWAY_URL}/public/api/events?status=${status}` : `${API_GATEWAY_URL}/public/api/events`;
+  const res = await optionalAuthFetch(url);
   if (!res.ok) throw new Error("Failed to fetch events");
   return res.json();
 }
@@ -321,22 +324,23 @@ export async function fetchEventsByOrganizer(organizerId: string) {
 }
 
 export async function fetchEventsByVenueId(venueId: number | string) {
-  const res = await publicFetch(getEventServiceUrl(`/api/events/venue/${venueId}`));
+  // Use public route - anyone should be able to see events at a venue
+  const url = `${API_GATEWAY_URL}/public/api/events/venue/${venueId}`;
+  const res = await publicFetch(url);
   if (!res.ok) throw new Error("Failed to fetch events for venue");
   return res.json();
 }
 
 export async function fetchEventById(id: string) {
-  // Backend route currently exposes GET /api/events/geteventbyid/:id
-  // const res = await publicFetch(getEventServiceUrl(`/api/events/geteventbyid/${id}`));
-  // if (!res.ok) throw new Error("Failed to fetch event");
-  // return res.json();
-  const url = getEventServiceUrl(`/api/events/${id}`);
+  // Use optionalAuthFetch - sends auth token if user is logged in
+  // This allows admins to see PENDING events while public users see only APPROVED
+  // Updated to use RESTful route: /api/events/:id
+  const url = getEventServiceUrl(`/api/events/geteventbyid/${id}`);
   const res = await optionalAuthFetch(url);
   if (!res.ok) {
     const errorText = await res.text();
-    console.error(`Failed to fetch event:`, res.status, errorText);
-    throw new Error(`Failed to fetch event:${res.status} ${errorText}`);
+    console.error('Failed to fetch event:', res.status, errorText);
+    throw new Error(`Failed to fetch event: ${res.status} ${errorText}`);
   }
   return res.json();
 }
@@ -433,8 +437,8 @@ export async function createEvent(eventData: {
 
 // Delete event by id
 export async function deleteEvent(id: string) {
-  // Backend route expects /api/events/delete-event/:id
-  const res = await secureFetch(getEventServiceUrl(`/api/events/delete-event/${id}`), {
+  // Updated to match RESTful backend route: DELETE /api/events/:id
+  const res = await secureFetch(getEventServiceUrl(`/api/events/${id}`), {
     method: 'DELETE'
   });
   if (!res.ok) {
