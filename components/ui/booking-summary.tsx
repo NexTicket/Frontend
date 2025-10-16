@@ -83,7 +83,21 @@ export function BookingSummary({
     setErrorToast({ show: false, message: '', conflictedSeats: [] });
     
     try {
-      const seatIds = selectedSeatsData.map(seat => `${seat.section}${seat.row}${seat.number}`);
+      // Convert seat data to the new format with section, row_id, col_id
+      const seatIds = selectedSeatsData.map(seat => {
+        // Parse the section and position from the seat data
+        // Expected format: seat has section (string), row (string/number), number (number)
+        const sectionId = typeof seat.section === 'string' ? seat.section : seat.section;
+        const rowId = typeof seat.row === 'string' ? parseInt(seat.row) - 1 : seat.row;
+        const colId = seat.number - 1;
+        
+        return {
+          section: sectionId,
+          row_id: rowId,
+          col_id: colId
+        };
+      });
+      
       console.log('Locking seats:', seatIds);
       const response = await lockSeats({
         event_id: eventId || 1, // Use provided eventId or default to 1
@@ -98,7 +112,10 @@ export function BookingSummary({
           clientSecret: response.client_secret,
           paymentIntentId: response.payment_intent_id,
           total: (totalPrice + serviceFee).toFixed(2),
-          expiresAt: response.expires_at
+          subtotal: totalPrice.toFixed(2),
+          serviceFee: serviceFee.toFixed(2),
+          expiresAt: response.expires_at,
+          seatCount: selectedSeatsData.length
         }));
         
         // Proceed to checkout after successful seat locking

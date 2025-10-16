@@ -87,59 +87,43 @@ export default function CheckoutPage() {
         // Handle the actual response structure from your backend
         if (response && response.seat_ids && response.seat_ids.length > 0) {
           // Extract bulk ticket info if available
-          if (response.bulk_ticket_info?.additionalProp1) {
-            const bulkInfo = response.bulk_ticket_info.additionalProp1;
-            setBulkTicketInfo({
-              bulk_ticket_id: parseInt(response.cart_id, 10) || 1,
-              price_per_seat: bulkInfo?.price_per_ticket || 75,
-              seat_type: bulkInfo?.seat_type || 'Standard'
-            });
-            console.log('Bulk ticket info:', response.bulk_ticket_info);
+          // Response structure: { bulk_ticket_info: { bulk_ticket_id, price_per_seat, seat_type } }
+          let pricePerSeat = 75; // default
+          let seatType = 'Standard'; // default
+          let bulkTicketId = 1; // default
+          
+          if (response.bulk_ticket_info) {
+            // Direct access to bulk_ticket_info properties
+            pricePerSeat = response.bulk_ticket_info.price_per_seat || 75;
+            seatType = response.bulk_ticket_info.seat_type || 'Standard';
+            bulkTicketId = response.bulk_ticket_info.bulk_ticket_id || 1;
           }
           
-          // Transform seat_ids into seat format
-          const seatsFromResponse = response.seat_ids.map((seatId: string, index: number) => {
-            // Parse seat_id format
-            let section = '';
-            let row = '';
-            let number = 0;
-            
-            // Try to match patterns like "Orchestra A7" or just "A7"
-            if (seatId.includes(' ')) {
-              // Format like "Orchestra A7"
-              const parts = seatId.split(' ');
-              section = parts[0];
-              
-              if (parts.length > 1) {
-                // Extract row and number from the second part (e.g., "A7")
-                const rowNumMatch = parts[1].match(/([A-Za-z]+)([0-9]+)$/);
-                if (rowNumMatch && rowNumMatch.length > 2) {
-                  row = rowNumMatch[1];
-                  number = parseInt(rowNumMatch[2], 10);
-                }
-              }
-            } else {
-              // Format like "A7" (no space)
-              section = 'Orchestra'; // Default section
-              const rowNumMatch = seatId.match(/([A-Za-z]+)([0-9]+)$/);
-              if (rowNumMatch && rowNumMatch.length > 2) {
-                row = rowNumMatch[1];
-                number = parseInt(rowNumMatch[2], 10);
-              }
-            }
-            
-            // Get price from bulk_ticket_info if available, otherwise use default
-            const price = response.bulk_ticket_info?.additionalProp1?.price_per_ticket || 75;
+          setBulkTicketInfo({
+            bulk_ticket_id: bulkTicketId,
+            price_per_seat: pricePerSeat,
+            seat_type: seatType
+          });
+          console.log('Bulk ticket info set:', { bulkTicketId, pricePerSeat, seatType });
+          
+          // Transform seat_ids from new structure: {section, row_id, col_id}
+          const seatsFromResponse = response.seat_ids.map((seat: any, index: number) => {
+            // seat is now an object with {section, row_id, col_id}
+            const section = seat.section || 'Unknown';
+            const rowId = seat.row_id ?? 0;
+            const colId = seat.col_id ?? 0;
             
             return {
-              id: `${response.cart_id}-${index}`,
-              section,
-              row,
-              number,
-              price
+              id: `${response.order_id}-${index}`,
+              section: section,
+              // Display format: convert 0-indexed to 1-indexed for better UX
+              row: (rowId + 1).toString(),
+              number: colId + 1,
+              price: pricePerSeat
             };
           });
           
+          console.log('Seats transformed:', seatsFromResponse);
           setSelectedSeats(seatsFromResponse);
         } else {
           console.error('Failed to get locked seats - invalid response format:', response);
@@ -363,8 +347,8 @@ export default function CheckoutPage() {
                       selectedSeats.map(seat => (
                         <div key={seat.id} className="flex items-center justify-between text-sm">
                           <span style={{ color: '#ABA8A9' }}>
-                            {/* Only show section name once, then row and number */}
-                            {seat.section === 'Orchestra' ? '' : `${seat.section} `}{seat.row}{seat.number}
+                            {/* Format: SECTION row-col (e.g., "economy 1-5") */}
+                            {seat.section} {seat.row}-{seat.number}
                           </span>
                           <span style={{ color: '#CBF83E' }}>LKR {pricePerSeat}</span>
                         </div>

@@ -15,7 +15,10 @@ interface CheckoutData {
   clientSecret: string;
   paymentIntentId?: string;
   total: string;
+  subtotal?: string;
+  serviceFee?: string;
   expiresAt?: string;
+  seatCount?: number;
 }
 
 const cardElementOptions = {
