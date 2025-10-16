@@ -1,6 +1,10 @@
 interface LockSeatsRequest {
   event_id: number;
-  seat_ids: string[];
+  seat_ids: Array<{
+    section: string;
+    row_id: number;
+    col_id: number;
+  }>;
   bulk_ticket_id: string;
 }
 
@@ -19,18 +23,21 @@ interface LockSeatsResponse {
 }
 
 interface UserLockedSeatsResponse {
-  cart_id: string;
+  order_id: string;
   user_id: string;
-  seat_ids: string[];
+  seat_ids: Array<{
+    section: string;
+    row_id: number;
+    col_id: number;
+  }>;
   event_id: number;
   status: string;
   expires_at: string;
   remaining_seconds: number;
   bulk_ticket_info?: {
-    additionalProp1?: {
-      price_per_ticket?: number;
-      seat_type?: string;
-    };
+    bulk_ticket_id: number;
+    price_per_seat: number;
+    seat_type: string;
   };
 }
 
@@ -79,18 +86,20 @@ export async function getUserLockedSeats(): Promise<UserLockedSeatsResponse> {
       console.warn('No authenticated user found. Using mock data instead.');
       // Return mock data for development/testing matching the expected structure
       return {
-        cart_id: 'mock-cart-1',
+        order_id: 'mock-order-1',
         user_id: 'mock-user-id',
-        seat_ids: ['Orchestra A1', 'Orchestra B2'],
+        seat_ids: [
+          { section: 'economy', row_id: 0, col_id: 0 },
+          { section: 'economy', row_id: 0, col_id: 1 }
+        ],
         event_id: 1,
         status: 'locked',
         expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(), // 10 minutes from now
         remaining_seconds: 10 * 60,
         bulk_ticket_info: {
-          additionalProp1: {
-            price_per_ticket: 200.0,
-            seat_type: 'VIP'
-          }
+          bulk_ticket_id: 1,
+          price_per_seat: 200.0,
+          seat_type: 'VIP'
         }
       };
     }
