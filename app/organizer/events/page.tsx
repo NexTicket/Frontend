@@ -1,9 +1,13 @@
 "use client"
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { Loading } from '@/components/ui/loading';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '@/components/auth/auth-provider';
+import { fetchEventsByOrganizer } from '@/lib/api';
 import { 
   Plus, 
   Calendar, 
@@ -20,115 +24,152 @@ import {
   Tag,
   Ticket,
   TrendingUp,
-  ArrowLeft
+  ArrowLeft,
+  AlertCircle
 } from 'lucide-react';
-import { mockEvents } from '@/lib/mock-data';
 
-type EventStatus = 'all' | 'upcoming' | 'today' | 'past';
-type SortOption = 'date-asc' | 'date-desc' | 'title-asc' | 'title-desc' | 'price-asc' | 'price-desc' | 'capacity-asc' | 'capacity-desc';
+type EventStatus = 'all' | 'upcoming' | 'today' | 'past' | 'PENDING' | 'APPROVED' | 'REJECTED';
+type SortOption = 'date-asc' | 'date-desc' | 'title-asc' | 'title-desc';
 type ViewMode = 'grid' | 'list';
 
+interface Event {
+  id: number;
+  title: string;
+  description: string;
+  category: string;
+  type: string;
+  startDate: string;
+  endDate?: string;
+  startTime?: string;
+  endTime?: string;
+  image?: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  venueId?: number;
+  Venue?: {
+    id: number;
+    name: string;
+    location: string;
+    capacity: number;
+  };
+}
+
 export default function OrganizerEventsPage() {
+  const router = useRouter();
+  const { firebaseUser, userProfile, isLoading: authLoading } = useAuth();
+  
   // State management
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<EventStatus>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<SortOption>('date-asc');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 500]);
-  const [selectedVenue, setSelectedVenue] = useState<string>('all');
 
   // Get today's date for comparison
   const today = new Date().toISOString().split('T')[0];
 
+  // Fetch organizer's events
+  useEffect(() => {
+    const loadEvents = async () => {
+      if (!firebaseUser?.uid) return;
+      
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await fetchEventsByOrganizer(firebaseUser.uid);
+        const eventsData = response?.data || response || [];
+        console.log('📥 Loaded organizer events:', eventsData);
+        setEvents(eventsData);
+      } catch (err: any) {
+        console.error('❌ Failed to load events:', err);
+        setError(err.message || 'Failed to load events');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (!authLoading) {
+      loadEvents();
+    }
+  }, [firebaseUser?.uid, authLoading]);
+
   // Get unique categories for filters
   const categories = useMemo(() => {
-    const cats = [...new Set(mockEvents.map(event => event.category))];
+    const cats = [...new Set(events.map(event => event.category))];
     return cats.sort();
-  }, []);
+  }, [events]);
 
   // Filter and sort events
   const filteredAndSortedEvents = useMemo(() => {
-    const filtered = mockEvents.filter(event => {
+    const filtered = events.filter(event => {
       // Search filter
       const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           event.venue.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           event.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
+                           (event.Venue?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
 
       // Status filter
       let matchesStatus = true;
       if (statusFilter !== 'all') {
-        const eventDate = event.date;
-        if (statusFilter === 'upcoming') {
-          matchesStatus = eventDate > today;
-        } else if (statusFilter === 'today') {
-          matchesStatus = eventDate === today;
-        } else if (statusFilter === 'past') {
-          matchesStatus = eventDate < today;
+        if (statusFilter === 'PENDING' || statusFilter === 'APPROVED' || statusFilter === 'REJECTED') {
+          matchesStatus = event.status === statusFilter;
+        } else {
+          const eventDate = event.startDate;
+          if (statusFilter === 'upcoming') {
+            matchesStatus = eventDate > today;
+          } else if (statusFilter === 'today') {
+            matchesStatus = eventDate === today;
+          } else if (statusFilter === 'past') {
+            matchesStatus = eventDate < today;
+          }
         }
       }
 
       // Category filter
       const matchesCategory = categoryFilter === 'all' || event.category === categoryFilter;
 
-      // Price range filter
-      const matchesPrice = event.price >= priceRange[0] && event.price <= priceRange[1];
-
-      // Venue filter
-      const matchesVenue = selectedVenue === 'all' || event.venue === selectedVenue;
-
-      return matchesSearch && matchesStatus && matchesCategory && matchesPrice && matchesVenue;
+      return matchesSearch && matchesStatus && matchesCategory;
     });
 
     // Sort events
     filtered.sort((a, b) => {
       switch (sortBy) {
         case 'date-asc':
-          return new Date(a.date).getTime() - new Date(b.date).getTime();
+          return new Date(a.startDate).getTime() - new Date(b.startDate).getTime();
         case 'date-desc':
-          return new Date(b.date).getTime() - new Date(a.date).getTime();
+          return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
         case 'title-asc':
           return a.title.localeCompare(b.title);
         case 'title-desc':
           return b.title.localeCompare(a.title);
-        case 'price-asc':
-          return a.price - b.price;
-        case 'price-desc':
-          return b.price - a.price;
-        case 'capacity-asc':
-          return a.capacity - b.capacity;
-        case 'capacity-desc':
-          return b.capacity - a.capacity;
         default:
           return 0;
       }
     });
 
     return filtered;
-  }, [searchTerm, statusFilter, categoryFilter, sortBy, priceRange, selectedVenue, today]);
+  }, [events, searchTerm, statusFilter, categoryFilter, sortBy, today]);
 
   // Get event statistics
   const eventStats = useMemo(() => {
-    const upcoming = mockEvents.filter(event => event.date > today).length;
-    const todayCount = mockEvents.filter(event => event.date === today).length;
-    const past = mockEvents.filter(event => event.date < today).length;
-    const totalRevenue = mockEvents.reduce((sum, event) => 
-      sum + (event.price * (event.capacity - event.availableTickets)), 0
-    );
-    const totalTicketsSold = mockEvents.reduce((sum, event) => 
-      sum + (event.capacity - event.availableTickets), 0
-    );
+    const upcoming = events.filter(event => event.startDate > today).length;
+    const todayCount = events.filter(event => event.startDate === today).length;
+    const past = events.filter(event => event.startDate < today).length;
+    const pending = events.filter(event => event.status === 'PENDING').length;
+    const approved = events.filter(event => event.status === 'APPROVED').length;
+    const rejected = events.filter(event => event.status === 'REJECTED').length;
 
     return {
-      total: mockEvents.length,
+      total: events.length,
       upcoming,
       today: todayCount,
       past,
-      totalRevenue,
-      totalTicketsSold
+      pending,
+      approved,
+      rejected
     };
-  }, [today]);
+  }, [events, today]);
 
   const getEventStatus = (eventDate: string) => {
     if (eventDate > today) return 'upcoming';
@@ -153,15 +194,12 @@ export default function OrganizerEventsPage() {
     setSearchTerm('');
     setStatusFilter('all');
     setCategoryFilter('all');
-    setPriceRange([0, 500]);
-    setSelectedVenue('all');
     setSortBy('date-asc');
   };
 
-  const EventCard = ({ event }: { event: typeof mockEvents[0] }) => {
-    const status = getEventStatus(event.date);
-    const ticketsSold = event.capacity - event.availableTickets;
-    const salesPercentage = Math.round((ticketsSold / event.capacity) * 100);
+  const EventCard = ({ event }: { event: Event }) => {
+    const status = getEventStatus(event.startDate);
+    const approvalStatus = event.status;
 
     return (
       <motion.div
@@ -172,11 +210,24 @@ export default function OrganizerEventsPage() {
         whileHover={{ y: -4 }}
         transition={{ duration: 0.2 }}
         className="bg-card rounded-lg border p-6 hover:shadow-lg hover:shadow-primary/5 dark:hover:shadow-primary/10 transition-all duration-300 group cursor-pointer hover:border-primary/20 dark:hover:border-primary/30"
+        onClick={() => router.push(`/organizer/events/${event.id}`)}
       >
-        <div className="aspect-video bg-gradient-to-br from-primary/20 to-primary/10 dark:from-primary/30 dark:to-primary/20 rounded-lg mb-4 flex items-center justify-center relative group-hover:from-primary/30 group-hover:to-primary/20 dark:group-hover:from-primary/40 dark:group-hover:to-primary/30 transition-all duration-300">
-          <Calendar className="h-8 w-8 text-primary group-hover:scale-110 transition-transform duration-300" />
+        {/* Event Image */}
+        <div className="aspect-video bg-gradient-to-br from-primary/20 to-primary/10 dark:from-primary/30 dark:to-primary/20 rounded-lg mb-4 flex items-center justify-center relative group-hover:from-primary/30 group-hover:to-primary/20 dark:group-hover:from-primary/40 dark:group-hover:to-primary/30 transition-all duration-300 overflow-hidden">
+          {event.image ? (
+            <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
+          ) : (
+            <Calendar className="h-8 w-8 text-primary group-hover:scale-110 transition-transform duration-300" />
+          )}
           <span className={`absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(status)} backdrop-blur-sm`}>
             {status.charAt(0).toUpperCase() + status.slice(1)}
+          </span>
+          <span className={`absolute top-2 left-2 px-2 py-1 rounded-full text-xs font-medium backdrop-blur-sm ${
+            approvalStatus === 'APPROVED' ? 'bg-green-100 text-green-800 dark:bg-green-900/60 dark:text-green-200 border border-green-200 dark:border-green-700' :
+            approvalStatus === 'PENDING' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/60 dark:text-yellow-200 border border-yellow-200 dark:border-yellow-700' :
+            'bg-red-100 text-red-800 dark:bg-red-900/60 dark:text-red-200 border border-red-200 dark:border-red-700'
+          }`}>
+            {approvalStatus}
           </span>
         </div>
         
@@ -189,69 +240,65 @@ export default function OrganizerEventsPage() {
           <div className="space-y-2 text-sm text-muted-foreground">
             <div className="flex items-center">
               <Calendar className="h-4 w-4 mr-2" />
-              {new Date(event.date).toLocaleDateString()} at {event.time}
+              {new Date(event.startDate).toLocaleDateString()} {event.startTime && `at ${event.startTime}`}
             </div>
-            <div className="flex items-center">
-              <MapPin className="h-4 w-4 mr-2" />
-              {event.venue}
-            </div>
+            {event.Venue && (
+              <div className="flex items-center">
+                <MapPin className="h-4 w-4 mr-2" />
+                {event.Venue.name}
+              </div>
+            )}
             <div className="flex items-center">
               <Tag className="h-4 w-4 mr-2" />
               {event.category}
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 py-2 border-t border-b">
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground">Sold</p>
-              <p className="font-semibold">{ticketsSold.toLocaleString()}</p>
+          <div className="grid grid-cols-2 gap-4 py-2 border-t">
+            <div>
+              <p className="text-sm text-muted-foreground">Type</p>
+              <p className="font-semibold">{event.type}</p>
             </div>
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground">Available</p>
-              <p className="font-semibold">{event.availableTickets.toLocaleString()}</p>
-            </div>
+            {event.Venue && (
+              <div>
+                <p className="text-sm text-muted-foreground">Capacity</p>
+                <p className="font-semibold">{event.Venue.capacity.toLocaleString()}</p>
+              </div>
+            )}
           </div>
 
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Sales Progress</span>
-              <span>{salesPercentage}%</span>
-            </div>
-            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
-              <div 
-                className="bg-gradient-to-r from-primary to-primary/80 h-2 rounded-full transition-all duration-500 ease-out group-hover:from-primary group-hover:to-primary/90"
-                style={{ width: `${salesPercentage}%` }}
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between pt-2">
-            <span className="text-xl font-bold text-primary group-hover:text-primary/80 transition-colors duration-300">${event.price}</span>
-            <div className="flex items-center space-x-2">
-              <Link href={`/organizer/events/${event.id}/view`}>
-                <Button variant="outline" size="sm" className="hover:bg-primary/10 dark:hover:bg-primary/20 hover:border-primary/30 transition-all duration-200">
-                  <Eye className="h-4 w-4" />
-                </Button>
-              </Link>
-              <Link href={`/organizer/events/${event.id}/edit`}>
-                <Button variant="outline" size="sm" className="hover:bg-primary/10 dark:hover:bg-primary/20 hover:border-primary/30 transition-all duration-200">
-                  <Edit className="h-4 w-4" />
-                </Button>
-              </Link>
-              <Button variant="outline" size="sm" className="hover:bg-primary/10 dark:hover:bg-primary/20 hover:border-primary/30 transition-all duration-200">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </div>
+          <div className="flex gap-2 pt-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push(`/organizer/events/${event.id}`);
+              }}
+            >
+              <Eye className="h-4 w-4 mr-2" />
+              View Details
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push(`/organizer/events/${event.id}/edit`);
+              }}
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
           </div>
         </div>
       </motion.div>
     );
   };
 
-  const EventListItem = ({ event }: { event: typeof mockEvents[0] }) => {
-    const status = getEventStatus(event.date);
-    const ticketsSold = event.capacity - event.availableTickets;
-    const salesPercentage = Math.round((ticketsSold / event.capacity) * 100);
+  const EventListItem = ({ event }: { event: Event }) => {
+    const status = getEventStatus(event.startDate);
+    const approvalStatus = event.status;
 
     return (
       <motion.div
@@ -262,10 +309,15 @@ export default function OrganizerEventsPage() {
         whileHover={{ x: 4 }}
         transition={{ duration: 0.2 }}
         className="bg-card rounded-lg border p-4 hover:shadow-md hover:shadow-primary/5 dark:hover:shadow-primary/10 transition-all duration-300 group cursor-pointer hover:border-primary/20 dark:hover:border-primary/30"
+        onClick={() => router.push(`/organizer/events/${event.id}`)}
       >
         <div className="flex items-center space-x-4">
-          <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 dark:from-primary/30 dark:to-primary/20 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:from-primary/30 group-hover:to-primary/20 dark:group-hover:from-primary/40 dark:group-hover:to-primary/30 transition-all duration-300">
-            <Calendar className="h-6 w-6 text-primary group-hover:scale-110 transition-transform duration-300" />
+          <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 dark:from-primary/30 dark:to-primary/20 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:from-primary/30 group-hover:to-primary/20 dark:group-hover:from-primary/40 dark:group-hover:to-primary/30 transition-all duration-300 overflow-hidden">
+            {event.image ? (
+              <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
+            ) : (
+              <Calendar className="h-6 w-6 text-primary group-hover:scale-110 transition-transform duration-300" />
+            )}
           </div>
           
           <div className="flex-1 min-w-0">
@@ -277,53 +329,69 @@ export default function OrganizerEventsPage() {
                 <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                   <div className="flex items-center">
                     <Calendar className="h-4 w-4 mr-1" />
-                    {new Date(event.date).toLocaleDateString()}
+                    {new Date(event.startDate).toLocaleDateString()}
                   </div>
-                  <div className="flex items-center">
-                    <Clock className="h-4 w-4 mr-1" />
-                    {event.time}
-                  </div>
-                  <div className="flex items-center">
-                    <MapPin className="h-4 w-4 mr-1" />
-                    {event.venue}
-                  </div>
+                  {event.startTime && (
+                    <div className="flex items-center">
+                      <Clock className="h-4 w-4 mr-1" />
+                      {event.startTime}
+                    </div>
+                  )}
+                  {event.Venue && (
+                    <div className="flex items-center">
+                      <MapPin className="h-4 w-4 mr-1" />
+                      {event.Venue.name}
+                    </div>
+                  )}
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(status)} backdrop-blur-sm`}>
                     {status.charAt(0).toUpperCase() + status.slice(1)}
+                  </span>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium backdrop-blur-sm ${
+                    approvalStatus === 'APPROVED' ? 'bg-green-100 text-green-800 dark:bg-green-900/60 dark:text-green-200' :
+                    approvalStatus === 'PENDING' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/60 dark:text-yellow-200' :
+                    'bg-red-100 text-red-800 dark:bg-red-900/60 dark:text-red-200'
+                  }`}>
+                    {approvalStatus}
                   </span>
                 </div>
               </div>
               
               <div className="flex items-center space-x-6 text-center">
                 <div>
-                  <p className="text-sm text-muted-foreground">Price</p>
-                  <p className="font-bold text-primary group-hover:text-primary/80 transition-colors duration-300">${event.price}</p>
+                  <p className="text-sm text-muted-foreground">Type</p>
+                  <p className="font-bold">{event.type}</p>
                 </div>
+                {event.Venue && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Capacity</p>
+                    <p className="font-semibold">{event.Venue.capacity.toLocaleString()}</p>
+                  </div>
+                )}
                 <div>
-                  <p className="text-sm text-muted-foreground">Sold</p>
-                  <p className="font-semibold">{ticketsSold}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Available</p>
-                  <p className="font-semibold">{event.availableTickets}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Progress</p>
-                  <p className="font-semibold">{salesPercentage}%</p>
+                  <p className="text-sm text-muted-foreground">Category</p>
+                  <p className="font-semibold">{event.category}</p>
                 </div>
                 
                 <div className="flex items-center space-x-2">
-                  <Link href={`/organizer/events/${event.id}/view`}>
-                    <Button variant="outline" size="sm" className="hover:bg-primary/10 dark:hover:bg-primary/20 hover:border-primary/30 transition-all duration-200">
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </Link>
-                  <Link href={`/organizer/events/${event.id}/edit`}>
-                    <Button variant="outline" size="sm" className="hover:bg-primary/10 dark:hover:bg-primary/20 hover:border-primary/30 transition-all duration-200">
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  </Link>
-                  <Button variant="outline" size="sm" className="hover:bg-primary/10 dark:hover:bg-primary/20 hover:border-primary/30 transition-all duration-200">
-                    <MoreVertical className="h-4 w-4" />
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      router.push(`/organizer/events/${event.id}`);
+                    }}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      router.push(`/organizer/events/${event.id}/edit`);
+                    }}
+                  >
+                    <Edit className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
@@ -389,24 +457,6 @@ export default function OrganizerEventsPage() {
                 <p className="text-2xl font-bold">{eventStats.today}</p>
               </div>
               <Clock className="h-8 w-8 text-green-500 group-hover:scale-110 transition-transform duration-300" />
-            </div>
-          </div>
-          <div className="bg-card rounded-lg border p-4 hover:shadow-lg hover:shadow-green-500/5 dark:hover:shadow-green-500/10 transition-all duration-300 group cursor-pointer hover:border-green-200 dark:hover:border-green-800">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors duration-300">Total Revenue</p>
-                <p className="text-xl font-bold">${eventStats.totalRevenue.toLocaleString()}</p>
-              </div>
-              <DollarSign className="h-8 w-8 text-green-500 group-hover:scale-110 transition-transform duration-300" />
-            </div>
-          </div>
-          <div className="bg-card rounded-lg border p-4 hover:shadow-lg hover:shadow-purple-500/5 dark:hover:shadow-purple-500/10 transition-all duration-300 group cursor-pointer hover:border-purple-200 dark:hover:border-purple-800">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors duration-300">Tickets Sold</p>
-                <p className="text-xl font-bold">{eventStats.totalTicketsSold.toLocaleString()}</p>
-              </div>
-              <Ticket className="h-8 w-8 text-purple-500 group-hover:scale-110 transition-transform duration-300" />
             </div>
           </div>
         </div>
@@ -495,7 +545,7 @@ export default function OrganizerEventsPage() {
         {/* Results Summary */}
         <div className="flex items-center justify-between mb-6">
           <p className="text-muted-foreground">
-            Showing <span className="font-semibold text-foreground">{filteredAndSortedEvents.length}</span> of <span className="font-semibold text-foreground">{mockEvents.length}</span> events
+            Showing <span className="font-semibold text-foreground">{filteredAndSortedEvents.length}</span> of <span className="font-semibold text-foreground">{events.length}</span> events
           </p>
         </div>
 

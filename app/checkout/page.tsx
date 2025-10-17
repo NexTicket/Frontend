@@ -73,7 +73,7 @@ export default function CheckoutPage() {
   // Calculate subtotal based on fetched seats and bulk_ticket_info
   const pricePerSeat = bulkTicketInfo?.price_per_seat || 75; // Default to 75 if no bulk price
   const subtotal = selectedSeats.length * pricePerSeat;
-  const serviceFee = 5;
+  const serviceFee = 25;
   const total = subtotal + serviceFee;
 
   // Fetch user's locked seats when the component mounts
@@ -87,59 +87,43 @@ export default function CheckoutPage() {
         // Handle the actual response structure from your backend
         if (response && response.seat_ids && response.seat_ids.length > 0) {
           // Extract bulk ticket info if available
-          if (response.bulk_ticket_info?.additionalProp1) {
-            const bulkInfo = response.bulk_ticket_info.additionalProp1;
-            setBulkTicketInfo({
-              bulk_ticket_id: parseInt(response.cart_id, 10) || 1,
-              price_per_seat: bulkInfo?.price_per_ticket || 75,
-              seat_type: bulkInfo?.seat_type || 'Standard'
-            });
-            console.log('Bulk ticket info:', response.bulk_ticket_info);
+          // Response structure: { bulk_ticket_info: { bulk_ticket_id, price_per_seat, seat_type } }
+          let pricePerSeat = 75; // default
+          let seatType = 'Standard'; // default
+          let bulkTicketId = 1; // default
+          
+          if (response.bulk_ticket_info) {
+            // Direct access to bulk_ticket_info properties
+            pricePerSeat = response.bulk_ticket_info.price_per_seat || 75;
+            seatType = response.bulk_ticket_info.seat_type || 'Standard';
+            bulkTicketId = response.bulk_ticket_info.bulk_ticket_id || 1;
           }
           
-          // Transform seat_ids into seat format
-          const seatsFromResponse = response.seat_ids.map((seatId: string, index: number) => {
-            // Parse seat_id format
-            let section = '';
-            let row = '';
-            let number = 0;
-            
-            // Try to match patterns like "Orchestra A7" or just "A7"
-            if (seatId.includes(' ')) {
-              // Format like "Orchestra A7"
-              const parts = seatId.split(' ');
-              section = parts[0];
-              
-              if (parts.length > 1) {
-                // Extract row and number from the second part (e.g., "A7")
-                const rowNumMatch = parts[1].match(/([A-Za-z]+)([0-9]+)$/);
-                if (rowNumMatch && rowNumMatch.length > 2) {
-                  row = rowNumMatch[1];
-                  number = parseInt(rowNumMatch[2], 10);
-                }
-              }
-            } else {
-              // Format like "A7" (no space)
-              section = 'Orchestra'; // Default section
-              const rowNumMatch = seatId.match(/([A-Za-z]+)([0-9]+)$/);
-              if (rowNumMatch && rowNumMatch.length > 2) {
-                row = rowNumMatch[1];
-                number = parseInt(rowNumMatch[2], 10);
-              }
-            }
-            
-            // Get price from bulk_ticket_info if available, otherwise use default
-            const price = response.bulk_ticket_info?.additionalProp1?.price_per_ticket || 75;
+          setBulkTicketInfo({
+            bulk_ticket_id: bulkTicketId,
+            price_per_seat: pricePerSeat,
+            seat_type: seatType
+          });
+          console.log('Bulk ticket info set:', { bulkTicketId, pricePerSeat, seatType });
+          
+          // Transform seat_ids from new structure: {section, row_id, col_id}
+          const seatsFromResponse = response.seat_ids.map((seat: any, index: number) => {
+            // seat is now an object with {section, row_id, col_id}
+            const section = seat.section || 'Unknown';
+            const rowId = seat.row_id ?? 0;
+            const colId = seat.col_id ?? 0;
             
             return {
-              id: `${response.cart_id}-${index}`,
-              section,
-              row,
-              number,
-              price
+              id: `${response.order_id}-${index}`,
+              section: section,
+              // Display format: convert 0-indexed to 1-indexed for better UX
+              row: (rowId + 1).toString(),
+              number: colId + 1,
+              price: pricePerSeat
             };
           });
           
+          console.log('Seats transformed:', seatsFromResponse);
           setSelectedSeats(seatsFromResponse);
         } else {
           console.error('Failed to get locked seats - invalid response format:', response);
@@ -166,37 +150,61 @@ export default function CheckoutPage() {
 
   if (orderComplete) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4 bg-background">
-        {/* Background Elements */}
-        <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-20 bg-muted"></div>
-        <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-15 bg-muted/50"></div>
-        
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
+      <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-background via-background to-primary/15 px-4">
+        <div className="absolute inset-0 -z-10 opacity-60">
+          <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-primary/20 blur-3xl"></div>
+          <div className="absolute bottom-10 left-10 h-56 w-56 rounded-full bg-secondary/20 blur-3xl"></div>
+          <div className="absolute top-1/2 left-1/3 h-40 w-40 -translate-y-1/2 rounded-full bg-muted/20 blur-3xl"></div>
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0, scale: 0.92 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.6 }}
-          className="max-w-md w-full text-center relative z-10"
+          transition={{ duration: 0.6, ease: 'easeOut' }}
+          className="relative z-10 w-full max-w-lg"
         >
-          <div className="backdrop-blur-xl border rounded-2xl p-8 shadow-xl bg-card border-border">
-            <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 bg-primary/20">
-              <Check className="h-8 w-8 text-primary" />
+          <div className="group relative overflow-hidden rounded-3xl border border-primary/20 bg-card/80 p-10 shadow-2xl backdrop-blur-xl">
+            <div className="absolute inset-0 z-[-1] bg-gradient-to-br from-primary/20 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100"></div>
+            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-lg">
+              <Check className="h-9 w-9" />
             </div>
-            <h1 className="text-2xl font-bold mb-2 text-foreground">Order Complete!</h1>
-            <p className="mb-6 text-muted-foreground">
-              Your tickets have been sent to your email address.
-            </p>
-            <div className="space-y-3">
-              <Link href="/profile">
-                <Button 
-                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
-                >
+            <div className="space-y-2 text-center">
+              <p className="text-xs uppercase tracking-[0.3em] text-primary/80">Payment successful</p>
+              <h1 className="text-3xl font-bold text-foreground">Order Complete!</h1>
+              <p className="text-sm text-muted-foreground">
+                Your tickets are on their way to your email. We also saved them in your profile for easy access.
+              </p>
+            </div>
+
+            <div className="mt-6 grid gap-4 rounded-2xl border border-border/60 bg-background/40 p-6 text-left">
+              <div className="flex items-center justify-between text-sm text-muted-foreground">
+                <span className="flex items-center gap-2 font-medium text-foreground">
+                  <ShoppingCart className="h-4 w-4 text-primary" />
+                  Order ID
+                </span>
+                <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary/80">
+                  #{orderId.toString().padStart(6, '0')}
+                </span>
+              </div>
+              <div className="flex items-start gap-3 rounded-xl bg-muted/10 p-3 text-sm text-muted-foreground">
+                <Calendar className="mt-1 h-4 w-4 text-primary" />
+                <div>
+                  <p className="font-medium text-foreground">What&apos;s next?</p>
+                  <p>Your QR tickets are ready in your profile. Present them at the venue for swift entry.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-8 space-y-3">
+              <Link href="/profile" className="block">
+                <Button className="w-full bg-gradient-to-r from-primary via-primary/90 to-primary/80 text-primary-foreground shadow-lg shadow-primary/40 transition-all duration-300 hover:shadow-xl hover:shadow-primary/40">
                   View My Tickets
                 </Button>
               </Link>
-              <Link href="/events">
-                <Button 
-                  variant="outline" 
-                  className="w-full border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+              <Link href="/events" className="block">
+                <Button
+                  variant="outline"
+                  className="w-full border-primary/40 text-primary transition-colors duration-300 hover:bg-primary/10"
                 >
                   Browse More Events
                 </Button>
@@ -339,8 +347,8 @@ export default function CheckoutPage() {
                       selectedSeats.map(seat => (
                         <div key={seat.id} className="flex items-center justify-between text-sm">
                           <span style={{ color: '#ABA8A9' }}>
-                            {/* Only show section name once, then row and number */}
-                            {seat.section === 'Orchestra' ? '' : `${seat.section} `}{seat.row}{seat.number}
+                            {/* Format: SECTION row-col (e.g., "economy 1-5") */}
+                            {seat.section} {seat.row}-{seat.number}
                           </span>
                           <span style={{ color: '#CBF83E' }}>LKR {pricePerSeat}</span>
                         </div>
