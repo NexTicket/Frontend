@@ -10,6 +10,7 @@ import {
 import { motion } from 'framer-motion';
 import { use } from 'react';
 import { getVenueSeats, VenueSeatMap, SeatSection, fetchEventById } from '@/lib/api';
+import { getBulkTicketPrices, BulkTicketPrice } from '@/lib/api_ticket';
 
 // Animation variants for smooth transitions
 const containerVariants = {
@@ -44,6 +45,7 @@ interface Seat {
   isAvailable: boolean;
   isSelected: boolean;
   color: string;
+  bulkTicketId?: number; // Add bulk ticket ID to seat
 }
 
 interface SeatingPageProps {
@@ -60,6 +62,7 @@ export default function SeatingPage({ params }: SeatingPageProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [event, setEvent] = useState<any>(null);
+  const [bulkTicketPrices, setBulkTicketPrices] = useState<BulkTicketPrice[]>([]);
 
   useEffect(() => {
     const loadEventAndSeatMap = async () => {
@@ -90,9 +93,30 @@ export default function SeatingPage({ params }: SeatingPageProps) {
         const venueData = await getVenueSeats(eventData.venueId);
         setSeatMap(venueData.seatMap);
 
+        // Fetch bulk ticket prices
+        console.log('Fetching bulk ticket prices for venue:', eventData.venueId, 'event:', eventData.id);
+        const pricesData = await getBulkTicketPrices(eventData.venueId, eventData.id);
+        console.log('Bulk ticket prices received:', pricesData);
+        setBulkTicketPrices(pricesData);
+
+        // Create a map of section to price and bulk_ticket_id
+        const priceMap = new Map<string, { price: number; bulkTicketId: number }>();
+        pricesData.forEach((priceInfo) => {
+          priceMap.set(priceInfo.section.toLowerCase(), {
+            price: priceInfo.price,
+            bulkTicketId: priceInfo.bulk_ticket_id
+          });
+        });
+
         // Generate seats from seat map
         const generatedSeats: Seat[] = [];
         venueData.seatMap.sections.forEach((section: SeatSection) => {
+          // Get price for this section from bulk ticket prices
+          const sectionPriceInfo = priceMap.get(section.name.toLowerCase()) || 
+                                   priceMap.get(section.id.toLowerCase());
+          const seatPrice = sectionPriceInfo?.price || (100 * section.price_multiplier); // Fallback to calculated price
+          const bulkTicketId = sectionPriceInfo?.bulkTicketId;
+
           for (let row = 0; row < section.rows; row++) {
             for (let col = 0; col < section.columns; col++) {
               const actualRow = section.startRow + row;
@@ -104,10 +128,11 @@ export default function SeatingPage({ params }: SeatingPageProps) {
                 sectionName: section.name,
                 row: actualRow,
                 col: actualCol,
-                price: 100 * section.price_multiplier, // Base price multiplied by section multiplier
+                price: seatPrice,
                 isAvailable: true, // TODO: Check with locked seats from backend
                 isSelected: false,
-                color: section.color
+                color: section.color,
+                bulkTicketId: bulkTicketId
               });
             }
           }
@@ -283,7 +308,7 @@ export default function SeatingPage({ params }: SeatingPageProps) {
                                 backgroundColor: section.color + '20',
                                 color: section.color
                               }}>
-                                LKR {(100 * section.price_multiplier).toFixed(0)} per seat
+                                LKR {sectionSeats[0]?.price?.toFixed(0) || (100 * section.price_multiplier).toFixed(0)} per seat
                               </span>
                             </div>
                             <div className="space-y-2">
@@ -352,7 +377,7 @@ export default function SeatingPage({ params }: SeatingPageProps) {
               serviceFee={0.00}
               checkoutUrl="/checkout"
               eventId={Number(event.id)}
-              bulkTicketId="3"
+              bulkTicketId={selectedSeatsData[0]?.bulkTicketId?.toString() || "1"}
             />
           </div>
         </motion.div>
