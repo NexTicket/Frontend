@@ -34,7 +34,7 @@ import {
   Tooltip,
   ResponsiveContainer
 } from 'recharts';
-import { fetchEvents, approveEvent, rejectEvent } from '@/lib/api';
+import { fetchEvents } from '@/lib/api';
 
 // Animation variants for smooth transitions
 const containerVariants = {
@@ -168,30 +168,6 @@ export default function AdminDashboard() {
       loadPendingEvents();
     }
   }, [userProfile]);
-
-  const handleApproveEvent = async (eventId: string) => {
-    try {
-      await approveEvent(eventId);
-      // Refresh pending events
-      const response = await fetchEvents('PENDING');
-      const events = response?.data || response || [];
-      setPendingEvents(events);
-    } catch (error) {
-      console.error('Failed to approve event:', error);
-    }
-  };
-
-  const handleRejectEvent = async (eventId: string) => {
-    try {
-      await rejectEvent(eventId);
-      // Refresh pending events
-      const response = await fetchEvents('PENDING');
-      const events = response?.data || response || [];
-      setPendingEvents(events);
-    } catch (error) {
-      console.error('Failed to reject event:', error);
-    }
-  };
 
   // No need for additional auth checks - admin layout handles this
   // useEffect(() => {
@@ -495,21 +471,14 @@ export default function AdminDashboard() {
                             )}
                           </div>
                         </div>
-                        <div className="mt-4 lg:mt-0 lg:ml-6 flex space-x-2">
+                        <div className="mt-4 lg:mt-0 lg:ml-6">
                           <Button 
-                            onClick={() => handleApproveEvent(String(event.id))}
-                            className="bg-green-600 hover:bg-green-700 text-white"
+                            onClick={() => router.push(`/admin/events/review/${event.id}`)}
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground"
                             size="sm"
                           >
-                            Approve
-                          </Button>
-                          <Button 
-                            onClick={() => handleRejectEvent(String(event.id))}
-                            variant="outline"
-                            className="border-red-500 text-red-500 hover:bg-red-500 hover:text-white"
-                            size="sm"
-                          >
-                            Reject
+                            <Eye className="h-4 w-4 mr-2" />
+                            Review Event
                           </Button>
                         </div>
                       </div>

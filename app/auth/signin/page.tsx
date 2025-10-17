@@ -184,7 +184,7 @@ export default function SignInPage() {
   return (
     <div className="min-h-screen relative bg-background">
       {/* Background Image */}
-      <div 
+      {/* <div 
         className="absolute inset-0 z-0"
         style={{
           backgroundImage: 'url("/Images/signup.jpg")',
@@ -193,7 +193,7 @@ export default function SignInPage() {
           backgroundRepeat: 'no-repeat',
           opacity: 0.3,
         }}
-      />
+      /> */}
 
       {/* Background Elements */}
       <div className="absolute inset-0 z-1">

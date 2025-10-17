@@ -768,7 +768,7 @@ export default function CreateVenue() {
             </Button>
           </Link>
           
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary via-purple-500 to-pink-500 bg-clip-text text-transparent mb-2">
+          <h1 className="text-4xl font-bold  text-foreground mb-2">
             Create New Venue
           </h1>
           <p className="text-muted-foreground">Design your venue with our advanced seating layout system</p>
