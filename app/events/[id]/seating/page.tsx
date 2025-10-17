@@ -7,10 +7,9 @@ import { BookingSummary } from '@/components/ui/booking-summary';
 import { 
   ArrowLeft
 } from 'lucide-react';
-import { mockEvents } from '@/lib/mock-data';
 import { motion } from 'framer-motion';
 import { use } from 'react';
-import { getVenueSeats, VenueSeatMap, SeatSection } from '@/lib/api';
+import { getVenueSeats, VenueSeatMap, SeatSection, fetchEventById } from '@/lib/api';
 
 // Animation variants for smooth transitions
 const containerVariants = {
@@ -60,20 +59,35 @@ export default function SeatingPage({ params }: SeatingPageProps) {
   const [seatMap, setSeatMap] = useState<VenueSeatMap | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  const event = mockEvents.find(e => e.id === id);
+  const [event, setEvent] = useState<any>(null);
 
   useEffect(() => {
-    const loadSeatMap = async () => {
-      if (!event?.venueId) {
-        setError('Event venue information not found');
-        setLoading(false);
-        return;
-      }
-
+    const loadEventAndSeatMap = async () => {
       try {
         setLoading(true);
-        const venueData = await getVenueSeats(event.venueId);
+        console.log('Loading event with ID:', id);
+        
+        // Fetch event details first
+        const eventResponse = await fetchEventById(id);
+        console.log('Event data received:', eventResponse);
+        
+        if (!eventResponse || !eventResponse.data) {
+          setError('Event not found');
+          setLoading(false);
+          return;
+        }
+        
+        const eventData = eventResponse.data;
+        setEvent(eventData);
+        
+        if (!eventData.venueId) {
+          setError('Event venue information not found');
+          setLoading(false);
+          return;
+        }
+
+        console.log('Loading seat map for venue ID:', eventData.venueId);
+        const venueData = await getVenueSeats(eventData.venueId);
         setSeatMap(venueData.seatMap);
 
         // Generate seats from seat map
@@ -102,14 +116,14 @@ export default function SeatingPage({ params }: SeatingPageProps) {
         setSeats(generatedSeats);
         setLoading(false);
       } catch (err: any) {
-        console.error('Error loading seat map:', err);
-        setError(err.message || 'Failed to load seat map');
+        console.error('Error loading event or seat map:', err);
+        setError(err.message || 'Failed to load event or seat map');
         setLoading(false);
       }
     };
 
-    loadSeatMap();
-  }, [event]);
+    loadEventAndSeatMap();
+  }, [id]);
 
   if (!event) {
     return (

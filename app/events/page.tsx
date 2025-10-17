@@ -146,7 +146,7 @@ export default function EventsPage() {
   if (loading) {
     // Commented out original loading implementation
     // return (
-    //   <div className="min-h-screen bg-[#18181c] text-white flex items-center justify-center">
+    //   <div className="min-h-screen bg-[#18181c] text-foreground flex items-center justify-center">
     //     <div className="text-center">
     //       <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
     //       <h2 className="text-2xl font-bold mb-2">Loading Events...</h2>
@@ -157,12 +157,12 @@ export default function EventsPage() {
 
     // Using new global Loading component
     return (
-      <div className="min-h-screen bg-[#18181c] text-white flex items-center justify-center">
+      <div className="min-h-screen  text-foreground flex items-center justify-center">
         <Loading
           type="wave"
           size="lg"
           text="Loading Events..."
-          className="text-white"
+          className="text-foreground"
         />
       </div>
     );
@@ -170,7 +170,7 @@ export default function EventsPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#18181c] text-white flex items-center justify-center p-4">
+      <div className="min-h-screen  text-foreground flex items-center justify-center p-4">
         <ErrorDisplay
           type="error"
           title="Failed to Load Events"
@@ -185,7 +185,7 @@ export default function EventsPage() {
 
   if (featuredEvents.length === 0) {
     return (
-      <div className="min-h-screen bg-[#18181c] text-white flex items-center justify-center">
+      <div className="min-h-screen  text-foreground flex items-center justify-center">
         <div className="text-center">
           <Calendar className="h-16 w-16 text-gray-400 mx-auto mb-4" />
           <h2 className="text-2xl font-bold mb-2">No Events Available</h2>
@@ -196,7 +196,7 @@ export default function EventsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#18181c] text-white">
+    <div className="min-h-screen  text-foreground">
       {/* Hero Section with Background */}
       <div className="relative w-full h-[500px] flex items-center justify-center overflow-hidden">
         {/* Background image with smooth transition */}
@@ -276,7 +276,7 @@ export default function EventsPage() {
               onClick={() => setCarouselIndex(idx)}
               className={`transition-all duration-500 rounded-full ${
                 idx === carouselIndex
-                  ? 'w-8 h-3 bg-gradient-to-r from-blue-500 to-purple-500 scale-125 shadow-lg shadow-blue-500/50'
+                  ? 'w-8 h-3 bg-blue-500 scale-125 shadow-lg shadow-blue-500/50'
                   : 'w-3 h-3 bg-white/40 hover:bg-white/70 hover:scale-110'
               }`}
             />
@@ -288,7 +288,7 @@ export default function EventsPage() {
           <div className="absolute top-6 right-6 z-30">
             <div className="bg-black/40 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-2">
               <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
-              <span className="text-white text-xs font-medium">Auto</span>
+              <span className="text-foreground text-xs font-medium">Auto</span>
             </div>
           </div>
         )}
@@ -296,7 +296,7 @@ export default function EventsPage() {
 
       {/* Filter/Search Bar - Horizontal Layout */}
       <div className="max-w-6xl mx-auto mt-10 mb-8">
-        <div className="bg-[#23232b] rounded-xl p-6 shadow-lg">
+        <div className="border border-[#000] rounded-xl p-6 shadow-lg">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {/* Search */}
             <div className="relative">
@@ -306,7 +306,7 @@ export default function EventsPage() {
                 placeholder={`Search ${activeTab === 'movies' ? 'movies' : 'events'}...`}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 rounded bg-[#18181c] border border-[#333] text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-10 pr-4 py-2 rounded  border border-[#333] text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
@@ -314,7 +314,7 @@ export default function EventsPage() {
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="px-4 py-2 rounded bg-[#18181c] border border-[#333] text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-4 py-2 rounded  border border-[#333] text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">
                 {activeTab === 'movies' ? 'All Genres' : 'All Event Types'}
@@ -328,7 +328,7 @@ export default function EventsPage() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="px-4 py-2 rounded bg-[#18181c] border border-[#333] text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-4 py-2 rounded  border border-[#333] text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="date">{activeTab === 'movies' ? 'Show Time' : 'Event Date'}</option>
               <option value="price">{activeTab === 'movies' ? 'Ticket Price' : 'Price'}</option>
@@ -342,7 +342,7 @@ export default function EventsPage() {
                 setSelectedCategory('all');
                 setSortBy('date');
               }}
-              className="border-white text-white hover:bg-white/10"
+              className="border-white text-foreground hover:bg-white/10"
             >
               <Filter className="mr-2 h-4 w-4" />Clear Filters
             </Button>
@@ -354,7 +354,7 @@ export default function EventsPage() {
       <div className="max-w-6xl mx-auto">
         {/* Tab Navigation */}
         <div className="mb-8">
-          <div className="flex space-x-1 bg-[#23232b] rounded-lg p-1 w-fit">
+          <div className="flex space-x-1  rounded-lg p-1 w-fit">
             <button
               onClick={() => {
                 setActiveTab('movies');
@@ -362,8 +362,8 @@ export default function EventsPage() {
               }}
               className={`px-6 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
                 activeTab === 'movies'
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'text-gray-400 hover:text-white hover:bg-[#2a2a32]'
+                  ? 'bg-blue-600 text-foreground shadow-md'
+                  : 'text-gray-400 hover:text-foreground hover:bg-[#2a2a32]'
               }`}
             >
               Movies
@@ -375,8 +375,8 @@ export default function EventsPage() {
               }}
               className={`px-6 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
                 activeTab === 'events'
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'text-gray-400 hover:text-white hover:bg-[#2a2a32]'
+                  ? 'bg-blue-600 text-foreground shadow-md'
+                  : 'text-gray-400 hover:text-foreground hover:bg-[#2a2a32]'
               }`}
             >
               Events
@@ -389,17 +389,17 @@ export default function EventsPage() {
           <h2 className="text-2xl font-bold mb-6">Featured {activeTab === 'movies' ? 'Movies' : 'Events'}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
             {currentEvents.slice(0, 4).map(event => (
-              <div key={event.id} className="bg-[#23232b] rounded-xl overflow-hidden shadow-lg hover:scale-105 hover:shadow-2xl transition-all duration-300 ease-in-out relative group">
+              <div key={event.id} className=" rounded-xl overflow-hidden shadow-lg hover:scale-105 hover:shadow-2xl transition-all duration-300 ease-in-out relative group">
                 <div className="relative w-full h-64 overflow-hidden">
                   <Image src={getEventImage(event)} alt={event.title} fill className="object-cover group-hover:scale-110 transition-transform duration-500 ease-in-out" />
-                  <span className="absolute top-2 left-2 bg-blue-600 text-white text-xs px-2 py-1 rounded shadow-md">Featured</span>
+                  <span className="absolute top-2 left-2 bg-blue-600 text-foreground text-xs px-2 py-1 rounded shadow-md">Featured</span>
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   
                   {/* Hover Content */}
                   <div className="absolute bottom-0 left-0 right-0 p-6 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                    <h3 className="text-xl font-semibold mb-2 text-white">{event.title}</h3>
+                    <h3 className="text-xl font-semibold mb-2 text-foreground">{event.title}</h3>
                     <div className="flex items-center gap-3 text-sm text-gray-300 mb-3">
-                      <span className="bg-blue-600/80 px-2 py-1 rounded text-white font-medium">{event.category}</span>
+                      <span className="bg-blue-600/80 px-2 py-1 rounded text-foreground font-medium">{event.category}</span>
                       <span className="text-yellow-400 font-bold">8.5</span>
                     </div>
                     <p className="text-gray-200 text-sm line-clamp-2 mb-4">{event.description}</p>
@@ -420,16 +420,16 @@ export default function EventsPage() {
           <h2 className="text-2xl font-bold mb-6">All {activeTab === 'movies' ? 'Movies' : 'Events'}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
             {filteredEvents.map(event => (
-              <div key={event.id} className="bg-[#23232b] rounded-xl overflow-hidden shadow-lg hover:scale-105 hover:shadow-2xl transition-all duration-300 ease-in-out relative group">
+              <div key={event.id} className=" rounded-xl overflow-hidden shadow-lg hover:scale-105 hover:shadow-2xl transition-all duration-300 ease-in-out relative group">
                 <div className="relative w-full h-64 overflow-hidden">
                   <Image src={getEventImage(event)} alt={event.title} fill className="object-cover group-hover:scale-110 transition-transform duration-500 ease-in-out" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   
                   {/* Hover Content */}
                   <div className="absolute bottom-0 left-0 right-0 p-6 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                    <h3 className="text-xl font-semibold mb-2 text-white">{event.title}</h3>
+                    <h3 className="text-xl font-semibold mb-2 text-foreground">{event.title}</h3>
                     <div className="flex items-center gap-3 text-sm text-gray-300 mb-3">
-                      <span className="bg-blue-600/80 px-2 py-1 rounded text-white font-medium">{event.category}</span>
+                      <span className="bg-blue-600/80 px-2 py-1 rounded text-foreground font-medium">{event.category}</span>
                       <span className="text-yellow-400 font-bold">8.5</span>
                     </div>
                     <p className="text-gray-200 text-sm line-clamp-2 mb-4">{event.description}</p>
