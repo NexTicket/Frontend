@@ -1,12 +1,16 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element, @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { createEvent, fetchVenues, uploadEventImage, fetchVenueSeatMap, fetchVenueById, fetchFilteredVenues, fetchVenueAvailability } from "@/lib/api";
+import { Dropdown } from "@/components/ui/dropdown";
+import { createEvent, fetchVenues, uploadEventImage, fetchVenueSeatMap, fetchVenueById, fetchFilteredVenues, fetchVenueAvailability, fetchFirebaseUsers } from "@/lib/api";
 import { useAuth } from "@/components/auth/auth-provider";
 import dynamic from "next/dynamic";
-import { ArrowLeft, ArrowRight, Image as ImageIcon, X, MapPin, Users, Building2, Grid3X3, Eye } from "lucide-react";
+import { ArrowLeft, ArrowRight, Image as ImageIcon, X, MapPin, Users, Building2, Grid3X3, Eye, Check } from "lucide-react";
+import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
 
 // Dynamic import for LocationPicker to avoid SSR issues
 const LocationPicker = dynamic(() => import("@/components/ui/location-picker").then(mod => mod.LocationPicker), {
@@ -14,6 +18,14 @@ const LocationPicker = dynamic(() => import("@/components/ui/location-picker").t
 });
 
 function NewEventPageInner() {
+  // Types for venue availability data
+  interface VenueAvailability {
+    dailyAvailability: Array<{
+      date: string;
+      isAvailableForEvent: boolean;
+      events: Array<{ title: string; startTime: string; endTime?: string }>;
+    }>;
+  }
   const router = useRouter();
   const { } = useAuth();
 
@@ -72,7 +84,6 @@ function NewEventPageInner() {
     columns?: number;
     sections?: SeatMapSection[];
     aisles?: number[];
-    wheelchair_accessible?: number[];
     special_features?: string[];
   };
 
@@ -87,8 +98,15 @@ function NewEventPageInner() {
   const [checkInEmails, setCheckInEmails] = useState<string[]>([""]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
+  // Staff selection states
+  const [availableEventAdmins, setAvailableEventAdmins] = useState<Array<{uid: string, email: string, displayName?: string}>>([]);
+  const [availableCheckinOfficers, setAvailableCheckinOfficers] = useState<Array<{uid: string, email: string, displayName?: string}>>([]);
+  const [selectedEventAdmin, setSelectedEventAdmin] = useState("");
+  const [selectedCheckinOfficers, setSelectedCheckinOfficers] = useState<string[]>([]);
+  const [loadingStaff, setLoadingStaff] = useState(false);
+
   // Venue availability states
-  const [venueAvailability, setVenueAvailability] = useState<any>(null);
+  const [venueAvailability, setVenueAvailability] = useState<VenueAvailability | null>(null);
   const [loadingAvailability, setLoadingAvailability] = useState(false);
   const [availabilityLoaded, setAvailabilityLoaded] = useState(false);
 
@@ -99,9 +117,41 @@ function NewEventPageInner() {
     amenities: [] as string[]
   });
   const [availableAmenities, setAvailableAmenities] = useState<string[]>([
-    'WiFi', 'Parking', 'Air Conditioning', 'Sound System', 'Stage Lighting', 
-    'Catering', 'Bar Service', 'Wheelchair Accessible', 'Restrooms', 'Security'
+  'WiFi', 'Parking', 'Air Conditioning', 'Sound System', 'Stage Lighting', 
+  'Catering', 'Bar Service', 'Restrooms', 'Security'
   ]);
+
+  const categoryOptions = [
+    { value: "", label: "Select category" },
+    { value: "Concert", label: "Concert" },
+    { value: "Conference", label: "Conference" },
+    { value: "Comedy", label: "Comedy" },
+    { value: "Workshop", label: "Workshop" },
+    { value: "Sports", label: "Sports" },
+    { value: "Festival", label: "Festival" },
+    { value: "Theater", label: "Theater" },
+    { value: "Meetup", label: "Meetup" },
+    { value: "Other", label: "Other" }
+  ];
+
+  const venueTypeOptions = [
+    { value: "all", label: "All Types" },
+    { value: "Banquet Halls", label: "Banquet Halls" },
+    { value: "Conference Centers", label: "Conference Centers" },
+    { value: "Country Clubs", label: "Country Clubs" },
+    { value: "Cruise Ships", label: "Cruise Ships" },
+    { value: "Museums and Art Galleries", label: "Museums and Art Galleries" },
+    { value: "Parks and Gardens", label: "Parks and Gardens" },
+    { value: "Rooftop Venues", label: "Rooftop Venues" },
+    { value: "Stadiums - Indoor", label: "Stadiums - Indoor" },
+    { value: "Stadiums - Outdoor", label: "Stadiums - Outdoor" },
+    { value: "Theatres", label: "Theatres" },
+    { value: "Universities and University Halls", label: "Universities and University Halls" }
+  ];
+
+  // Define options for time dropdowns
+  const hourOptions = Array.from({ length: 24 }, (_, i) => ({ value: String(i).padStart(2, '0'), label: String(i).padStart(2, '0') }));
+  const minuteOptions = Array.from({ length: 60 }, (_, i) => ({ value: String(i).padStart(2, '0'), label: String(i).padStart(2, '0') }));
 
   useEffect(() => {
     async function loadVenues() {
@@ -166,6 +216,50 @@ function NewEventPageInner() {
       }
     }
   }, [form.category, venueFilters.type]);
+
+  // Load staff when step 5 is reached
+  useEffect(() => {
+    if (currentStep === 5) {
+      loadStaff();
+    }
+  }, [currentStep]);
+
+  const loadStaff = async () => {
+    setLoadingStaff(true);
+    try {
+      console.log('🔍 Starting to load staff...');
+      
+      // Load event admins
+      console.log('📞 Calling fetchFirebaseUsers for event_admin...');
+      const eventAdminsRes = await fetchFirebaseUsers('event_admin');
+      console.log('📥 Event admins response:', eventAdminsRes);
+      
+      if (eventAdminsRes?.data) {
+        setAvailableEventAdmins(eventAdminsRes.data);
+        console.log('✅ Set event admins:', eventAdminsRes.data.length, 'users');
+      } else {
+        console.log('⚠️ No event admins data received');
+      }
+
+      // Load check-in officers
+      console.log('📞 Calling fetchFirebaseUsers for checkin_officer...');
+      const checkinOfficersRes = await fetchFirebaseUsers('checkin_officer');
+      console.log('📥 Checkin officers response:', checkinOfficersRes);
+      
+      if (checkinOfficersRes?.data) {
+        setAvailableCheckinOfficers(checkinOfficersRes.data);
+        console.log('✅ Set checkin officers:', checkinOfficersRes.data.length, 'users');
+      } else {
+        console.log('⚠️ No checkin officers data received');
+      }
+    } catch (error) {
+      console.error('❌ Failed to load staff:', error);
+      setError(`Failed to load staff: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setLoadingStaff(false);
+      console.log('🏁 Staff loading complete');
+    }
+  };
 
   const loadVenueDetails = useCallback(async (venueId: string | number) => {
     try {
@@ -425,32 +519,26 @@ function NewEventPageInner() {
       <div className="flex items-center justify-between mb-4">
         {Array.from({ length: totalSteps }, (_, i) => (
           <div key={i} className="flex items-center">
-            <div
-              className={`w-12 h-12 rounded-full flex items-center justify-center font-semibold transition-all duration-300 ${
-                currentStep > i + 1
-                  ? 'text-white shadow-lg'
-                  : currentStep === i + 1
-                    ? 'text-white shadow-lg'
-                    : 'text-gray-400'
-              }`}
-              style={{
-                backgroundColor: currentStep > i + 1 ? '#39FD48' : currentStep === i + 1 ? blueHeader : cardBg,
-                border: `2px solid ${currentStep >= i + 1 ? greenBorder : '#2a2d34'}`
-              }}
-            >
-              {currentStep > i + 1 ? '✓' : i + 1}
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all duration-300 ${
+              currentStep > i + 1 
+                ? 'bg-green-500 text-white' 
+                : currentStep === i + 1 
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground'
+            }`}>
+              {currentStep > i + 1 ? <Check className="h-5 w-5" /> : i + 1}
             </div>
             {i < totalSteps - 1 && (
-              <div
-                className={`w-24 h-1 mx-4 rounded-full transition-all duration-300`}
-                style={{ backgroundColor: currentStep > i + 1 ? '#39FD48' : '#2a2d34' }}
-              />
+              <div className={`w-24 h-1 mx-4 rounded-full transition-all duration-300 ${
+                currentStep > i + 1 ? 'bg-green-500' : 'bg-muted'
+              }`} />
             )}
           </div>
         ))}
       </div>
+      
       <div className="flex justify-center">
-        <span className="text-sm font-medium" style={{ color: '#fff' }}>
+        <span className="text-sm text-muted-foreground">
           Step {currentStep} of {totalSteps}
         </span>
       </div>
@@ -458,206 +546,151 @@ function NewEventPageInner() {
   );
 
   // Theme colors matching admin dashboard
-  const darkBg = "#181A20";
-  const blueHeader = "#1877F2";
-  const cardBg = "#23262F";
-  const greenBorder = "#000" ;
-  const cardShadow = "0 2px 16px 0 rgba(57,253,72,0.08)";
 
   if (!mounted) return null;
 
   return (
-    <div className="min-h-screen" >
-      {/* Simple Background Elements */}
-      <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-20" ></div>
-      <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-15" ></div>
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl opacity-10" ></div>
-      
-      {/* Content Container */}
-      <div className="relative z-10 pt-8 px-8">
-        <div className="max-w-4xl mx-auto">
-          {/* Header */}
-          <div className="rounded-2xl p-6 shadow-lg mb-8" style={{  borderColor: greenBorder, boxShadow: cardShadow }}>
-            <h2 className="text-3xl font-bold mb-2" >Create New Event</h2>
-            <p className="text-lg font-normal" >Set up your event in a few guided steps</p>
-          </div>
+    <div className="p-8 bg-gradient-to-br from-background via-muted/10 to-primary/5 min-h-screen">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <Link href="/organizer/dashboard">
+            <Button variant="ghost" className="mb-4">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Dashboard
+            </Button>
+          </Link>
+          
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary via-purple-500 to-pink-500 bg-clip-text text-transparent mb-2">
+            Create New Event
+          </h1>
+          <p className="text-muted-foreground">Set up your event with our advanced event management system</p>
+        </div>
 
           <StepBar />
 
-          <div className="backdrop-blur-xl border rounded-2xl p-8 shadow-xl" style={{  borderColor: greenBorder, boxShadow: cardShadow }}>
+          {/* Step Content */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentStep}
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -50 }}
+              transition={{ duration: 0.5 }}
+              className="bg-card/50 backdrop-blur-sm rounded-xl border p-8"
+            >
         {currentStep === 1 && (
             <div className="space-y-6">
-              <h3 className="text-2xl font-semibold" >Basic Information</h3>
-              <div>
-                <label className="block text-sm font-medium mb-2" >Title *</label>
-                <input 
-                  value={form.title} 
-                  onChange={e => onChange("title", e.target.value)} 
-                  className="w-full px-4 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2"
-                  style={{ 
-                     
-                    borderColor: greenBorder, 
-                    
-                  }}
-                  placeholder="Enter event title"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2" >Category *</label>
-                <select 
-                  value={form.category} 
-                  onChange={e => onChange("category", e.target.value)} 
-                  className="w-full px-4 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2"
-                  style={{ 
-                     
-                    borderColor: greenBorder, 
-                    
-                  }}
-                >
-                  <option value="" style={{ backgroundColor: '#191C24', color: '#fff' }}>Select category</option>
-                  <option value="Concert" style={{ backgroundColor: '#191C24', color: '#fff' }}>Concert</option>
-                  <option value="Conference" style={{ backgroundColor: '#191C24', color: '#fff' }}>Conference</option>
-                  <option value="Comedy" style={{ backgroundColor: '#191C24', color: '#fff' }}>Comedy</option>
-                  <option value="Workshop" style={{ backgroundColor: '#191C24', color: '#fff' }}>Workshop</option>
-                  <option value="Sports" style={{ backgroundColor: '#191C24', color: '#fff' }}>Sports</option>
-                  <option value="Festival" style={{ backgroundColor: '#191C24', color: '#fff' }}>Festival</option>
-                  <option value="Theater" style={{ backgroundColor: '#191C24', color: '#fff' }}>Theater</option>
-                  <option value="Meetup" style={{ backgroundColor: '#191C24', color: '#fff' }}>Meetup</option>
-                  <option value="Other" style={{ backgroundColor: '#191C24', color: '#fff' }}>Other</option>
-                </select>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2" >Start Date *</label>
-                  <input 
-                    type="date" 
-                    value={form.startDateDate} 
-                    onChange={e => onChange("startDateDate", e.target.value)} 
-                    min={new Date().toISOString().split('T')[0]} // Prevent selecting past dates
-                    className="w-full px-4 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2"
-                    style={{ 
-                       
-                      borderColor: greenBorder, 
-                      
-                    }}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2" >End Date (optional)</label>
-                  <input 
-                    type="date" 
-                    value={form.endDateDate} 
-                    onChange={e => onChange("endDateDate", e.target.value)} 
-                    min={form.startDateDate || new Date().toISOString().split('T')[0]} // End date must be at least the start date
-                    className="w-full px-4 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2"
-                    style={{ 
-                       
-                      borderColor: greenBorder, 
-                      
-                    }}
-                  />
-                </div>
-              </div>
+              <h2 className="text-2xl font-semibold mb-6 flex items-center">
+                <Building2 className="h-6 w-6 mr-3 text-primary" />
+                Basic Information
+              </h2>
 
-              <div>
-                <label className="block text-sm font-medium mb-2" >Description</label>
-                <textarea 
-                  value={form.description} 
-                  onChange={e => onChange("description", e.target.value)} 
-                  rows={4} 
-                  className="w-full px-4 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 resize-none"
-                  style={{ 
-                     
-                    borderColor: greenBorder, 
-                    
-                  }}
-                  placeholder="Describe your event..."
-                />
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Event Title *
+                  </label>
+                  <input
+                    value={form.title}
+                    onChange={e => onChange("title", e.target.value)}
+                    className="w-full px-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                    placeholder="Enter event title"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Category *
+                  </label>
+                  <Dropdown
+                    options={categoryOptions}
+                    value={form.category}
+                    placeholder="Select category"
+                    onChange={(value) => onChange("category", value)}
+                    className="w-full"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Start Date *
+                    </label>
+                    <input
+                      type="date"
+                      value={form.startDateDate}
+                      onChange={e => onChange("startDateDate", e.target.value)}
+                      min={new Date().toISOString().split('T')[0]}
+                      className="w-full px-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      End Date *
+                    </label>
+                    <input
+                      type="date"
+                      value={form.endDateDate}
+                      onChange={e => onChange("endDateDate", e.target.value)}
+                      min={form.startDateDate || new Date().toISOString().split('T')[0]}
+                      className="w-full px-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Description *
+                  </label>
+                  <textarea
+                    value={form.description}
+                    onChange={e => onChange("description", e.target.value)}
+                    rows={4}
+                    className="w-full px-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all resize-none"
+                    placeholder="Describe your event..."
+                  />
+                </div>
               </div>
-          </div>
-        )}
+            </div>
+          )}
 
           {currentStep === 2 && (
             <div className="space-y-6">
-              <h3 className="text-2xl font-semibold" >Venue Selection</h3>
+              <h2 className="text-2xl font-semibold mb-6 flex items-center">
+                <MapPin className="h-6 w-6 mr-3 text-primary" />
+                Venue Selection *
+              </h2>
               
               {/* Venue filtering info */}
-              {form.category && (
-                <div className="rounded-lg p-4" style={{  borderColor: greenBorder, border: '1px solid' }}>
-                  <p className="text-sm" >
-                    Showing venues suitable for <span className="font-semibold" >{form.category}</span> events
-                  </p>
-                </div>
-              )}
+              <div className="bg-blue-600 rounded-lg p-4 border border-blue-700">
+                <p className="text-sm text-white font-medium">
+                  Choose your preferred venue type, location, or amenities to explore venues for your event
+                </p>
+              </div>
 
               {/* Venue Filters */}
-              <div className="rounded-lg p-6" style={{  borderColor: greenBorder, border: '1px solid' }}>
-                <h4 className="text-lg font-semibold mb-4" >Filter Venues</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-background/50 rounded-lg p-6 border">
+                <h4 className="text-lg font-semibold mb-4">Filter Venues</h4>
+                
+                {/* Venue Type and Amenities in parallel */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                   {/* Venue Type Filter */}
                   <div>
-                    <label className="block text-sm font-medium mb-2" >Venue Type</label>
-                    <select 
+                    <label className="block text-sm font-medium text-foreground mb-2">Venue Type</label>
+                    <Dropdown
+                      options={venueTypeOptions}
                       value={venueFilters.type}
-                      onChange={(e) => setVenueFilters(prev => ({ ...prev, type: e.target.value }))}
-                      className="w-full px-4 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2"
-                      style={{ 
-                         
-                        borderColor: greenBorder, 
-                        
-                      }}
-                    >
-                      <option value="all" style={{ backgroundColor: '#23262F', color: '#fff' }}>All Types</option>
-                      <option value="Banquet Halls" style={{ backgroundColor: '#23262F', color: '#fff' }}>Banquet Halls</option>
-                      <option value="Conference Centers" style={{ backgroundColor: '#23262F', color: '#fff' }}>Conference Centers</option>
-                      <option value="Country Clubs" style={{ backgroundColor: '#23262F', color: '#fff' }}>Country Clubs</option>
-                      <option value="Cruise Ships" style={{ backgroundColor: '#23262F', color: '#fff' }}>Cruise Ships</option>
-                      <option value="Museums and Art Galleries" style={{ backgroundColor: '#23262F', color: '#fff' }}>Museums and Art Galleries</option>
-                      <option value="Parks and Gardens" style={{ backgroundColor: '#23262F', color: '#fff' }}>Parks and Gardens</option>
-                      <option value="Rooftop Venues" style={{ backgroundColor: '#23262F', color: '#fff' }}>Rooftop Venues</option>
-                      <option value="Stadiums - Indoor" style={{ backgroundColor: '#23262F', color: '#fff' }}>Stadiums - Indoor</option>
-                      <option value="Stadiums - Outdoor" style={{ backgroundColor: '#23262F', color: '#fff' }}>Stadiums - Outdoor</option>
-                      <option value="Theatres" style={{ backgroundColor: '#23262F', color: '#fff' }}>Theatres</option>
-                      <option value="Universities and University Halls" style={{ backgroundColor: '#23262F', color: '#fff' }}>Universities and University Halls</option>
-                    </select>
-                  </div>
-
-                  {/* Location Filter with Google Maps */}
-                  <div>
-                    <label className="block text-sm font-medium mb-2" >Location</label>
-                    <div className="space-y-2">
-                      <LocationPicker
-                        apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''}
-                        onLocationSelect={(location) => {
-                          setVenueFilters(prev => ({ ...prev, location }));
-                        }}
-                        initialLocation={venueFilters.location || undefined}
-                        className="w-full"
-                      />
-                      {venueFilters.location && (
-                        <div className="text-sm" >
-                          Selected: {venueFilters.location.address}
-                        </div>
-                      )}
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setVenueFilters(prev => ({ ...prev, location: null }))}
-                        style={{ 
-                          backgroundColor: 'transparent', 
-                          borderColor: greenBorder, 
-                           
-                        }}
-                      >
-                        Clear Location
-                      </Button>
-                    </div>
+                      placeholder="All Types"
+                      onChange={(value) => setVenueFilters(prev => ({ ...prev, type: value }))}
+                      className="w-full"
+                    />
                   </div>
 
                   {/* Amenities Filter */}
                   <div>
-                    <label className="block text-sm font-medium mb-2" >Amenities</label>
+                    <label className="block text-sm font-medium text-foreground mb-2">Amenities</label>
                     <div className="space-y-2 max-h-32 overflow-y-auto">
                       {availableAmenities.map(amenity => (
                         <label key={amenity} className="flex items-center space-x-2 cursor-pointer">
@@ -666,24 +699,52 @@ function NewEventPageInner() {
                             checked={venueFilters.amenities.includes(amenity)}
                             onChange={(e) => {
                               if (e.target.checked) {
-                                setVenueFilters(prev => ({ 
-                                  ...prev, 
-                                  amenities: [...prev.amenities, amenity] 
+                                setVenueFilters(prev => ({
+                                  ...prev,
+                                  amenities: [...prev.amenities, amenity]
                                 }));
                               } else {
-                                setVenueFilters(prev => ({ 
-                                  ...prev, 
-                                  amenities: prev.amenities.filter(a => a !== amenity) 
+                                setVenueFilters(prev => ({
+                                  ...prev,
+                                  amenities: prev.amenities.filter(a => a !== amenity)
                                 }));
                               }
                             }}
-                            className="rounded border-gray-300 text-green-600 focus:ring-green-500"
-                            style={{ accentColor: '#39FD48' }}
+                            className="rounded border-border text-primary focus:ring-primary/50"
                           />
-                          <span className="text-sm" style={{ color: '#ABA8A9' }}>{amenity}</span>
+                          <span className="text-sm text-muted-foreground">{amenity}</span>
                         </label>
                       ))}
                     </div>
+                  </div>
+                </div>
+
+                {/* Location Filter with Google Maps - Full width below */}
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Location</label>
+                  <div className="space-y-2">
+                    <LocationPicker
+                      apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''}
+                      onLocationSelect={(location) => {
+                        setVenueFilters(prev => ({ ...prev, location }));
+                      }}
+                      initialLocation={venueFilters.location || undefined}
+                      className="w-full"
+                    />
+                    {venueFilters.location && (
+                      <div className="text-sm text-muted-foreground">
+                        Selected: {venueFilters.location.address}
+                      </div>
+                    )}
+                    <Button
+                      type="button"
+                      variant="default"
+                      size="sm"
+                      onClick={() => setVenueFilters(prev => ({ ...prev, location: null }))}
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      Clear Location
+                    </Button>
                   </div>
                 </div>
 
@@ -691,13 +752,10 @@ function NewEventPageInner() {
                 <div className="mt-4">
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="default"
+                    size="sm"
                     onClick={() => setVenueFilters({ type: 'all', location: null, amenities: [] })}
-                    style={{ 
-                      backgroundColor: 'transparent', 
-                      borderColor: greenBorder, 
-                      color: '#fff' 
-                    }}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
                   >
                     Clear All Filters
                   </Button>
@@ -707,9 +765,9 @@ function NewEventPageInner() {
               {/* Venue cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {loadingVenues ? (
-                  <div className="text-center py-8" >Loading venues...</div>
+                  <div className="text-center py-8 text-muted-foreground col-span-full">Loading venues...</div>
                 ) : venues.length === 0 ? (
-                  <div className="text-center py-8 col-span-full" style={{ color: '#ABA8A9' }}>
+                  <div className="text-center py-8 text-muted-foreground col-span-full">
                     No venues found matching your filters. Try adjusting your filter criteria.
                   </div>
                 ) : (
@@ -717,46 +775,48 @@ function NewEventPageInner() {
                     const selected = String(form.venueId) === String(v.id);
                     const img = v.featuredImage || v.image || (Array.isArray(v.images) ? v.images[0] : '');
                     return (
-                      <div 
-                        key={v.id} 
-                        className={`rounded-xl border p-4 cursor-pointer transition-all duration-200 hover:scale-105 ${selected ? 'ring-2' : ''}`} 
-                        style={{ 
-                          backgroundColor: cardBg, 
-                          borderColor: selected ? '#39FD48' : greenBorder,
-                          boxShadow: selected ? '0 0 0 2px rgba(57, 253, 72, 0.5)' : undefined
-                        }} 
+                      <div
+                        key={v.id}
+                        className={`rounded-xl border p-4 cursor-pointer transition-all duration-200 hover:scale-105 ${
+                          selected ? 'ring-2 ring-blue-500 border-blue-500 bg-primary/5' : 'bg-background/50'
+                        }`}
                         onClick={() => {
                           console.log('🎯 Venue card clicked:', { venueId: v.id, venueIdType: typeof v.id });
                           onChange('venueId', String(v.id));
                         }}
                       >
-                        <div className="w-full h-32 overflow-hidden rounded-lg border mb-3 flex items-center justify-center" style={{ backgroundColor: '#191C24', borderColor: greenBorder }}>
-                          {img ? <img src={img} alt="Venue" className="w-full h-full object-cover" /> : <div className="text-sm" style={{ color: '#ABA8A9' }}>No image</div>}
+                        <div className="w-full h-32 overflow-hidden rounded-lg border mb-3 flex items-center justify-center bg-background/50">
+                          {img ? <img src={img} alt="Venue" className="w-full h-full object-cover" /> : <div className="text-sm text-muted-foreground">No image</div>}
                         </div>
-                        <div className="font-semibold" >{v.name}</div>
+                        <div className="font-semibold text-foreground">{v.name}</div>
                         <div className="text-sm" style={{ color: '#ABA8A9' }}>{v.location || '—'}</div>
                         <div className="text-sm" style={{ color: '#ABA8A9' }}>Capacity: {v.capacity ?? '—'}</div>
-                        {v.type && <div className="text-xs px-2 py-1 rounded mt-1 inline-block" style={{ backgroundColor: '#39FD48', color: '#000' }}>{v.type.replace('_', ' ')}</div>}
+                        {v.type && <div className="text-xs px-2 py-1 rounded mt-1 inline-block bg-primary text-primary-foreground">{v.type.replace('_', ' ')}</div>}
                         <div className="mt-2">
-                          <Button 
-                            type="button" 
-                            variant="outline" 
-                            onClick={async (e) => { 
-                              e.stopPropagation(); 
-                              await loadVenueDetails(v.id); 
-                              setShowVenueModal(true);
-                              // Reset availability loaded state for new venue
-                              setAvailabilityLoaded(false);
-                              setVenueAvailability(null);
-                            }}
-                            style={{ 
-                              backgroundColor: 'transparent', 
-                              borderColor: greenBorder, 
-                              color: '#fff' 
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="flex items-center space-x-2 px-3 py-1 rounded-lg border border-primary text-primary hover:bg-primary/10 focus:ring-2 focus:ring-primary transition"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              console.log('View Details clicked for venue:', v.id);
+                              try {
+                                await loadVenueDetails(v.id);
+                                // Automatically fetch availability if dates are set
+                                if (form.startDateDate) {
+                                  setAvailabilityLoaded(true);
+                                  loadVenueAvailability(v.id);
+                                }
+                                setShowVenueModal(true);
+                                console.log('Modal opened and availability requested');
+                              } catch (error) {
+                                console.error('Failed to load venue details:', error);
+                              }
                             }}
                           >
-                            <Eye className="h-4 w-4 mr-2" />
-                            View Details
+                            <Eye className="h-4 w-4" />
+                            <span>View Details</span>
                           </Button>
                         </div>
                       </div>
@@ -767,7 +827,7 @@ function NewEventPageInner() {
 
               {/* Selected venue preview */}
               {form.venueId && (
-                <div className="rounded-xl border p-4 grid grid-cols-1 md:grid-cols-3 gap-4 bg-background/30" style={{ borderColor: 'rgb(57 253 72 / 40%)' }}>
+                <div className="rounded-xl border p-4 grid grid-cols-1 md:grid-cols-3 gap-4 bg-background/30" style={{ borderColor: 'rgb(59 130 246 / 40%)' }}>
                   {(() => {
                     const v: VenueCard | undefined = venues.find((vv: VenueCard) => String(vv.id) === String(form.venueId));
                     const img = v?.featuredImage || v?.image || (v?.images?.[0] ?? '');
@@ -794,20 +854,25 @@ function NewEventPageInner() {
 
               {/* Venue Details Modal */}
               {showVenueModal && selectedVenueDetails && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-                  <div className="bg-card/95 backdrop-blur-xl rounded-2xl border max-w-6xl w-full max-h-[90vh] overflow-y-auto" 
-                    style={{ borderColor: 'rgb(57 253 72 / 50)', backgroundColor: '#191C24' }}>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+                  <div className="bg-background/95 backdrop-blur-xl rounded-2xl border border-border/40 max-w-5xl w-full max-h-[85vh] overflow-y-auto shadow-2xl">
                     
                     {/* Modal Header */}
-                    <div className="flex items-center justify-between p-6 border-b" style={{ borderColor: 'rgb(57 253 72 / 30)' }}>
+                    <div className="flex items-center justify-between p-6 border-b border-border/20">
                       <div>
-                        <h2 className="text-2xl font-bold text-white">{selectedVenueDetails.name}</h2>
-                        <div className="flex items-center text-gray-400 mt-1">
-                          <MapPin className="h-4 w-4 mr-1" />
+                        <h2 className="text-2xl font-bold text-foreground">{selectedVenueDetails.name}</h2>
+                        <div className="flex items-center text-muted-foreground mt-1">
+                          <MapPin className="h-4 w-4 mr-2" />
                           {selectedVenueDetails.location || 'Location not specified'}
                         </div>
                       </div>
-                      <Button type="button" variant="outline" onClick={() => setShowVenueModal(false)}>
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => setShowVenueModal(false)}
+                        className="hover:bg-muted/50"
+                      >
                         <X className="h-4 w-4" />
                       </Button>
                     </div>
@@ -815,7 +880,7 @@ function NewEventPageInner() {
                     <div className="p-6 space-y-6">
                       {/* Venue Image */}
                       {(selectedVenueDetails.featuredImage || selectedVenueDetails.image) && (
-                        <div className="w-full h-64 overflow-hidden rounded-xl">
+                        <div className="w-full h-64 overflow-hidden rounded-xl border border-border/20">
                           <img 
                             src={selectedVenueDetails.featuredImage || selectedVenueDetails.image} 
                             alt={selectedVenueDetails.name} 
@@ -827,23 +892,33 @@ function NewEventPageInner() {
                       {/* Venue Info Grid */}
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="md:col-span-1 space-y-4">
-                          <div className="p-4 rounded-xl border" style={{ backgroundColor: '#0D6EFD' + '10', borderColor: '#0D6EFD' + '30' }}>
+                          <div className="p-4 rounded-xl border border-border/20 bg-muted/10">
                             <div className="flex items-center mb-2">
-                              <Users className="h-5 w-5 mr-2" style={{ color: '#0D6EFD' }} />
-                              <span className="font-medium text-white">Capacity</span>
+                              <Users className="h-5 w-5 mr-2 text-primary" />
+                              <span className="font-medium text-foreground">Capacity</span>
                             </div>
-                            <span className="text-2xl font-bold" style={{ color: '#39FD48' }}>
+                            <span className="text-2xl font-bold text-primary">
                               {selectedVenueDetails.capacity ? Number(selectedVenueDetails.capacity).toLocaleString() : 'N/A'}
                             </span>
                           </div>
 
                           {selectedVenueDetails.tenant && (
-                            <div className="p-4 rounded-xl border" style={{ backgroundColor: '#39FD48' + '10', borderColor: '#39FD48' + '30' }}>
+                            <div className="p-4 rounded-xl border border-border/20 bg-muted/10">
                               <div className="flex items-center mb-2">
-                                <Building2 className="h-5 w-5 mr-2" style={{ color: '#39FD48' }} />
-                                <span className="font-medium text-white">Managed by</span>
+                                <Building2 className="h-5 w-5 mr-2 text-primary" />
+                                <span className="font-medium text-foreground">Managed by</span>
                               </div>
-                              <span className="text-white">{selectedVenueDetails.tenant.name}</span>
+                              <span className="text-foreground">{selectedVenueDetails.tenant.name}</span>
+                            </div>
+                          )}
+
+                          {selectedVenueDetails.type && (
+                            <div className="p-4 rounded-xl border border-border/20 bg-muted/10">
+                              <div className="flex items-center mb-2">
+                                <Building2 className="h-5 w-5 mr-2 text-primary" />
+                                <span className="font-medium text-foreground">Type</span>
+                              </div>
+                              <span className="text-foreground">{selectedVenueDetails.type.replace('_', ' ')}</span>
                             </div>
                           )}
                         </div>
@@ -852,8 +927,8 @@ function NewEventPageInner() {
                         <div className="md:col-span-2">
                           {seatMapData && typeof seatMapData === 'object' && 'rows' in seatMapData ? (
                             <div className="space-y-4">
-                              <h3 className="text-xl font-bold text-white flex items-center">
-                                <Grid3X3 className="h-5 w-5 mr-2" style={{ color: '#39FD48' }} />
+                              <h3 className="text-xl font-bold text-foreground flex items-center">
+                                <Grid3X3 className="h-5 w-5 mr-2 text-primary" />
                                 Seating Layout
                               </h3>
 
@@ -861,10 +936,9 @@ function NewEventPageInner() {
                               {seatMapData.sections && Array.isArray(seatMapData.sections) && seatMapData.sections.length > 0 ? (
                                 <div className="flex flex-wrap gap-2">
                                   {seatMapData.sections.map((section: SeatMapSection) => (
-                                    <div key={section.id} className="flex items-center space-x-2 px-3 py-1 rounded-lg border text-sm"
-                                      style={{ backgroundColor: section.color + '20', borderColor: section.color + '50' }}>
+                                    <div key={section.id} className="flex items-center space-x-2 px-3 py-1 rounded-lg border border-border/20 text-sm bg-muted/10">
                                       <div className="w-3 h-3 rounded" style={{ backgroundColor: section.color }}></div>
-                                      <span className="text-white font-medium">
+                                      <span className="text-foreground font-medium">
                                         {section.name} (×{section.price_multiplier})
                                       </span>
                                     </div>
@@ -873,25 +947,23 @@ function NewEventPageInner() {
                               ) : null}
 
                               {/* Stage */}
-                              <div className="rounded-lg p-4 text-center text-white font-bold" 
-                                style={{ background: 'linear-gradient(135deg, #0D6EFD, #39FD48)' }}>
+                              <div className="w-fit mx-auto mb-4 rounded-lg px-4 py-1 text-sm text-center text-white font-semibold bg-gradient-to-r from-primary to-blue-600">
                                 🎭 STAGE
                               </div>
 
-                              {/* Seat Grid */}
+                              {/* Seat Grid - Simplified */}
                               <div className="flex justify-center">
-                                <div className="inline-block p-4 rounded-xl border" 
-                                  style={{ backgroundColor: '#0D6EFD' + '10', borderColor: '#0D6EFD' + '30' }}>
+                                <div className="inline-block p-4 rounded-xl border border-border/20 bg-muted/5">
                                   <div 
                                     className="grid gap-1"
                                     style={{
-                                      gridTemplateColumns: `repeat(${Math.min(Number(seatMapData.columns) || 10, 30)}, 1fr)`
+                                      gridTemplateColumns: `repeat(${Math.min(Number(seatMapData.columns) || 10, 20)}, 1fr)`
                                     }}
                                   >
                                     {Array.from({ 
-                                      length: Math.min((Number(seatMapData.rows) || 10) * (Number(seatMapData.columns) || 10), 600) 
+                                      length: Math.min((Number(seatMapData.rows) || 10) * (Number(seatMapData.columns) || 10), 200) 
                                     }).map((_, index) => {
-                                      const columns = Number(seatMapData.columns) || 10;
+                                      const columns = Math.min(Number(seatMapData.columns) || 10, 20);
                                       const row = Math.floor(index / columns);
                                       const col = index % columns;
                                       
@@ -899,25 +971,18 @@ function NewEventPageInner() {
                                       const section = Array.isArray(seatMapData.sections) ? seatMapData.sections.find((s: SeatMapSection) =>
                                         row >= s.startRow && row < s.startRow + s.rows &&
                                         col >= s.startCol && col < s.startCol + s.columns
-                                      ) : null;                                      const isAisle = Array.isArray(seatMapData.aisles) ? seatMapData.aisles.includes(row) : false;
-                                      const isWheelchairAccessible = Array.isArray(seatMapData.wheelchair_accessible) ? 
-                                        seatMapData.wheelchair_accessible.includes(row) : false;
+                                      ) : null;
 
                                       return (
                                         <div
                                           key={`${row}-${col}`}
-                                          className={`w-4 h-4 rounded-sm flex items-center justify-center text-xs font-bold ${
-                                            isAisle ? 'opacity-50' : ''
-                                          }`}
+                                          className="w-3 h-3 rounded-sm"
                                           style={{
-                                            backgroundColor: section ? section.color : '#39FD48',
-                                            opacity: section ? 1 : 0.3,
-                                            border: isWheelchairAccessible ? '1px solid #FFF' : 'none'
+                                            backgroundColor: section ? section.color : 'hsl(var(--primary))',
+                                            opacity: section ? 0.8 : 0.6,
                                           }}
-                                          title={`Row ${row + 1}, Seat ${col + 1}${section ? ` - ${section.name}` : ''}${isWheelchairAccessible ? ' (Wheelchair Accessible)' : ''}`}
-                                        >
-                                          {isWheelchairAccessible ? '♿' : ''}
-                                        </div>
+                                          title={`Row ${row + 1}, Seat ${col + 1}${section ? ` - ${section.name}` : ''}`}
+                                        />
                                       );
                                     })}
                                   </div>
@@ -925,57 +990,36 @@ function NewEventPageInner() {
                               </div>
 
                               {/* Seating Stats */}
-                              <div className="grid grid-cols-3 gap-4 text-center">
-                                <div className="p-3 rounded-lg border" style={{ backgroundColor: '#39FD48' + '10', borderColor: '#39FD48' + '30' }}>
-                                  <div className="text-lg font-bold" style={{ color: '#39FD48' }}>
+                              <div className="grid grid-cols-2 gap-4 text-center">
+                                <div className="p-3 rounded-lg border border-border/20 bg-muted/10">
+                                  <div className="text-lg font-bold text-primary">
                                     {(Number(seatMapData.rows) || 0) * (Number(seatMapData.columns) || 0)}
                                   </div>
-                                  <div className="text-xs text-gray-400">Total Seats</div>
+                                  <div className="text-xs text-muted-foreground">Total Seats</div>
                                 </div>
-                                <div className="p-3 rounded-lg border" style={{ backgroundColor: '#0D6EFD' + '10', borderColor: '#0D6EFD' + '30' }}>
-                                  <div className="text-lg font-bold" style={{ color: '#0D6EFD' }}>
+                                <div className="p-3 rounded-lg border border-border/20 bg-muted/10">
+                                  <div className="text-lg font-bold text-primary">
                                     {Array.isArray(seatMapData.sections) ? seatMapData.sections.length : 0}
                                   </div>
-                                  <div className="text-xs text-gray-400">Sections</div>
-                                </div>
-                                <div className="p-3 rounded-lg border" style={{ backgroundColor: '#39FD48' + '10', borderColor: '#39FD48' + '30' }}>
-                                  <div className="text-lg font-bold" style={{ color: '#39FD48' }}>
-                                    {Array.isArray(seatMapData.wheelchair_accessible) ? seatMapData.wheelchair_accessible.length : 0}
-                                  </div>
-                                  <div className="text-xs text-gray-400">♿ Accessible</div>
+                                  <div className="text-xs text-muted-foreground">Sections</div>
                                 </div>
                               </div>
-
-                              {/* Special Features */}
-                              {seatMapData.special_features && Array.isArray(seatMapData.special_features) && seatMapData.special_features.length > 0 ? (
-                                <div className="p-4 rounded-xl border" style={{ backgroundColor: '#0D6EFD' + '10', borderColor: '#0D6EFD' + '30' }}>
-                                  <h4 className="font-bold mb-2 text-white">Special Features</h4>
-                                  <div className="flex flex-wrap gap-2">
-                                    {(seatMapData.special_features as string[]).map((feature: string, index: number) => (
-                                      <span key={index} className="px-2 py-1 rounded text-xs border"
-                                        style={{ backgroundColor: '#39FD48' + '20', borderColor: '#39FD48', color: '#39FD48' }}>
-                                        {String(feature).replace('_', ' ')}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                              ) : null}
                             </div>
                           ) : (
-                            <div className="text-center py-12">
-                              <Grid3X3 className="h-16 w-16 mx-auto mb-4 text-gray-400" />
-                              <h4 className="text-lg font-bold mb-2 text-white">No Seating Data</h4>
-                              <p className="text-gray-400">No seating layout found for this venue</p>
+                            <div className="text-center py-12 border border-border/20 rounded-xl bg-muted/5">
+                              <Grid3X3 className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+                              <h4 className="text-lg font-bold mb-2 text-foreground">No Seating Data</h4>
+                              <p className="text-muted-foreground">No seating layout found for this venue</p>
                             </div>
                           )}
                         </div>
                       </div>
 
                       {/* Venue Availability */}
-                      <div className="p-4 rounded-xl border" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30' }}>
+                      <div className="p-4 rounded-xl border border-border/20 bg-muted/5">
                         <div className="flex items-center justify-between mb-3">
-                          <h4 className="font-bold text-white flex items-center">
-                            <Eye className="h-5 w-5 mr-2" style={{ color: '#39FD48' }} />
+                          <h4 className="font-bold text-foreground flex items-center">
+                            <Eye className="h-5 w-5 mr-2 text-primary" />
                             Availability Overview
                           </h4>
                           {!availabilityLoaded && selectedVenueDetails && (
@@ -988,11 +1032,6 @@ function NewEventPageInner() {
                                 loadVenueAvailability(selectedVenueDetails.id);
                               }}
                               disabled={loadingAvailability}
-                              style={{ 
-                                backgroundColor: 'transparent', 
-                                borderColor: greenBorder, 
-                                color: '#fff' 
-                              }}
                             >
                               {loadingAvailability ? 'Loading...' : 'Check Availability'}
                             </Button>
@@ -1001,65 +1040,69 @@ function NewEventPageInner() {
                         
                         {loadingAvailability ? (
                           <div className="text-center py-4">
-                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-500 mx-auto"></div>
-                            <p className="text-gray-400 mt-2">Checking availability...</p>
+                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
+                            <p className="text-muted-foreground mt-2">Checking availability...</p>
                           </div>
                         ) : venueAvailability && availabilityLoaded ? (
-                          <div className="space-y-4">
+                          <div className="space-y-3 max-h-48 overflow-y-auto">
                             {/* Show availability for each day in the range */}
                             {venueAvailability.dailyAvailability && venueAvailability.dailyAvailability.length > 0 ? (
-                              venueAvailability.dailyAvailability.map((day: any, dayIndex: number) => (
-                                <div key={dayIndex} className="border rounded-lg p-3" style={{ borderColor: '#39FD48' + '20' }}>
-                                  <h5 className="font-medium text-white mb-2">
-                                    {new Date(day.date).toLocaleDateString('en-US', { 
-                                      weekday: 'long', 
-                                      year: 'numeric', 
-                                      month: 'long', 
-                                      day: 'numeric' 
-                                    })}
-                                  </h5>
+                              venueAvailability.dailyAvailability.map((day, dayIndex: number) => (
+                                <div key={dayIndex} className="border border-border/20 rounded-lg p-3 bg-background/50">
+                                  <div className="flex justify-between items-center mb-2">
+                                    <h5 className="font-medium text-foreground">
+                                      {new Date(day.date).toLocaleDateString('en-US', { 
+                                        weekday: 'short', 
+                                        month: 'short', 
+                                        day: 'numeric' 
+                                      })}
+                                    </h5>
+                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                      day.isAvailableForEvent ? 'bg-green-500/20 text-green-600' : 'bg-red-500/20 text-red-600'
+                                    }`}>
+                                      {day.isAvailableForEvent ? 'Available' : 'Conflict'}
+                                    </span>
+                                  </div>
                                   
                                   {day.events && day.events.length > 0 ? (
-                                    <div className="space-y-2">
-                                      <p className="text-sm text-gray-400">Scheduled events:</p>
-                                      {day.events.map((event: any, eventIndex: number) => (
-                                        <div key={eventIndex} className="flex justify-between items-center p-2 bg-gray-700/30 rounded text-sm">
-                                          <span className="font-medium text-white">{event.title}</span>
-                                          <span className="text-gray-400">
-                                            {event.startTime} - {event.endTime || 'End of day'}
+                                    <div className="space-y-1">
+                                      {day.events.slice(0, 2).map((event, eventIndex: number) => (
+                                        <div key={eventIndex} className="flex justify-between items-center p-2 bg-muted/20 rounded text-sm">
+                                          <span className="font-medium text-foreground truncate">{event.title}</span>
+                                          <span className="text-muted-foreground text-xs">
+                                            {event.startTime} - {event.endTime || 'EOD'}
                                           </span>
                                         </div>
                                       ))}
-                                      
-                                      {/* Show available time slots */}
-                                      {day.availableSlots && day.availableSlots.length > 0 && (
-                                        <div className="mt-3">
-                                          <p className="text-sm text-green-400 mb-2">Available time slots:</p>
-                                          <div className="flex flex-wrap gap-2">
-                                            {day.availableSlots.map((slot: any, slotIndex: number) => (
-                                              <span key={slotIndex} className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs border border-green-500/30">
-                                                {slot.start} - {slot.end}
-                                              </span>
-                                            ))}
-                                          </div>
+                                      {day.events.length > 2 && (
+                                        <div className="text-xs text-muted-foreground pl-2">
+                                          +{day.events.length - 2} more events
                                         </div>
                                       )}
                                     </div>
                                   ) : (
-                                    <p className="text-green-400 text-sm">🎉 Fully available - no events scheduled</p>
+                                    <p className="text-green-600 text-sm">✅ Fully available</p>
                                   )}
                                 </div>
                               ))
                             ) : (
-                              <p className="text-green-400 text-sm">🎉 Venue appears to be available for your selected dates</p>
+                              <p className="text-green-600 text-sm">✅ Venue appears to be available for your selected dates</p>
                             )}
                           </div>
                         ) : availabilityLoaded ? (
-                          <p className="text-gray-400 text-sm">No availability data available</p>
+                          <p className="text-muted-foreground text-sm">No availability data available</p>
                         ) : (
-                          <p className="text-gray-400 text-sm">Click &quot;Check Availability&quot; to see venue availability for your selected dates</p>
+                          <p className="text-muted-foreground text-sm">Click &quot;Check Availability&quot; to see venue availability for your selected dates</p>
                         )}
                       </div>
+
+                      {/* Description */}
+                      {selectedVenueDetails.description && (
+                        <div className="p-4 rounded-xl border border-border/20 bg-muted/5">
+                          <h4 className="font-bold text-foreground mb-2">Description</h4>
+                          <p className="text-muted-foreground leading-relaxed">{selectedVenueDetails.description}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1069,24 +1112,27 @@ function NewEventPageInner() {
 
           {currentStep === 3 && (
             <div className="space-y-6">
-              <h3 className="text-2xl font-semibold" >Time Selection & Seating</h3>
-              
+              <h2 className="text-2xl font-semibold mb-6 flex items-center">
+                <Users className="h-6 w-6 mr-3 text-primary" />
+                Time Selection & Seating
+              </h2>
+
               {form.venueId ? (
                 <div className="space-y-6">
                   {/* Selected Venue Info */}
-                  <div className="rounded-xl border p-4" style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30' }}>
-                    <h4 className="font-semibold text-white mb-2">Selected Venue</h4>
+                  <div className="bg-background/50 rounded-xl border p-4">
+                    <h4 className="font-semibold mb-2">Selected Venue</h4>
                     {(() => {
                       const v = venues.find((vv: VenueCard) => String(vv.id) === String(form.venueId));
                       return v ? (
                         <div className="flex items-center space-x-4">
-                          <div className="w-16 h-16 overflow-hidden rounded-lg border flex items-center justify-center" style={{ backgroundColor: '#23262F', borderColor: greenBorder }}>
-                            {v.featuredImage || v.image ? <img src={v.featuredImage || v.image} alt="Venue" className="w-full h-full object-cover" /> : <div className="text-xs" style={{ color: '#ABA8A9' }}>No image</div>}
-                          </div>
-                          <div>
-                            <div className="font-semibold text-white">{v.name}</div>
-                            <div className="text-sm" style={{ color: '#ABA8A9' }}>{v.location || '—'}</div>
-                          </div>
+                        <div className="w-16 h-16 overflow-hidden rounded-lg border flex items-center justify-center bg-background/50">
+                          {v.featuredImage || v.image ? <img src={v.featuredImage || v.image} alt="Venue" className="w-full h-full object-cover" /> : <div className="text-xs text-muted-foreground">No image</div>}
+                        </div>
+                        <div>
+                          <div className="font-semibold text-foreground">{v.name}</div>
+                          <div className="text-sm text-muted-foreground">{v.location || '—'}</div>
+                        </div>
                         </div>
                       ) : (
                         <div className="text-gray-400">Venue details not found</div>
@@ -1095,148 +1141,63 @@ function NewEventPageInner() {
                   </div>
 
                   {/* Time Selection */}
-                  <div className="rounded-lg p-6" style={{ backgroundColor: '#191C24', borderColor: greenBorder + '30', border: '1px solid' }}>
-                    <h4 className="font-semibold text-white mb-4">Event Times</h4>
-                    <p className="text-sm text-gray-400 mb-4">Set the start and end times for your event. These times will apply to all selected dates.</p>
+                  <div className="bg-background/50 rounded-lg p-6 border">
+                    <h4 className="font-semibold mb-4">Event Times</h4>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <label className="block text-sm font-medium mb-2" >Start Time *</label>
+                        <label className="block text-sm font-medium text-foreground mb-2">Start Time *</label>
                         <div className="flex gap-2">
-                          <select 
-                            value={form.startHour || ''} 
-                            onChange={e => onChange("startHour", e.target.value)} 
-                            className="px-3 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 w-24"
-                            style={{ 
-                              backgroundColor: '#23262F', 
-                              borderColor: greenBorder, 
-                              color: '#fff'
-                            }}
-                          >
-                            <option value="" style={{ backgroundColor: '#23262F', color: '#fff' }}>HH</option>
-                            {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map(h => 
-                              <option key={h} value={h} style={{ backgroundColor: '#23262F', color: '#fff' }}>{h}</option>
-                            )}
-                          </select>
-                          <select 
-                            value={form.startMinute || ''} 
-                            onChange={e => onChange("startMinute", e.target.value)} 
-                            className="px-3 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 w-24"
-                            style={{ 
-                              backgroundColor: '#23262F', 
-                              borderColor: greenBorder, 
-                              color: '#fff'
-                            }}
-                          >
-                            <option value="" style={{ backgroundColor: '#23262F', color: '#fff' }}>MM</option>
-                            {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m => 
-                              <option key={m} value={m} style={{ backgroundColor: '#23262F', color: '#fff' }}>{m}</option>
-                            )}
-                          </select>
+                          <Dropdown
+                            options={hourOptions}
+                            value={form.startHour}
+                            placeholder="HH"
+                            onChange={v => onChange("startHour", v)}
+                            className="w-24"
+                          />
+                          <Dropdown
+                            options={minuteOptions}
+                            value={form.startMinute}
+                            placeholder="MM"
+                            onChange={v => onChange("startMinute", v)}
+                            className="w-24"
+                          />
                         </div>
                       </div>
-                      
                       <div>
-                        <label className="block text-sm font-medium mb-2" >End Time (optional)</label>
+                        <label className="block text-sm font-medium text-foreground mb-2">End Time *</label>
                         <div className="flex gap-2">
-                          <select 
-                            value={form.endHour || ''} 
-                            onChange={e => onChange("endHour", e.target.value)} 
-                            className="px-3 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 w-24"
-                            style={{ 
-                              backgroundColor: '#23262F', 
-                              borderColor: greenBorder, 
-                              color: '#fff'
-                            }}
-                          >
-                            <option value="" style={{ backgroundColor: '#23262F', color: '#fff' }}>HH</option>
-                            {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map(h => 
-                              <option key={h} value={h} style={{ backgroundColor: '#23262F', color: '#fff' }}>{h}</option>
-                            )}
-                          </select>
-                          <select 
-                            value={form.endMinute || ''} 
-                            onChange={e => onChange("endMinute", e.target.value)} 
-                            className="px-3 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 w-24"
-                            style={{ 
-                              backgroundColor: '#23262F', 
-                              borderColor: greenBorder, 
-                              color: '#fff'
-                            }}
-                          >
-                            <option value="" style={{ backgroundColor: '#23262F', color: '#fff' }}>MM</option>
-                            {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m => 
-                              <option key={m} value={m} style={{ backgroundColor: '#23262F', color: '#fff' }}>{m}</option>
-                            )}
-                          </select>
+                          <Dropdown
+                            options={hourOptions}
+                            value={form.endHour}
+                            placeholder="HH"
+                            onChange={v => onChange("endHour", v)}
+                            className="w-24"
+                          />
+                          <Dropdown
+                            options={minuteOptions}
+                            value={form.endMinute}
+                            placeholder="MM"
+                            onChange={v => onChange("endMinute", v)}
+                            className="w-24"
+                          />
                         </div>
                       </div>
                     </div>
                     
                     {/* Show selected times */}
                     {(form.startHour && form.startMinute) && (
-                      <div className="mt-4 p-3 rounded-lg" style={{ backgroundColor: '#39FD48' + '10', borderColor: '#39FD48' + '30', border: '1px solid' }}>
-                        <div className="text-sm text-white">
+                      <div className="mt-4 p-3 rounded-lg bg-blue-600 border border-blue-700">
+                        <div className="text-sm text-white font-medium">
                           <strong>Event Duration:</strong> {form.startHour}:{form.startMinute.padStart(2, '0')}
                           {form.endHour && form.endMinute ? ` - ${form.endHour}:${form.endMinute.padStart(2, '0')}` : ' (open-ended)'}
                         </div>
-                        <div className="text-xs text-gray-400 mt-1">
+                        <div className="text-xs text-white/80 mt-1">
                           This time applies to all selected dates: {form.startDateDate}{form.endDateDate ? ` to ${form.endDateDate}` : ''}
                         </div>
                       </div>
                     )}
                   </div>
-
-                  {/* Seat Selection */}
-                  {seatMapData && (
-                    <div className="rounded-xl border p-6" style={{ backgroundColor: '#191C24', borderColor: greenBorder + '30' }}>
-                      <h4 className="font-semibold text-white mb-4 flex items-center">
-                        <Grid3X3 className="h-5 w-5 mr-2" style={{ color: '#39FD48' }} />
-                        Seat Selection
-                      </h4>
-                      
-                      {/* Seat Map Display */}
-                      <div className="flex justify-center mb-4">
-                        <div className="inline-block p-4 rounded-xl border" 
-                          style={{ backgroundColor: '#0D6EFD' + '10', borderColor: '#0D6EFD' + '30' }}>
-                          <div 
-                            className="grid gap-1"
-                            style={{
-                              gridTemplateColumns: `repeat(${Math.min(Number(seatMapData.columns) || 10, 30)}, 1fr)`
-                            }}
-                          >
-                            {Array.from({ 
-                              length: Math.min((Number(seatMapData.rows) || 10) * (Number(seatMapData.columns) || 10), 600) 
-                            }).map((_, index) => {
-                              const columns = Number(seatMapData.columns) || 10;
-                              const row = Math.floor(index / columns);
-                              const col = index % columns;
-                              
-                              const section = Array.isArray(seatMapData.sections) ? seatMapData.sections.find((s: any) =>
-                                row >= s.startRow && row < s.startRow + s.rows &&
-                                col >= s.startCol && col < s.startCol + s.columns
-                              ) : null;
-                              
-                              return (
-                                <div
-                                  key={`${row}-${col}`}
-                                  className="w-4 h-4 rounded-sm flex items-center justify-center text-xs font-bold cursor-pointer hover:scale-110 transition-transform"
-                                  style={{
-                                    backgroundColor: section ? section.color : '#39FD48',
-                                    opacity: 0.8
-                                  }}
-                                  title={`Row ${row + 1}, Seat ${col + 1}${section ? ` - ${section.name}` : ''}`}
-                                >
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <p className="text-sm text-gray-400 text-center">Click on seats to select/deselect them for your event</p>
-                    </div>
-                  )}
                 </div>
               ) : (
                 <div className="text-center py-12">
@@ -1250,158 +1211,329 @@ function NewEventPageInner() {
 
           {currentStep === 4 && (
             <div className="space-y-6">
-              <h3 className="text-2xl font-semibold text-white">Event Poster</h3>
+              <h2 className="text-2xl font-semibold mb-6 flex items-center">
+                <ImageIcon className="h-6 w-6 mr-3 text-primary" />
+                Event Poster
+              </h2>
+              
               <div className="space-y-4">
-                <label className="block text-sm text-foreground mb-2">Upload Poster</label>
-                <div className="border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300 border-border hover:border-primary/50 bg-background/50">
-                  <ImageIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    onChange={e => handlePosterChange(e.target.files)} 
-                    className="hidden" 
-                    id="poster-upload" 
-                  />
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    className="cursor-pointer"
+                <label className="block text-sm font-medium text-foreground mb-2">Upload Poster (Optional)</label>
+                
+                {!form.poster ? (
+                  <div 
+                    className="border-2 border-dashed rounded-xl p-12 text-center transition-all duration-300 border-border hover:border-primary/50 bg-background/50 cursor-pointer group"
                     onClick={() => document.getElementById('poster-upload')?.click()}
                   >
-                    Choose Image
-                  </Button>
-                  {form.poster && (
-                    <div className="mt-4 relative inline-block">
-                      <img src={form.poster} alt="Poster" className="w-40 h-40 object-cover rounded-lg border" />
-                      <button type="button" onClick={() => { removePoster(); setSelectedFile(null); }} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"><X className="h-4 w-4" /></button>
+                    <div className="flex flex-col items-center space-y-4">
+                      <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                        <ImageIcon className="h-8 w-8 text-primary" />
+                      </div>
+                      <div>
+                        <h4 className="text-lg font-semibold text-foreground mb-2">Upload Event Poster</h4>
+                        <p className="text-sm text-muted-foreground">Click to browse or drag and drop your image here</p>
+                        <p className="text-xs text-muted-foreground mt-1">PNG, JPG, GIF up to 10MB</p>
+                      </div>
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        className="cursor-pointer"
+                      >
+                        Choose Image
+                      </Button>
                     </div>
-                  )}
-                </div>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={e => handlePosterChange(e.target.files)} 
+                      className="hidden" 
+                      id="poster-upload" 
+                    />
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Image Preview */}
+                      <div className="space-y-4">
+                        <h4 className="font-semibold text-foreground">Preview</h4>
+                        <div className="relative rounded-xl overflow-hidden border border-border bg-background/50">
+                          <img src={form.poster} alt="Event Poster" className="w-full h-64 object-cover" />
+                          <button 
+                            type="button" 
+                            onClick={() => { removePoster(); setSelectedFile(null); }} 
+                            className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-2 transition-colors shadow-lg"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {/* Upload Actions */}
+                      <div className="space-y-4">
+                        <h4 className="font-semibold text-foreground">Actions</h4>
+                        <div className="space-y-3">
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            className="w-full"
+                            onClick={() => document.getElementById('poster-upload')?.click()}
+                          >
+                            <ImageIcon className="h-4 w-4 mr-2" />
+                            Change Image
+                          </Button>
+                          <Button 
+                            type="button" 
+                            variant="destructive" 
+                            className="w-full"
+                            onClick={() => { removePoster(); setSelectedFile(null); }}
+                          >
+                            <X className="h-4 w-4 mr-2" />
+                            Remove Image
+                          </Button>
+                        </div>
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          onChange={e => handlePosterChange(e.target.files)} 
+                          className="hidden" 
+                          id="poster-upload" 
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
 
           {currentStep === 5 && (
             <div className="space-y-6">
-              <h3 className="text-2xl font-semibold text-white">Staff</h3>
-              <div>
-                <label className="block text-sm text-foreground mb-2">Event Admin Email</label>
-                <input value={eventAdminEmail} onChange={e => setEventAdminEmail(e.target.value)} placeholder="admin@example.com" className="w-full px-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all" />
-            </div>
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm text-foreground">Check-in Officers (up to 10)</label>
-                  <Button type="button" variant="outline" onClick={() => setCheckInEmails(prev => (prev.length < 10 ? [...prev, ""] : prev))}>Add</Button>
-                </div>
-                <div className="space-y-2">
-                  {checkInEmails.map((email, idx) => (
-                    <div key={idx} className="flex gap-2">
-                      <input value={email} onChange={e => setCheckInEmails(prev => prev.map((v, i) => i === idx ? e.target.value : v))} placeholder={`officer${idx+1}@example.com`} className="flex-1 px-4 py-3 border border-border rounded-lg bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all" />
-                      <Button type="button" variant="outline" onClick={() => setCheckInEmails(prev => prev.filter((_, i) => i !== idx))}>Remove</Button>
-                    </div>
-                  ))}
-                </div>
+              <h2 className="text-2xl font-semibold mb-6 flex items-center">
+                <Users className="h-6 w-6 mr-3 text-primary" />
+                Staff Assignment (Optional)
+              </h2>
+              
+              <div className="bg-blue-600 rounded-lg p-4 border border-blue-700 mb-6">
+                <p className="text-sm text-white font-medium">
+                  Assign staff members to manage your event. You can skip this step and assign staff later from the dashboard.
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground">Note: Staff emails are currently collected for UI; backend assignment endpoint can be added next.</p>
+
+              {loadingStaff ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Loading staff members...</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Debug Info */}
+                  {process.env.NODE_ENV === 'development' && (
+                    <div className="bg-muted/20 rounded-lg p-3 border border-border/20 text-xs space-y-1">
+                      <p className="text-muted-foreground">🔍 Debug Info:</p>
+                      <p className="text-muted-foreground">Available Event Admins: {availableEventAdmins.length}</p>
+                      <p className="text-muted-foreground">Available Checkin Officers: {availableCheckinOfficers.length}</p>
+                      <p className="text-muted-foreground">Loading Staff: {loadingStaff ? 'Yes' : 'No'}</p>
+                    </div>
+                  )}
+
+                  {/* Event Admin Selection */}
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">Event Admin</label>
+                    <Dropdown
+                      options={[
+                        { value: "", label: "Select an event admin (optional)" },
+                        ...availableEventAdmins.map(admin => ({
+                          value: admin.uid,
+                          label: `${admin.displayName || admin.email} (${admin.email})`
+                        }))
+                      ]}
+                      value={selectedEventAdmin}
+                      placeholder="Select an event admin"
+                      onChange={(value) => setSelectedEventAdmin(value)}
+                      className="w-full"
+                    />
+                    {availableEventAdmins.length === 0 && (
+                      <p className="text-xs text-orange-500 mt-1">
+                        ⚠️ No event admins found. Check if users have the &apos;event_admin&apos; role assigned.
+                      </p>
+                    )}
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Event admins can manage all aspects of this event
+                    </p>
+                  </div>
+
+                  {/* Check-in Officers Selection */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-foreground">Check-in Officers</label>
+                      <span className="text-xs text-muted-foreground">
+                        {selectedCheckinOfficers.length} selected
+                      </span>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      {availableCheckinOfficers.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-64 overflow-y-auto border border-border rounded-lg p-4">
+                          {availableCheckinOfficers.map(officer => (
+                            <label key={officer.uid} className="flex items-center space-x-3 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={selectedCheckinOfficers.includes(officer.uid)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedCheckinOfficers(prev => [...prev, officer.uid]);
+                                  } else {
+                                    setSelectedCheckinOfficers(prev => prev.filter(id => id !== officer.uid));
+                                  }
+                                }}
+                                className="rounded border-border text-primary focus:ring-primary/50"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-medium text-foreground truncate">
+                                  {officer.displayName || officer.email}
+                                </div>
+                                <div className="text-xs text-muted-foreground truncate">
+                                  {officer.email}
+                                </div>
+                              </div>
+                            </label>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <Users className="h-12 w-12 mx-auto mb-2 text-muted-foreground/50" />
+                          <p>No check-in officers available</p>
+                          <p className="text-xs text-orange-500 mt-2">
+                            ⚠️ Check if users have the &apos;checkin_officer&apos; role assigned.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Check-in officers can scan tickets and manage event entry
+                    </p>
+                  </div>
+
+                  {/* Selected Staff Summary */}
+                  {(selectedEventAdmin || selectedCheckinOfficers.length > 0) && (
+                    <div className="bg-background/50 rounded-lg p-4 border">
+                      <h4 className="font-medium text-foreground mb-3">Selected Staff</h4>
+                      <div className="space-y-2">
+                        {selectedEventAdmin && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-muted-foreground">Event Admin:</span>
+                            <span className="text-sm text-foreground">
+                              {availableEventAdmins.find(a => a.uid === selectedEventAdmin)?.displayName || 
+                               availableEventAdmins.find(a => a.uid === selectedEventAdmin)?.email}
+                            </span>
+                          </div>
+                        )}
+                        {selectedCheckinOfficers.length > 0 && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-muted-foreground">Check-in Officers:</span>
+                            <span className="text-sm text-foreground">{selectedCheckinOfficers.length} selected</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
           {currentStep === 6 && (
-            <div className="space-y-6 text-foreground">
-              <h3 className="text-2xl font-semibold">Review & Submit</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <div className="text-sm text-muted-foreground">Title</div>
-                  <div className="font-medium">{form.title || '-'}</div>
+            <div className="space-y-6">
+              <h3 className="text-2xl font-semibold text-foreground">Review & Submit</h3>
+              <div className="p-6 bg-background/50 rounded-xl border border-border/20 space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <div className="text-sm text-muted-foreground">Title</div>
+                    <div className="font-medium text-foreground">{form.title || '-'}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-muted-foreground">Venue</div>
+                    <div className="font-medium text-foreground">{venues.find(v => String(v.id) === String(form.venueId))?.name || `Not selected (ID: ${form.venueId})`}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-muted-foreground">Start Date & Time</div>
+                    <div className="font-medium text-foreground">{form.startDateDate && form.startHour && form.startMinute ? `${form.startDateDate} ${form.startHour}:${form.startMinute}` : '-'}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-muted-foreground">End Date & Time</div>
+                    <div className="font-medium text-foreground">{form.endDateDate && form.endHour && form.endMinute ? `${form.endDateDate} ${form.endHour}:${form.endMinute}` : '-'}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-muted-foreground">Category</div>
+                    <div className="font-medium text-foreground">{form.category || '-'}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-muted-foreground">Event Admin</div>
+                    <div className="font-medium text-foreground">{eventAdminEmail || '-'}</div>
+                  </div>
+                  <div className="md:col-span-2">
+                    <div className="text-sm text-muted-foreground">Check-in Officers</div>
+                    <div className="font-medium text-foreground">{checkInEmails.filter(Boolean).join(', ') || '-'}</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-sm text-muted-foreground">Venue</div>
-                  <div className="font-medium">{venues.find(v => String(v.id) === String(form.venueId))?.name || `Not selected (ID: ${form.venueId})`}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-muted-foreground">Start Date & Time</div>
-                  <div className="font-medium">{form.startDateDate && form.startHour && form.startMinute ? `${form.startDateDate} ${form.startHour}:${form.startMinute}` : '-'}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-muted-foreground">End Date & Time</div>
-                  <div className="font-medium">{form.endDateDate && form.endHour && form.endMinute ? `${form.endDateDate} ${form.endHour}:${form.endMinute}` : '-'}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-muted-foreground">Category</div>
-                  <div className="font-medium">{form.category || '-'}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-muted-foreground">Event Admin</div>
-                  <div className="font-medium">{eventAdminEmail || '-'}</div>
-                </div>
-                <div className="md:col-span-2">
-                  <div className="text-sm text-muted-foreground">Check-in Officers</div>
-                  <div className="font-medium">{checkInEmails.filter(Boolean).join(', ') || '-'}</div>
-                </div>
+                {form.description && (
+                  <div>
+                    <div className="text-sm text-muted-foreground">Description</div>
+                    <div className="font-medium text-foreground">{form.description}</div>
+                  </div>
+                )}
+                {form.poster && (
+                  <div>
+                    <div className="text-sm text-muted-foreground">Event Poster</div>
+                    <img
+                      src={form.poster}
+                      alt="Event Poster"
+                      className="mt-2 max-w-xs rounded-lg border border-border/20"
+                    />
+                  </div>
+                )}
               </div>
-              {form.description && (
-                <div>
-                  <div className="text-sm text-muted-foreground">Description</div>
-                  <div className="font-medium">{form.description}</div>
-            </div>
-              )}
-              {form.poster && (
-                <div>
-                  <div className="text-sm text-muted-foreground mb-2">Poster</div>
-                  <img src={form.poster} alt="Poster preview" className="w-40 h-40 object-cover rounded-lg border" />
-                </div>
-              )}
             </div>
           )}
 
-          {error && <div className="text-red-400 mt-4 text-center font-medium p-3 rounded-lg" style={{ backgroundColor: '#FF5722' + '20', borderColor: '#FF5722' + '50', border: '1px solid' }}>{error}</div>}
-
+          {error && <div className="text-red-400 mt-4 text-center font-medium p-3 rounded-lg bg-red-500/10 border border-red-500/20">{error}</div>}          {/* Navigation */}
           <div className="flex items-center justify-between mt-8">
-            <Button 
-              variant="outline" 
-              onClick={prevStep} 
-              disabled={currentStep === 1} 
-              className="flex items-center transition-all duration-200"
-              style={{ 
-                backgroundColor: 'transparent', 
-                borderColor: greenBorder, 
-                color: '#fff',
-                opacity: currentStep === 1 ? 0.5 : 1
-              }}
+            <Button
+              variant="outline"
+              onClick={prevStep}
+              disabled={currentStep === 1}
+              className="flex items-center"
             >
-              <ArrowLeft className="h-4 w-4 mr-2" /> Previous
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Previous
             </Button>
-            {currentStep < totalSteps ? (
-              <Button 
-                onClick={nextStep} 
-                className="flex items-center transition-all duration-200 shadow-lg"
-                style={{ background: 'linear-gradient(135deg, #0D6EFD, #1565C0)', color: '#fff' }}
-              >
-                Next <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
-            ) : (
-              <Button 
-                onClick={handleSubmit} 
-                disabled={submitting} 
-                className="flex items-center transition-all duration-200 shadow-lg"
-                style={{ 
-                  background: submitting ? '#39FD48' + '50' : 'linear-gradient(135deg, #39FD48, #2DD4BF)', 
-                  color: '#000',
-                  opacity: submitting ? 0.7 : 1
-                }}
-              >
-                {submitting ? 'Creating...' : 'Create Event'}
-              </Button>
-            )}
 
+            <div className="flex items-center space-x-4">
+              {currentStep < totalSteps ? (
+                <Button
+                  onClick={nextStep}
+                  className="flex items-center bg-gradient-to-r from-primary to-purple-600"
+                >
+                  Next
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleSubmit}
+                  disabled={submitting}
+                  className="flex items-center bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
+                >
+                  <Check className="h-4 w-4 mr-2" />
+                  {submitting ? 'Creating...' : 'Create Event'}
+                </Button>
+              )}
+            </div>
           </div>
-          <div className="flex justify-end mt-4">
-            <Button variant="ghost" onClick={() => router.push('/organizer/dashboard')} >Cancel</Button>
-        </div>
-        </div>
+        </motion.div>
+        </AnimatePresence>
       </div>
     </div>
-</div>  );
+  );
 }
 
 export default NewEventPageInner;

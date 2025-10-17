@@ -928,7 +928,7 @@ export default function CreateVenue() {
                 {/* Availability */}
                 <div className="space-y-4">
                   <label className="block text-sm font-medium text-foreground">
-                    Contact Availability
+                    Contact Availability *
                   </label>
                   <div className="bg-background/50 rounded-lg p-4 border">
                     <p className="text-sm text-muted-foreground mb-4">
@@ -995,25 +995,6 @@ export default function CreateVenue() {
                         </label>
                       </div>
                     </div>
-
-                    {/* Selected availability summary */}
-                    <div className="mt-4 p-3 bg-muted/50 rounded-lg">
-                      <div className="text-xs text-muted-foreground mb-1">Selected availability:</div>
-                      <div className="flex flex-wrap gap-2">
-                        {formData.availability.weekdays && (
-                          <span className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">Weekdays</span>
-                        )}
-                        {formData.availability.weekends && (
-                          <span className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">Weekends</span>
-                        )}
-                        {formData.availability.allWeek && (
-                          <span className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">All Week</span>
-                        )}
-                        {!formData.availability.weekdays && !formData.availability.weekends && !formData.availability.allWeek && (
-                          <span className="px-2 py-1 bg-muted text-muted-foreground text-xs rounded-full">No availability selected</span>
-                        )}
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -1029,6 +1010,30 @@ export default function CreateVenue() {
 
                 {/* Image Upload Area */}
                 <div className="space-y-4">
+                  {/* Instructions */}
+                  <div className="animate-in slide-in-from-top-2 duration-2000 ease-out p-4 bg-blue-600 dark:bg-blue-800 border-2 border-blue-700 dark:border-blue-900 rounded-lg shadow-lg relative overflow-hidden">
+                    {/* Animated background gradient */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 via-blue-300/20 to-indigo-400/20 animate-pulse"></div>
+                    
+                    {/* Sparkle effect */}
+                    <div className="absolute top-2 right-2 w-2 h-2 bg-white rounded-full animate-ping"></div>
+                    <div className="absolute top-4 right-6 w-1 h-1 bg-blue-200 rounded-full animate-ping" style={{animationDelay: '0.5s'}}></div>
+                    
+                    <div className="flex items-start gap-3 relative">
+                      <div className="p-2 bg-white dark:bg-blue-200 rounded-full shadow-md animate-bounce">
+                        <ImageIcon className="h-5 w-5 text-blue-600 dark:text-blue-800" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-bold text-white dark:text-blue-100 mb-1 animate-pulse">
+                          This image will be
+                        </p>
+                        <p className="text-sm text-blue-100 dark:text-blue-200 font-medium">
+                          Displayed as the main venue photo and used in venue listings!
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
                   <div
                     className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300 ${
                       dragActive 
@@ -1073,7 +1078,7 @@ export default function CreateVenue() {
                           </label>
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          Supported formats: JPG, PNG, WebP. Max 5MB per image.
+                          Supported formats: JPG, PNG. Max 5MB per image.
                         </p>
                       </div>
                     )}
@@ -1111,20 +1116,13 @@ export default function CreateVenue() {
                           </div>
                         </motion.div>
                       </div>
-
-                      {/* Image Info */}
-                      <div className="bg-background/50 rounded-lg p-4 border text-center">
-                        <p className="text-sm text-muted-foreground">
-                          This image will be used as the main venue photo in listings.
-                        </p>
-                      </div>
                     </div>
                   )}
 
                   {/* Description */}
                   <div className="space-y-2">
                     <label className="block text-sm font-medium text-foreground">
-                      Venue Description
+                      Venue Description *
                     </label>
                     <textarea
                       value={formData.description}
@@ -1138,8 +1136,33 @@ export default function CreateVenue() {
                   {/* Amenities */}
                   <div className="space-y-2">
                     <label className="block text-sm font-medium text-foreground">
-                      Amenities
+                      Amenities *
                     </label>
+
+                    {/* Instruction */}
+                    <div className="animate-in slide-in-from-top-2 duration-2000 ease-out p-4 bg-blue-600 dark:bg-blue-800 border-2 border-blue-700 dark:border-blue-900 rounded-lg shadow-lg relative overflow-hidden">
+                      {/* Animated background gradient */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 via-blue-300/20 to-indigo-400/20 animate-pulse"></div>
+                      
+                      {/* Sparkle effect */}
+                      <div className="absolute top-2 right-2 w-2 h-2 bg-white rounded-full animate-ping"></div>
+                      <div className="absolute top-4 right-6 w-1 h-1 bg-blue-200 rounded-full animate-ping" style={{animationDelay: '0.5s'}}></div>
+                      
+                      <div className="flex items-start gap-3 relative">
+                        <div className="p-2 bg-white dark:bg-blue-200 rounded-full shadow-md animate-bounce">
+                          <Settings className="h-5 w-5 text-blue-600 dark:text-blue-800" />
+                        </div>
+                        <div className="flex-1">
+                          {/* <p className="text-sm font-bold text-white dark:text-blue-100 mb-1 animate-pulse">
+                            Click amenities that
+                          </p> */}
+                          <p className="text-sm text-blue-100 dark:text-blue-200 font-medium">
+                            Click amenities that best describe your venue and type custom amenities below and press + to add.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="space-y-3">
                       {/* Selected amenities */}
                       <div className="flex flex-wrap gap-2">
@@ -1164,7 +1187,6 @@ export default function CreateVenue() {
 
                       {/* Common amenities suggestions */}
                       <div className="space-y-2">
-                        <p className="text-xs text-muted-foreground">Quick add common amenities:</p>
                         <div className="flex flex-wrap gap-2">
                           {commonAmenities.filter(amenity => !formData.amenities.includes(amenity)).slice(0, 12).map((amenity) => (
                             <button
@@ -1206,7 +1228,7 @@ export default function CreateVenue() {
                         />
                         <Button
                           type="button"
-                          variant="outline"
+                          variant="default"
                           size="sm"
                           onClick={() => {
                             const input = document.querySelector('input[placeholder*="custom amenity"]') as HTMLInputElement;
@@ -1220,12 +1242,9 @@ export default function CreateVenue() {
                             }
                           }}
                         >
-                          <Plus className="h-4 w-4" />
+                          <Plus className="h-4 w-4 text-white" />
                         </Button>
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        Click common amenities above or type custom ones. Press Enter or click + to add.
-                      </p>
                     </div>
                   </div>
                 </div>
@@ -1285,17 +1304,9 @@ export default function CreateVenue() {
                   ))}
                 </div>
 
-                <div className="text-center">
-                  <p className="text-muted-foreground mb-4">
-                    Or start with a custom layout in the next step
-                  </p>
-                </div>
-              </div>
-            )}
+                <div className="h-8"></div>
 
-            {/* Step 4: Seating Layout Designer */}
-            {currentStep === 4 && (
-              <div className="space-y-6">
+                {/* Seating Layout Designer */}
                 <div className="flex items-center justify-between">
                   <h2 className="text-2xl font-semibold flex items-center">
                     <Settings className="h-6 w-6 mr-3 text-primary" />
@@ -1319,6 +1330,30 @@ export default function CreateVenue() {
                   </div>
                 </div>
 
+                {/* Instruction */}
+                <div className="animate-in slide-in-from-top-2 duration-2000 ease-out p-4 bg-blue-600 dark:bg-blue-800 border-2 border-blue-700 dark:border-blue-900 rounded-lg shadow-lg relative overflow-hidden">
+                  {/* Animated background gradient */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 via-blue-300/20 to-indigo-400/20 animate-pulse"></div>
+                  
+                  {/* Sparkle effect */}
+                  <div className="absolute top-2 right-2 w-2 h-2 bg-white rounded-full animate-ping"></div>
+                  <div className="absolute top-4 right-6 w-1 h-1 bg-blue-200 rounded-full animate-ping" style={{animationDelay: '0.5s'}}></div>
+                  
+                  <div className="flex items-start gap-3 relative">
+                    <div className="p-2 bg-white dark:bg-blue-200 rounded-full shadow-md animate-bounce">
+                      <Settings className="h-5 w-5 text-blue-600 dark:text-blue-800" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-white dark:text-blue-100 mb-1 animate-pulse">
+                        Venue Capacity Setup
+                      </p>
+                      <p className="text-sm text-blue-100 dark:text-blue-200 font-medium">
+                        Add your venue capacity using total rows and columns within layout settings section.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="space-y-8">
                   {/* Controls */}
                   {!isPreviewMode && (
@@ -1332,7 +1367,7 @@ export default function CreateVenue() {
                         
                         <div className="space-y-4">
                           <div>
-                            <label className="block text-sm font-medium mb-2">Total Rows</label>
+                            <label className="block text-sm font-medium mb-2">Total Rows *</label>
                             <input
                               type="number"
                               min="1"
@@ -1347,7 +1382,7 @@ export default function CreateVenue() {
                           </div>
                           
                           <div>
-                            <label className="block text-sm font-medium mb-2">Total Columns</label>
+                            <label className="block text-sm font-medium mb-2">Total Columns *</label>
                             <input
                               type="number"
                               min="1"
@@ -1418,7 +1453,7 @@ export default function CreateVenue() {
 
                               <div className="grid grid-cols-2 gap-2 text-xs">
                                 <div>
-                                  <label className="block text-muted-foreground">Start Row</label>
+                                  <label className="block text-muted-foreground">Start Row *</label>
                                   <input
                                     type="number"
                                     min="0"
@@ -1432,7 +1467,7 @@ export default function CreateVenue() {
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-muted-foreground">Start Col</label>
+                                  <label className="block text-muted-foreground">Start Col *</label>
                                   <input
                                     type="number"
                                     min="0"
@@ -1446,7 +1481,7 @@ export default function CreateVenue() {
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-muted-foreground">Rows</label>
+                                  <label className="block text-muted-foreground">Rows *</label>
                                   <input
                                     type="number"
                                     min="1"
@@ -1460,7 +1495,7 @@ export default function CreateVenue() {
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-muted-foreground">Cols</label>
+                                  <label className="block text-muted-foreground">Cols *</label>
                                   <input
                                     type="number"
                                     min="1"
@@ -1474,7 +1509,7 @@ export default function CreateVenue() {
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-muted-foreground">Price ×</label>
+                                  <label className="block text-muted-foreground">Price × *</label>
                                   <input
                                     type="number"
                                     min="0.1"
@@ -1488,7 +1523,7 @@ export default function CreateVenue() {
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-muted-foreground">Color</label>
+                                  <label className="block text-muted-foreground">Color *</label>
                                   <input
                                     type="color"
                                     value={section.color}
@@ -1505,8 +1540,32 @@ export default function CreateVenue() {
                     </div>
                   )}
 
+                  {/* Instruction for custom seat configuration */}
+                  <div className="animate-in slide-in-from-top-2 duration-2000 ease-out p-4 bg-blue-600 dark:bg-blue-800 border-2 border-blue-700 dark:border-blue-900 rounded-lg shadow-lg relative overflow-hidden mt-10">
+                    {/* Animated background gradient */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 via-blue-300/20 to-indigo-400/20 animate-pulse"></div>
+                    
+                    {/* Sparkle effect */}
+                    <div className="absolute top-2 right-2 w-2 h-2 bg-white rounded-full animate-ping"></div>
+                    <div className="absolute top-4 right-6 w-1 h-1 bg-blue-200 rounded-full animate-ping" style={{animationDelay: '0.5s'}}></div>
+                    
+                    <div className="flex items-start gap-3 relative">
+                      <div className="p-2 bg-white dark:bg-blue-200 rounded-full shadow-md animate-bounce">
+                        <Palette className="h-5 w-5 text-blue-600 dark:text-blue-800" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-bold text-white dark:text-blue-100 mb-1 animate-pulse">
+                          Custom Seat Configuration
+                        </p>
+                        <p className="text-sm text-blue-100 dark:text-blue-200 font-medium">
+                          Add custom seat types, colors and prices using seating section and preview it below.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Seating Map Visualization */}
-                  <div className="flex flex-col items-center w-full">
+                  <div className="flex flex-col items-center w-full mt-8">
                     <div className="mb-4">
                       <div className="flex items-center justify-center space-x-6 text-sm">
                         <div className="flex items-center">

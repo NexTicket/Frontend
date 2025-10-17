@@ -2,7 +2,7 @@ import { secureFetch } from "@/utils/secureFetch";
 import { getAuth } from 'firebase/auth';
 
 // Base API Gateway URL
-const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || 'http://localhost:5050';
+const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || 'http://localhost:5051';
 
 // Utility function to construct Event/Venue Service URLs through API Gateway
 function getEventServiceUrl(endpoint: string): string {
@@ -19,15 +19,15 @@ function getUserServiceUrl(endpoint: string): string {
 function getVenueServiceUrl(endpoint: string): string {
   const rawBase = process.env.NEXT_PUBLIC_EVENT_VENUE_SERVICE_URL || process.env.NEXT_PUBLIC_API_URL || '';
   const trimmed = rawBase.replace(/\/$/, '');
-  
+
   // For venue service, we assume the endpoint already includes the correct path
   // If the base URL already ends with /api, use it as is
   // If not, add /api to the base (to match backend API structure)
   const base = trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
-  
+
   // Ensure endpoint starts with /
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-  
+
   return `${base}${cleanEndpoint}`;
 }
 
@@ -49,6 +49,17 @@ function getApiUrl(endpoint: string): string {
   return getEventServiceUrl(endpoint);
 }
 
+// // Legacy function for backward compatibility - now routes through gateway
+// function getVenueServiceUrl(endpoint: string): string {
+//   return getEventServiceUrl(endpoint);
+// }
+
+// // Legacy function for backward compatibility - now routes through gateway
+// function getVenueServiceUrl(endpoint: string): string {
+//   return getEventServiceUrl(endpoint);
+// }
+
+// Legacy function for backward compatibility - now routes through gateway
 // function getVenueServiceUrl(endpoint: string): string {
 //   return getEventServiceUrl(endpoint);
 // }
@@ -56,7 +67,7 @@ function getApiUrl(endpoint: string): string {
 // Public fetch function for endpoints that don't require authentication
 export async function publicFetch(url: string, options: RequestInit = {}) {
   const headers: Record<string, string> = {};
-  
+
   // Only set Content-Type to application/json if body is not FormData
   if (!(options.body instanceof FormData)) {
     headers['Content-Type'] = 'application/json';
@@ -79,7 +90,7 @@ export async function optionalAuthFetch(url: string, options: RequestInit = {}) 
   try {
     const auth = getAuth();
     const user = auth.currentUser;
-    
+
     if (user) {
       // User is logged in, use secureFetch
       return await secureFetch(url, options);
@@ -101,12 +112,12 @@ export const fetchCheckinOfficers = async () => {
     method: 'POST',
     body: JSON.stringify({ role: 'checkin_officer' })
   });
-  
+
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(`Failed to fetch checkin officers: ${errorText}`);
   }
-  
+
   return response.json();
 };
 
@@ -117,35 +128,34 @@ export const updateEventDetails = async (eventId: string | number, eventData: an
     method: 'PUT',
     body: JSON.stringify(eventData)
   });
-  
+
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(`Failed to update event: ${errorText}`);
   }
-  
+
   return response.json();
 };
 
 export const fetchVenueSeatMap = async (id: number | string) => {
-  // Use public route for seat map - needed for customers to view available seats
-  const url = `${API_GATEWAY_URL}/public/api/venues/${id}/seats`;
+  const url = getEventServiceUrl(`/api/venues/${id}/seats`);
   const res = await publicFetch(url);
   if (!res.ok) throw new Error("Failed to fetch venue seat map");
   return res.json();
 };
 
 export async function fetchVenues() {
-  // Use public route - accessible to everyone without auth
-  const url = `${API_GATEWAY_URL}/public/api/venues`;
+  // Use publicFetch since venues should be accessible to everyone
+  const url = getPublicUrl('/api/venues');
   const res = await publicFetch(url);
   if (!res.ok) throw new Error("Failed to fetch venues");
   return res.json();
 }
 
-export async function fetchFilteredVenues(filters: { 
-  type?: string; 
-  location?: { latitude: number; longitude: number; address: string } | null; 
-  amenities?: string[] 
+export async function fetchFilteredVenues(filters: {
+  type?: string;
+  location?: { latitude: number; longitude: number; address: string } | null;
+  amenities?: string[]
 }) {
   // Build query string from filters
   const params = new URLSearchParams();
@@ -158,7 +168,7 @@ export async function fetchFilteredVenues(filters: {
   if (filters.amenities && filters.amenities.length > 0) {
     filters.amenities.forEach(amenity => params.append('amenities', amenity));
   }
-  
+
   const queryString = params.toString();
   const url = getVenueServiceUrl(`/venues/filter${queryString ? `?${queryString}` : ''}`);
   const res = await publicFetch(url);
@@ -172,9 +182,10 @@ export async function fetchVenueAvailability(venueId: string | number, date: str
   params.append('date', date);
   if (startTime) params.append('startTime', startTime);
   if (endTime) params.append('endTime', endTime);
-  
+
+  //////////
   const queryString = params.toString();
-  const url = getVenueServiceUrl(`/api/venues/${venueId}/availability?${queryString}`);
+  const url = getEventServiceUrl(`/api/venues/${venueId}/availability?${queryString}`);
   const res = await publicFetch(url);
   if (!res.ok) throw new Error("Failed to fetch venue availability");
   return res.json();
@@ -219,37 +230,37 @@ export async function uploadVenueImage(id: string, imageFile: File) {
 
   const formData = new FormData();
   formData.append('image', imageFile);
-  
+
   console.log('📤 API: FormData created with field name "image"');
   console.log('📤 API: FormData instanceof FormData:', formData instanceof FormData);
   console.log('📤 API: typeof formData:', typeof formData);
   const url = getEventServiceUrl(`/api/venues/${id}/image`);
-  
+
   console.log('📤 API: Making request to:', url);
-  
+
   const res = await secureFetch(url, {
     method: 'POST',
     body: formData
     // No headers - let secureFetch and browser handle Content-Type
   });
-  
+
   console.log('📤 API: Response status:', res.status);
   console.log('📤 API: Response headers:', Object.fromEntries(res.headers.entries()));
-  
+
   if (!res.ok) {
     const errorText = await res.text();
     console.error('📤 API: Error response body:', errorText);
-    
+
     let errorData;
     try {
       errorData = JSON.parse(errorText);
     } catch {
       errorData = { message: errorText };
     }
-    
+
     throw new Error(`Failed to upload venue image: ${res.status} - ${JSON.stringify(errorData)}`);
   }
-  
+
   const result = await res.json();
   console.log('✅ API: Upload successful:', result);
   return result;
@@ -258,38 +269,38 @@ export async function uploadVenueImage(id: string, imageFile: File) {
 export async function uploadVenueImages(id: string, imageFiles: File[]) {
   // Take only the first image for single image upload
   const firstImage = imageFiles[0];
-  
+
   if (!firstImage) {
     throw new Error("No image file provided");
   }
-  
+
   console.log('📤 Preparing image upload:', {
     venueId: id,
     fileName: firstImage.name,
     fileSize: firstImage.size,
     fileType: firstImage.type
   });
-  
+
   const formData = new FormData();
   formData.append('images', firstImage); // Use 'images' to match the route
-  
+
   console.log('📤 FormData created with image field name: images');
   console.log('📤 Uploading to URL:', getEventServiceUrl(`/api/venues/${id}/images`));
-  
+
   const res = await secureFetch(getEventServiceUrl(`/api/venues/${id}/images`), {
     method: 'POST',
     body: formData
     // No headers - let secureFetch and browser handle Content-Type
   });
-  
+
   console.log('📤 Upload response status:', res.status);
-  
+
   if (!res.ok) {
     const errorText = await res.text();
     console.error('📤 Upload failed with response:', errorText);
     throw new Error(`Failed to upload venue image: ${res.status} ${errorText}`);
   }
-  
+
   const result = await res.json();
   console.log('✅ Upload successful:', result);
   return result;
@@ -304,7 +315,7 @@ export async function fetchEvents(status?: string) {
   return res.json();
 }
 
-// Fetch events by organizer (using firebaseUid) - requires authentication
+// Fetch events by organizer (using firebaseUid)
 export async function fetchEventsByOrganizer(organizerId: string) {
   const url = getEventServiceUrl(`/api/events/organizer/${organizerId}`);
   const res = await secureFetch(url);
@@ -313,9 +324,7 @@ export async function fetchEventsByOrganizer(organizerId: string) {
 }
 
 export async function fetchEventsByVenueId(venueId: number | string) {
-  // Use public route - anyone should be able to see events at a venue
-  const url = `${API_GATEWAY_URL}/public/api/events/venue/${venueId}`;
-  const res = await publicFetch(url);
+  const res = await publicFetch(getEventServiceUrl(`/api/events/venue/${venueId}`));
   if (!res.ok) throw new Error("Failed to fetch events for venue");
   return res.json();
 }
@@ -402,17 +411,26 @@ export async function createEvent(eventData: {
     image: eventData.image ?? undefined
   };
 
-  const res = await secureFetch(getEventServiceUrl('/api/events'), {
+  console.log('🎯 Creating event with body:', body);
+
+  // Use API Gateway instead of direct connection
+  const url = getEventServiceUrl('/api/events');
+  console.log('🎯 Using API Gateway URL:', url);
+  
+  const res = await secureFetch(url, {
     method: 'POST',
     body: JSON.stringify(body)
   });
 
   if (!res.ok) {
     const text = await res.text();
+    console.error('❌ Event creation failed:', res.status, text);
     throw new Error(`Failed to create event: ${res.status} ${text}`);
   }
 
-  return res.json();
+  const result = await res.json();
+  console.log('✅ Event created successfully:', result);
+  return result;
 }
 
 // Delete event by id

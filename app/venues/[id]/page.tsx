@@ -66,6 +66,10 @@ export default function VenueDetailPage({ params }: VenueDetailPageProps) {
   const [seatingLayout, setSeatingLayout] = useState<any[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
+  const [showMap, setShowMap] = useState(false);
+  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [gettingLocation, setGettingLocation] = useState(false);
+  const [mapMode, setMapMode] = useState<'location' | 'directions'>('location');
 
   // Unwrap params using React.use()
   const { id } = use(params);
@@ -149,6 +153,38 @@ export default function VenueDetailPage({ params }: VenueDetailPageProps) {
 
     loadVenue();
   }, [id]);
+
+  // Function to show venue location on map
+  const showVenueLocation = () => {
+    setMapMode('location');
+    setShowMap(true);
+  };
+
+  // Function to get user's current location and show directions
+  const getUserLocation = () => {
+    setGettingLocation(true);
+    setMapMode('directions');
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+          setShowMap(true);
+          setGettingLocation(false);
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+          alert('Unable to get your location. Please check your browser permissions and try again.');
+          setGettingLocation(false);
+        }
+      );
+    } else {
+      alert('Geolocation is not supported by your browser.');
+      setGettingLocation(false);
+    }
+  };
 
   // Fallback seat generation if no real data is available
   const generateSeatingLayout = (venue: any) => {
@@ -460,6 +496,56 @@ export default function VenueDetailPage({ params }: VenueDetailPageProps) {
                       <p className="leading-relaxed text-lg text-foreground" >
                         {venue.description || 'Experience premium entertainment in a world-class venue designed for unforgettable moments. Our state-of-the-art facilities and exceptional service create the perfect atmosphere for every event.'}
                       </p>
+                    </div>
+
+                    {/* Map Section */}
+                    <div className="backdrop-blur-xl border rounded-2xl p-8 shadow-xl bg-card border-border">
+                      <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-2xl font-bold text-foreground">Location & Directions</h3>
+                        <div className="flex gap-3">
+                          <Button 
+                            onClick={showVenueLocation}
+                            className="bg-blue-500 hover:opacity-90 text-white transition-all duration-300"
+                          >
+                            <MapPin className="mr-2 h-5 w-5" />
+                            Show Location
+                          </Button>
+                          <Button 
+                            onClick={getUserLocation}
+                            disabled={gettingLocation}
+                            className="bg-primary hover:opacity-90 text-white transition-all duration-300"
+                          >
+                            <MapPin className="mr-2 h-5 w-5" />
+                            {gettingLocation ? 'Getting Location...' : 'Get Directions'}
+                          </Button>
+                        </div>
+                      </div>
+
+                      {showMap ? (
+                        <div className="space-y-4">
+                          <div className="rounded-xl overflow-hidden border border-primary/30 shadow-lg">
+                            <iframe
+                              width="100%"
+                              height="450"
+                              style={{ border: 0 }}
+                              loading="lazy"
+                              allowFullScreen
+                              referrerPolicy="no-referrer-when-downgrade"
+                              src={
+                                mapMode === 'directions' && userLocation
+                                  ? `https://www.google.com/maps/embed/v1/directions?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''}&origin=${userLocation.lat},${userLocation.lng}&destination=${encodeURIComponent(venue.location || venue.name || '')}&mode=driving`
+                                  : `https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''}&q=${encodeURIComponent(venue.location || venue.name || '')}`
+                              }
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center py-12">
+                          <MapPin className="h-16 w-16 mx-auto mb-4 text-primary" />
+                          <h4 className="text-xl font-bold mb-2 text-foreground">View Venue Location or Get Directions</h4>
+                          <p className="text-muted-foreground mb-4">Click &quot;Show Location&quot; to see the venue on the map, or &quot;Get Directions&quot; to see the route from your current location</p>
+                        </div>
+                      )}
                     </div>
 
                     {/* Features Grid */}
@@ -939,24 +1025,8 @@ export default function VenueDetailPage({ params }: VenueDetailPageProps) {
               <div className="lg:col-span-1">
                 <div className="backdrop-blur-xl border rounded-2xl p-8 shadow-xl sticky top-8" 
                   >
-                  <h3 className="text-xl font-bold mb-6 text-foreground">Quick Actions</h3>
-                  <div className="space-y-4">
-                    <Button className="w-full text-white font-semibold py-3 rounded-xl bg-primary hover:opacity-90 transition-opacity">
-                      <Phone className="mr-2 h-5 w-5" />
-                      Call Venue
-                    </Button>
-                    <Button className="w-full py-3 rounded-xl text-white bg-primary transition-all duration-300">
-                      <Mail className="mr-2 h-5 w-5" />
-                      Send Email
-                    </Button>
-                    <Button className="w-full py-3 rounded-xl text-white bg-primary hover:text-black transition-all duration-300">
-                      <MapPin className="mr-2 h-5 w-5" />
-                      Get Directions
-                    </Button>
-                  </div>
-
                   {/* Venue Stats */}
-                  <div className="mt-8 pt-6 border-t border-blue-500/30">
+                  <div>
                     <h4 className="text-lg font-bold mb-4 text-foreground">Venue Stats</h4>
                     <div className="space-y-4">
                       <div className="flex items-center justify-between p-3 rounded-xl border bg-primary/10 border-primary/30">
