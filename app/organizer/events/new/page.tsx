@@ -1073,13 +1073,13 @@ function NewEventPageInner() {
                         ) : venueAvailability && availabilityLoaded ? (
                           <div className="space-y-4">
                             {/* Blue Instruction Box */}
-                            <div className="bg-blue-500/15 border border-blue-500/30 rounded-lg p-4 flex items-start gap-3">
-                              <div className="bg-blue-500/20 rounded-full p-2 flex-shrink-0">
-                                <Info className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                            <div className="bg-blue-100 dark:bg-blue-900/40 border-2 border-blue-300 dark:border-blue-700 rounded-lg p-4 flex items-start gap-3">
+                              <div className="bg-blue-500 rounded-full p-2 flex-shrink-0">
+                                <Info className="h-5 w-5 text-white" />
                               </div>
                               <div>
-                                <p className="text-sm text-blue-900 dark:text-blue-100 font-semibold mb-1">Important:</p>
-                                <p className="text-sm text-blue-800 dark:text-blue-200">
+                                <p className="text-sm text-black dark:text-white font-bold mb-1">Important:</p>
+                                <p className="text-sm text-black dark:text-gray-100 font-medium">
                                   When selecting your event time, please maintain at least a <strong>1-hour gap</strong> between events shown below. This allows time for venue setup, cleanup, and guest transition.
                                 </p>
                               </div>
