@@ -1,12 +1,12 @@
 "use client"
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { EventCard } from '@/components/ui/event-card';
 import { useAuth } from '@/components/auth/auth-provider';
 import { motion } from 'framer-motion';
-//import { getWelcomeMessage } from '@/lib/auth-utils';
 import { 
   Calendar, 
   MapPin, 
@@ -23,9 +23,10 @@ import {
   Clock,
   TrendingUp,
   Activity,
-  DollarSign
+  Sparkles,
+  Ticket
 } from 'lucide-react';
-import { mockEvents } from '@/lib/mock-data';
+import { fetchEvents, fetchVenues } from '@/lib/api';
 
 // Animation variants for smooth transitions
 const containerVariants = {
@@ -53,8 +54,73 @@ const itemVariants = {
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const { userProfile } = useAuth();
-  
-  const featuredEvents = mockEvents.slice(0, 6);
+  const router = useRouter();
+  const [featuredEvents, setFeaturedEvents] = useState<any[]>([]);
+  const [venues, setVenues] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalEvents: 0,
+    totalVenues: 0,
+    approvedEvents: 0
+  });
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.push(`/events?search=${encodeURIComponent(searchQuery.trim())}`);
+    } else {
+      router.push('/events');
+    }
+  };
+
+  // Fetch real data on component mount
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch events and venues in parallel
+        const [eventsResponse, venuesResponse] = await Promise.all([
+          fetchEvents('APPROVED'),
+          fetchVenues()
+        ]);
+        
+        // Extract data arrays from responses
+        const eventsData = Array.isArray(eventsResponse?.data) ? eventsResponse.data : 
+                          Array.isArray(eventsResponse) ? eventsResponse : [];
+        const venuesData = Array.isArray(venuesResponse?.data) ? venuesResponse.data : 
+                          Array.isArray(venuesResponse) ? venuesResponse : [];
+        
+        console.log('📊 Loaded data:', { 
+          events: eventsData.length, 
+          venues: venuesData.length 
+        });
+        
+        // Sort events by date and get featured ones (upcoming events)
+        const now = new Date();
+        const upcomingEvents = eventsData
+          .filter((event: any) => new Date(event.startDate) > now)
+          .sort((a: any, b: any) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
+          .slice(0, 6);
+        
+        setFeaturedEvents(upcomingEvents);
+        setVenues(venuesData.slice(0, 4)); // Top 4 venues
+        
+        // Calculate real stats
+        setStats({
+          totalEvents: eventsData.length,
+          totalVenues: venuesData.length,
+          approvedEvents: eventsData.filter((e: any) => e.status === 'APPROVED').length
+        });
+      } catch (error) {
+        console.error('Failed to load data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadData();
+  }, []);
   
   const categories = [
     { name: 'Music', icon: Music, color: 'hsl(var(--primary))', bgColor: 'hsl(var(--primary) / 0.1)' },
@@ -84,24 +150,25 @@ export default function Home() {
     }
   ];
 
-  const stats = [
+  // Dynamic stats display
+  const statsDisplay = [
     {
-      title: 'Happy Customers',
-      value: '10K+',
-      icon: <Users size={24} className="text-primary" />,
-      description: 'Satisfied users'
-    },
-    {
-      title: 'Events Hosted',
-      value: '500+',
+      title: 'Approved Events',
+      value: stats.approvedEvents.toString(),
       icon: <Calendar size={24} className="text-primary" />,
-      description: 'Successfully organized'
+      description: 'Ready to book'
     },
     {
-      title: 'Revenue Generated',
-      value: 'LKR 2M+',
-      icon: <DollarSign size={24} className="text-primary" />,
-      description: 'For our partners'
+      title: 'Total Events',
+      value: stats.totalEvents.toString(),
+      icon: <Ticket size={24} className="text-primary" />,
+      description: 'In our platform'
+    },
+    {
+      title: 'Available Venues',
+      value: stats.totalVenues.toString(),
+      icon: <MapPin size={24} className="text-primary" />,
+      description: 'Across the region'
     },
     {
       title: 'Success Rate',
@@ -150,27 +217,22 @@ export default function Home() {
                   initial={{ opacity: 0, y: 30 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, ease: "easeOut" }}
-                  className="text-4xl md:text-6xl lg:text-7xl font-bold mb-8 text-foreground"
+                  className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 text-foreground leading-tight"
                 >
-                  Discover Amazing{' '}
-                  <span style={{ 
-                    background: 'linear-gradient(135deg, #CBF83E, #39FD48)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    backgroundClip: 'text'
-                  }}>
-                    Events
+                  Your Gateway to{' '}
+                  <span className="bg-gradient-to-r from-primary via-green-400 to-emerald-500 bg-clip-text text-transparent">
+                    Unforgettable
                   </span>
+                  {' '}Experiences
                 </motion.h1>
                 
                 <motion.p 
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3, duration: 0.6 }}
-                  className="text-xl md:text-2xl mb-12"
-                  style={{ color: '#ABA8A9' }}
+                  className="text-lg md:text-xl mb-12 text-muted-foreground max-w-3xl mx-auto"
                 >
-                  Find and book tickets for concerts, sports, theater, and more
+                  Discover and book tickets for the best concerts, sports events, theater shows, and entertainment near you
                 </motion.p>
                 
                 {/* Search Bar */}
@@ -180,27 +242,29 @@ export default function Home() {
                   transition={{ delay: 0.5, duration: 0.6 }}
                   className="max-w-2xl mx-auto mb-12"
                 >
-                  <div className="backdrop-blur-xl border rounded-2xl p-4 shadow-xl bg-card border-border">
+                  <form onSubmit={handleSearch} className="backdrop-blur-xl border rounded-2xl p-4 shadow-xl bg-card/50 border-border/50">
                     <div className="flex flex-col sm:flex-row gap-4">
                       <div className="flex-1 relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5" style={{ color: '#ABA8A9' }} />
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                         <input
                           type="text"
-                          placeholder="Search events, artists, venues..."
+                          placeholder="Search for events, venues, or categories..."
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
-                          className="w-full pl-10 pr-4 py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground border-border placeholder:text-muted-foreground"
+                          onKeyDown={(e) => e.key === 'Enter' && handleSearch(e)}
+                          className="w-full pl-10 pr-4 py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground border-border placeholder:text-muted-foreground transition-all"
                         />
                       </div>
                       <Button 
+                        type="submit"
                         size="lg" 
-                        className="px-8 py-3 font-medium rounded-xl shadow-lg transition-all duration-200 hover:scale-105 hover:opacity-90 bg-primary text-primary-foreground hover:bg-primary/90"
+                        className="px-8 py-3 font-medium rounded-xl shadow-lg transition-all duration-200 hover:scale-105 bg-primary text-primary-foreground hover:bg-primary/90"
                       >
                         <Search className="mr-2 h-5 w-5" />
-                        Search Events
+                        Search
                       </Button>
                     </div>
-                  </div>
+                  </form>
                 </motion.div>
 
                 {/* CTA Buttons */}
@@ -208,33 +272,30 @@ export default function Home() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.7, duration: 0.6 }}
-                  className="flex flex-col sm:flex-row gap-6 justify-center"
+                  className="flex flex-col sm:flex-row gap-4 justify-center"
                 >
                   <Button
                     size="lg"
                     asChild
-                    className="px-8 py-4 text-lg font-medium rounded-xl shadow-lg transition-all duration-200 group bg-primary text-primary-foreground"
+                    className="px-8 py-4 text-lg font-semibold rounded-xl shadow-lg transition-all duration-200 group bg-primary text-primary-foreground hover:shadow-xl hover:scale-105"
                   >
                     <Link href="/events" className="flex items-center justify-center gap-2">
-                      <span>Browse All Events</span>
-                      <ArrowRight
-                        className="ml-2 h-5 w-5 transition-transform duration-200 group-hover:translate-x-1"
-                      />
+                      <Calendar className="h-5 w-5" />
+                      <span>Browse Events</span>
+                      <ArrowRight className="h-5 w-5 transition-transform duration-200 group-hover:translate-x-1" />
                     </Link>
                   </Button>
-                    <Button
+                  <Button
                     size="lg"
                     variant="outline"
                     asChild
-                    className="px-8 py-4 text-lg font-medium rounded-xl transition-all duration-200 border-[#0D6EFD] text-[#0D6EFD] hover:bg-[#0D6EFD]/10 hover:scale-105 hover:text-[#0D6EFD]"
-                    style={{
-                      backgroundColor: 'transparent'
-                    }}
-                    >
-                    <Link href="/venues">
-                      Explore Venues
+                    className="px-8 py-4 text-lg font-semibold rounded-xl transition-all duration-200 border-2 hover:scale-105 hover:bg-primary/5"
+                  >
+                    <Link href="/venues" className="flex items-center justify-center gap-2">
+                      <MapPin className="h-5 w-5" />
+                      <span>Explore Venues</span>
                     </Link>
-                    </Button>
+                  </Button>
                 </motion.div>
               </motion.div>
             </div>
@@ -243,7 +304,7 @@ export default function Home() {
           {/* Stats Section */}
           <motion.div variants={itemVariants} className="mb-16 px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {stats.map((stat, index) => (
+              {statsDisplay.map((stat, index) => (
                 <motion.div
                   key={index}
                   variants={itemVariants}
@@ -267,9 +328,9 @@ export default function Home() {
           {/* Categories Section */}
           <section className="py-16 px-4 sm:px-6 lg:px-8">
             <motion.div variants={itemVariants} className="text-center mb-12">
-              <h2 className="text-3xl font-bold mb-4" style={{ color: '#fff' }}>Popular Categories</h2>
-              <p className="text-xl" style={{ color: '#ABA8A9' }}>
-                Discover events by category
+              <h2 className="text-3xl font-bold mb-4 text-foreground">Browse by Category</h2>
+              <p className="text-lg text-muted-foreground">
+                Find events that match your interests
               </p>
             </motion.div>
             
@@ -277,17 +338,20 @@ export default function Home() {
               {categories.map((category, index) => {
                 const Icon = category.icon;
                 return (
-                  <motion.div
-                    key={index}
-                    whileHover={{ scale: 1.05, y: -5 }}
-                    className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl hover:shadow-md transition-all duration-200 group bg-card border-border">
-                    <Link href={`/events?category=${category.name.toLowerCase()}`}>
-                      <div className="rounded-xl p-4 w-fit mx-auto mb-4 group-hover:scale-110 transition-transform" style={{ backgroundColor: category.bgColor }}>
-                        <Icon className="h-8 w-8" style={{ color: category.color }} />
+                  <Link key={index} href={`/events?category=${category.name.toLowerCase()}`}>
+                    <motion.div
+                      whileHover={{ scale: 1.05, y: -8 }}
+                      whileTap={{ scale: 0.98 }}
+                      className="backdrop-blur-xl border rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 group bg-card/50 border-border/50 cursor-pointer"
+                    >
+                      <div className="rounded-xl p-4 w-fit mx-auto mb-4 group-hover:scale-110 transition-transform duration-300" style={{ backgroundColor: category.bgColor }}>
+                        <Icon className="h-10 w-10" style={{ color: category.color }} />
                       </div>
-                      <h3 className="text-lg font-semibold text-center text-foreground">{category.name}</h3>
-                    </Link>
-                  </motion.div>
+                      <h3 className="text-lg font-semibold text-center text-foreground group-hover:text-primary transition-colors duration-200">
+                        {category.name}
+                      </h3>
+                    </motion.div>
+                  </Link>
                 );
               })}
             </motion.div>
@@ -296,17 +360,39 @@ export default function Home() {
           {/* Featured Events */}
           <section className="py-16 px-4 sm:px-6 lg:px-8">
             <motion.div variants={itemVariants} className="text-center mb-12">
-              <h2 className="text-3xl font-bold mb-4" style={{ color: '#fff' }}>Featured Events</h2>
-              <p className="text-xl" style={{ color: '#ABA8A9' }}>
-                Don't miss these amazing upcoming events
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <Sparkles className="h-8 w-8 text-primary" />
+                <h2 className="text-3xl font-bold text-foreground">Upcoming Events</h2>
+                <Sparkles className="h-8 w-8 text-primary" />
+              </div>
+              <p className="text-xl text-muted-foreground">
+                {loading ? 'Loading amazing events...' : 'Don\'t miss these exciting upcoming events'}
               </p>
             </motion.div>
             
-            <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {featuredEvents.map((event) => (
-                <EventCard key={event.id} event={event} />
-              ))}
-            </motion.div>
+            {loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl bg-card border-border animate-pulse">
+                    <div className="h-48 bg-muted rounded-xl mb-4"></div>
+                    <div className="h-6 bg-muted rounded w-3/4 mb-2"></div>
+                    <div className="h-4 bg-muted rounded w-1/2"></div>
+                  </div>
+                ))}
+              </div>
+            ) : featuredEvents.length > 0 ? (
+              <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {featuredEvents.map((event: any) => (
+                  <EventCard key={event.id} event={event} />
+                ))}
+              </motion.div>
+            ) : (
+              <motion.div variants={itemVariants} className="text-center py-16">
+                <Calendar className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
+                <p className="text-xl text-muted-foreground mb-4">No upcoming events at the moment</p>
+                <p className="text-sm text-muted-foreground">Check back soon for exciting new events!</p>
+              </motion.div>
+            )}
             
             <motion.div 
               variants={itemVariants}
@@ -358,10 +444,13 @@ export default function Home() {
           <section className="py-16 px-4 sm:px-6 lg:px-8">
             <motion.div 
               variants={itemVariants} 
-              whileHover={{ scale: 1.01, y: -2 }}
-              className="backdrop-blur-xl border rounded-3xl p-12 shadow-xl text-center relative overflow-hidden bg-card border-border">
-              {/* Background gradient overlay */}
-              <div className="absolute inset-0 opacity-5 rounded-3xl bg-gradient-to-br from-primary to-secondary"></div>
+              whileHover={{ scale: 1.01 }}
+              className="backdrop-blur-xl border rounded-3xl p-12 md:p-16 shadow-2xl text-center relative overflow-hidden bg-gradient-to-br from-card via-card to-primary/5 border-border">
+              {/* Animated background elements */}
+              <div className="absolute inset-0 opacity-10">
+                <div className="absolute top-10 left-10 w-20 h-20 rounded-full bg-primary blur-2xl animate-pulse"></div>
+                <div className="absolute bottom-10 right-10 w-32 h-32 rounded-full bg-green-400 blur-3xl animate-pulse delay-700"></div>
+              </div>
               
               {/* Content */}
               <div className="relative z-10">
@@ -369,22 +458,25 @@ export default function Home() {
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6 }}
-                  className="mb-8"
+                  viewport={{ once: true }}
+                  className="mb-10"
                 >
                   <div className="flex items-center justify-center mb-6">
-                    <div className="rounded-xl p-3 bg-primary/20">
-                      <ArrowRight className="h-8 w-8 text-primary" />
+                    <div className="rounded-2xl p-4 bg-primary/20 backdrop-blur-sm">
+                      <Sparkles className="h-10 w-10 text-primary" />
                     </div>
                   </div>
-                  <h2 className="text-3xl md:text-4xl font-bold mb-6 text-foreground">
-                    Ready to Find Your Next{' '}
-                    <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                      Adventure
+                  <h2 className="text-3xl md:text-5xl font-bold mb-6 text-foreground leading-tight">
+                    Ready to Create{' '}
+                    <span className="bg-gradient-to-r from-primary via-green-400 to-emerald-500 bg-clip-text text-transparent">
+                      Unforgettable Memories
                     </span>
                     ?
                   </h2>
-                  <p className="text-xl mb-8 text-muted-foreground">
-                    Join thousands of event-goers who trust NexTicket for their entertainment needs
+                  <p className="text-lg md:text-xl mb-10 text-muted-foreground max-w-2xl mx-auto">
+                    {userProfile 
+                      ? `Welcome back, ${userProfile.firstName}! Discover your next amazing experience.`
+                      : 'Join thousands of event-goers and start your journey today'}
                   </p>
                 </motion.div>
                 
@@ -392,26 +484,31 @@ export default function Home() {
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: 0.2 }}
-                  className="flex flex-col sm:flex-row gap-6 justify-center"
+                  viewport={{ once: true }}
+                  className="flex flex-col sm:flex-row gap-4 justify-center"
                 >
                   <Button 
                     size="lg" 
                     asChild
-                    className="px-8 py-4 text-lg font-medium rounded-xl shadow-lg transition-all duration-200 group hover:scale-105 bg-primary text-primary-foreground hover:bg-primary/90">
+                    className="px-10 py-6 text-lg font-semibold rounded-xl shadow-lg transition-all duration-200 group hover:scale-105 hover:shadow-xl bg-primary text-primary-foreground">
                     <Link href="/events" className="flex items-center justify-center gap-2">
-                      <span>Start Exploring</span>
-                      <ArrowRight className="ml-2 h-5 w-5 transition-transform duration-200 group-hover:translate-x-1" />
+                      <Ticket className="h-5 w-5" />
+                      <span>Browse Events</span>
+                      <ArrowRight className="h-5 w-5 transition-transform duration-200 group-hover:translate-x-1" />
                     </Link>
                   </Button>
-                  <Button 
-                    size="lg" 
-                    variant="outline" 
-                    asChild
-                    className="px-8 py-4 text-lg font-medium rounded-xl transition-all duration-200 hover:scale-105 group border-primary text-primary bg-transparent hover:bg-primary/10 hover:text-primary">
-                    <Link href="/auth/signup" className="flex items-center gap-2">
-                      <span>Create Account</span>
-                    </Link>
-                  </Button>
+                  {!userProfile && (
+                    <Button 
+                      size="lg" 
+                      variant="outline" 
+                      asChild
+                      className="px-10 py-6 text-lg font-semibold rounded-xl transition-all duration-200 hover:scale-105 border-2 hover:bg-primary/5">
+                      <Link href="/auth/signup" className="flex items-center gap-2">
+                        <Users className="h-5 w-5" />
+                        <span>Sign Up Free</span>
+                      </Link>
+                    </Button>
+                  )}
                 </motion.div>
               </div>
             </motion.div>

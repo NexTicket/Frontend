@@ -114,7 +114,7 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
   ];
 
   return (
-    <div className="min-h-screen bg-[#18181c] text-white">
+    <div className="min-h-screen  text-foreground">
       {isMovie ? (
         // Movie Layout
         <>
@@ -141,7 +141,7 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                     className="w-80 h-[480px] object-cover rounded-xl shadow-2xl"
                   />
                   <div className="mt-4 text-center">
-                    <span className="bg-gray-700 text-white text-sm px-3 py-1 rounded">2D</span>
+                    <span className="bg-gray-700 text-foreground text-sm px-3 py-1 rounded">2D</span>
                   </div>
                 </div>
 
@@ -156,7 +156,7 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                   {/* Play Button */}
                   <div className="mb-8">
                     <button className="w-20 h-20 bg-white/25 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white/35 transition-all duration-300 hover:scale-110 shadow-2xl border-2 border-white/30">
-                      <Play className="h-7 w-7 text-white ml-1" fill="white" />
+                      <Play className="h-7 w-7 text-foreground ml-1" fill="white" />
                     </button>
                   </div>
 
@@ -191,13 +191,13 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                   {/* Social Share */}
                   <div className="flex gap-4">
                     <button className="w-10 h-10 bg-blue-600 hover:bg-blue-700 rounded-full flex items-center justify-center transition-colors">
-                      <Facebook className="h-5 w-5 text-white" />
+                      <Facebook className="h-5 w-5 text-foreground" />
                     </button>
                     <button className="w-10 h-10 bg-sky-500 hover:bg-sky-600 rounded-full flex items-center justify-center transition-colors">
-                      <Twitter className="h-5 w-5 text-white" />
+                      <Twitter className="h-5 w-5 text-foreground" />
                     </button>
                     <button className="w-10 h-10 bg-red-600 hover:bg-red-700 rounded-full flex items-center justify-center transition-colors">
-                      <Share2 className="h-4 w-4 text-white" />
+                      <Share2 className="h-4 w-4 text-foreground" />
                     </button>
                   </div>
                 </div>
@@ -331,7 +331,7 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                                   <div className="w-20 h-20 bg-gradient-to-br from-gray-600 to-gray-800 rounded-full mb-3 flex items-center justify-center mx-auto shadow-lg hover:shadow-blue-500/25 transition-shadow duration-300">
                                     <span className="text-xl font-semibold">{actor.name.charAt(0)}</span>
                                   </div>
-                                  <p className="text-sm font-medium text-white">{actor.name}</p>
+                                  <p className="text-sm font-medium text-foreground">{actor.name}</p>
                                   <p className="text-xs text-gray-400">{actor.role}</p>
                                 </div>
                               ));
@@ -505,7 +505,7 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
 
                 {/* Booking Summary Only */}
                 <div className="lg:col-span-1">
-                  <div className="bg-[#2a2a35] rounded-lg p-6 sticky top-8">
+                  <div className=" rounded-lg p-6 sticky top-8">
                     <h3 className="text-lg font-semibold mb-4">BOOKING SUMMARY</h3>
                     
                     {/* Selected Movie Info */}
@@ -519,7 +519,7 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                           className="w-15 h-20 object-cover rounded"
                         />
                         <div className="flex-1">
-                          <h4 className="font-medium text-white text-sm">{event.title}</h4>
+                          <h4 className="font-medium text-foreground text-sm">{event.title}</h4>
                           <p className="text-gray-400 text-xs">{event.venue?.name || event.venue || 'TBA'}</p>
                           <p className="text-gray-400 text-xs">
                             {new Date(event.startDate || event.date).toLocaleDateString()} • {event.startTime || event.time}
@@ -532,22 +532,22 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                     <div className="space-y-3 mb-6">
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-400">Ticket ({selectedTicketType})</span>
-                        <span className="text-white">
+                        <span className="text-foreground">
                           LKR {(selectedTicketType === 'premium' ? Math.floor((event.price ? event.price : 100) * 300 * 1.5) : 
                             selectedTicketType === 'vip' ? (event.price ? event.price : 100) * 300 * 2 : (event.price ? event.price : 100) * 300).toLocaleString()}
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-400">Convenience Fee</span>
-                        <span className="text-white">LKR 900</span>
+                        <span className="text-foreground">LKR 900</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-400">Service Tax</span>
-                        <span className="text-white">LKR 600</span>
+                        <span className="text-foreground">LKR 600</span>
                       </div>
                       <div className="border-t border-gray-600 pt-3">
                         <div className="flex justify-between font-semibold">
-                          <span className="text-white">Total Amount</span>
+                          <span className="text-foreground">Total Amount</span>
                           <span className="text-blue-400">
                             LKR {((selectedTicketType === 'premium' ? Math.floor((event.price ? event.price : 100) * 300 * 1.5) : 
                               selectedTicketType === 'vip' ? (event.price ? event.price : 100) * 300 * 2 : (event.price ? event.price : 100) * 300) + 1500).toLocaleString()}
@@ -559,7 +559,7 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                     {/* Action Buttons */}
                     <div className="space-y-3">
                       <Link href={`/events/${event.id}/seating`}>
-                        <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 text-base font-medium">
+                        <Button className="w-full bg-blue-600 hover:bg-blue-700 text-foreground py-3 text-base font-medium">
                           <Ticket className="mr-2 h-5 w-5" />
                           SELECT SEATS
                         </Button>
@@ -590,7 +590,7 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fadeIn">
           {/* Back Button */}
           <div className="animate-slideInFromLeft" style={{ animationDelay: '0.1s' }}>
-            <Link href="/events" className="inline-flex items-center text-gray-400 hover:text-white mb-6 transition-all duration-300 hover:translate-x-1">
+            <Link href="/events" className="inline-flex items-center text-gray-400 hover:text-foreground mb-6 transition-all duration-300 hover:translate-x-1">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Events
             </Link>
@@ -644,7 +644,7 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                   </div>
                 </div>
 
-                <h1 className="text-3xl md:text-4xl font-bold text-white mb-4 animate-slideInFromBottom" style={{ animationDelay: '0.4s' }}>
+                <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-4 animate-slideInFromBottom" style={{ animationDelay: '0.4s' }}>
                   {event.title}
                 </h1>
                 
@@ -665,7 +665,7 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
               </div>
 
               {/* Event Details */}
-              <div className="bg-[#23232b] rounded-lg border border-gray-700 p-6 mb-8 animate-slideInFromLeft transition-all duration-500 hover:border-blue-500/30" style={{ animationDelay: '0.7s' }}>
+              <div className=" rounded-lg border border-gray-700 p-6 mb-8 animate-slideInFromLeft transition-all duration-500 hover:border-blue-500/30" style={{ animationDelay: '0.7s' }}>
                 <h3 className="text-xl font-semibold mb-4">Event Details</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="flex items-center animate-slideInFromBottom" style={{ animationDelay: '0.8s' }}>
@@ -723,7 +723,7 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
 
               {/* Venue Info */}
               {venue && (
-                <div className="bg-[#23232b] rounded-lg border border-gray-700 p-6 animate-slideInFromRight transition-all duration-500 hover:border-blue-500/30" style={{ animationDelay: '1.3s' }}>
+                <div className="rounded-lg border border-gray-700 p-6 animate-slideInFromRight transition-all duration-500 hover:border-blue-500/30" style={{ animationDelay: '1.3s' }}>
                   <h3 className="text-xl font-semibold mb-4">About the Venue</h3>
                   <p className="text-gray-400 mb-4">{venue.description || 'No description provided.'}</p>
                 </div>
@@ -732,7 +732,7 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
 
             {/* Booking Sidebar */}
             <div className="lg:col-span-1">
-              <div className="bg-[#23232b] rounded-lg border border-gray-700 p-6 sticky top-8 animate-slideInFromRight transition-all duration-500 hover:border-blue-500/30" style={{ animationDelay: '0.4s' }}>
+              <div className=" rounded-lg border border-gray-700 p-6 sticky top-8 animate-slideInFromRight transition-all duration-500 hover:border-blue-500/30" style={{ animationDelay: '0.4s' }}>
                 <h3 className="text-xl font-semibold mb-6">Book Your Tickets</h3>
                 
                 {/* Ticket Types */}

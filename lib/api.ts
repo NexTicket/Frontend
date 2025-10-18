@@ -335,7 +335,7 @@ export async function fetchEventById(id: string) {
   // Use optionalAuthFetch - sends auth token if user is logged in
   // This allows admins to see PENDING events while public users see only APPROVED
   // Updated to use RESTful route: /api/events/:id
-  const url = getEventServiceUrl(`/api/events/geteventbyid/${id}`);
+  const url = `${API_GATEWAY_URL}/public/api/events/${id}`;
   const res = await optionalAuthFetch(url);
   if (!res.ok) {
     const errorText = await res.text();
@@ -542,3 +542,47 @@ export async function ensureUserTenant() {
   if (!res.ok) throw new Error("Failed to ensure user tenant");
   return res.json();
 }
+
+
+export interface SeatSection {
+  id: string;
+  name: string;
+  rows: number;
+  color: string;
+  columns: number;
+  startCol: number;
+  startRow: number;
+  price_multiplier: number;
+}
+
+export interface VenueSeatMap {
+  rows: number;
+  aisles: number[];
+  columns: number;
+  sections: SeatSection[];
+  layout_type: string;
+  special_features: string[];
+  wheelchair_accessible: number[];
+}
+
+export interface VenueSeatsResponse {
+  id: number;
+  name: string;
+  seatMap: VenueSeatMap;
+}
+
+export async function getVenueSeats(venueId: number | string): Promise<VenueSeatsResponse> {
+  const res = await secureFetch(`http://localhost:4000/api/venues/${venueId}/seats`);
+  if (!res.ok) throw new Error("Failed to fetch venue seats");
+  const response = await res.json();
+  
+  // Backend returns: { data: { id, name, seatMap }, message }
+  // We need to extract the data property
+  if (response.data) {
+    return response.data;
+  }
+  
+  // Fallback if the response is already in the correct format
+  return response;
+}
+

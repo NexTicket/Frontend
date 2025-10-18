@@ -1,6 +1,10 @@
 interface LockSeatsRequest {
   event_id: number;
-  seat_ids: string[];
+  seat_ids: Array<{
+    section: string;
+    row_id: number;
+    col_id: number;
+  }>;
   bulk_ticket_id: string;
 }
 
@@ -19,20 +23,45 @@ interface LockSeatsResponse {
 }
 
 interface UserLockedSeatsResponse {
-  cart_id: string;
+  order_id: string;
   user_id: string;
-  seat_ids: string[];
+  seat_ids: Array<{
+    section: string;
+    row_id: number;
+    col_id: number;
+  }>;
   event_id: number;
   status: string;
   expires_at: string;
   remaining_seconds: number;
   bulk_ticket_info?: {
-    additionalProp1?: {
-      price_per_ticket?: number;
-      seat_type?: string;
-    };
+    bulk_ticket_id: number;
+    price_per_seat: number;
+    seat_type: string;
   };
 }
+
+interface BulkTicketInfo {
+  id: string | number;
+  event_id: number;
+  venue_id: number;
+  seat_type: string;
+  price: number;
+  seat_prefix: string;
+}
+
+export interface UserTicketResponse {
+  id: string | number;
+  order_id: string | number;
+  qr_code_data: string;
+  seat_id: string;
+  price_paid: number;
+  status: string;
+  created_at: string;
+  bulk_ticket: BulkTicketInfo;
+}
+
+const TICKET_APIGATEWAY_URL = (process.env.APIGATEWAY_URL || 'http://localhost:5000')+ '/ticket_service/api';
 
 export async function getUserLockedSeats(): Promise<UserLockedSeatsResponse> {
   try {
@@ -57,25 +86,27 @@ export async function getUserLockedSeats(): Promise<UserLockedSeatsResponse> {
       console.warn('No authenticated user found. Using mock data instead.');
       // Return mock data for development/testing matching the expected structure
       return {
-        cart_id: 'mock-cart-1',
+        order_id: 'mock-order-1',
         user_id: 'mock-user-id',
-        seat_ids: ['Orchestra A1', 'Orchestra B2'],
+        seat_ids: [
+          { section: 'economy', row_id: 0, col_id: 0 },
+          { section: 'economy', row_id: 0, col_id: 1 }
+        ],
         event_id: 1,
         status: 'locked',
         expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(), // 10 minutes from now
         remaining_seconds: 10 * 60,
         bulk_ticket_info: {
-          additionalProp1: {
-            price_per_ticket: 200.0,
-            seat_type: 'VIP'
-          }
+          bulk_ticket_id: 1,
+          price_per_seat: 200.0,
+          seat_type: 'VIP'
         }
       };
     }
     
     const token = await user.getIdToken();
 
-    const response = await fetch('http://localhost:5000/ticket_service/api/ticket-locking/locked-seats', {
+    const response = await fetch(`${TICKET_APIGATEWAY_URL}/ticket-locking/locked-seats`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -127,7 +158,7 @@ export async function lockSeats({
     
     const token = await user.getIdToken();
 
-    const response = await fetch('http://localhost:5000/ticket_service/api/ticket-locking/lock-seats', {
+    const response = await fetch(`${TICKET_APIGATEWAY_URL}/ticket-locking/lock-seats`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -141,13 +172,242 @@ export async function lockSeats({
     });
     
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      // Handle 409 Conflict specifically
+      if (response.status === 409) {
+        const errorData = await response.json();
+        const errorMessage = errorData.detail || 'Seats already locked by other users';
+        throw new Error(`HTTP 409: ${errorMessage}`);
+      }
+      
+      // Handle other errors
+      const errorData = await response.json().catch(() => null);
+      const errorMessage = errorData?.detail || errorData?.message || `HTTP error! status: ${response.status}`;
+      throw new Error(errorMessage);
     }
     
     const data = await response.json();
     return data;
   } catch (error) {
     console.error('Error locking seats:', error);
+    throw error;
+  }
+}
+
+export async function getUserTickets(): Promise<UserTicketResponse[]> {
+  try {
+    if (typeof window === 'undefined') {
+      throw new Error('This function can only be called on the client side');
+    }
+
+    const { getAuth, onAuthStateChanged } = await import('firebase/auth');
+    const auth = getAuth();
+
+    const user = await new Promise<any>((resolve) => {
+      const unsubscribe = onAuthStateChanged(auth, (authUser) => {
+        unsubscribe();
+        resolve(authUser);
+      });
+    });
+
+    if (!user) {
+      console.warn('No authenticated user found. Returning empty ticket list.');
+      return [];
+    }
+
+    const token = await user.getIdToken();
+
+    const response = await fetch(`${TICKET_APIGATEWAY_URL}/tickets/user/tickets`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (!Array.isArray(data)) {
+      throw new Error('Unexpected response format when fetching user tickets');
+    }
+
+    return data as UserTicketResponse[];
+  } catch (error) {
+    console.error('Error fetching user tickets:', error);
+    throw error;
+  }
+}
+
+interface CreateBulkTicketRequest {
+  event_id: number;
+  venue_id: number;
+  seat_type: string;
+  price: number;
+  total_seats: number;
+  available_seats: number;
+  seat_prefix: string;
+}
+
+interface CreateBulkTicketResponse {
+  success?: boolean;
+  message?: string;
+  data?: any;
+}
+
+export async function createBulkTicket(ticketData: CreateBulkTicketRequest): Promise<CreateBulkTicketResponse> {
+  try {
+    if (typeof window === 'undefined') {
+      throw new Error('This function can only be called on the client side');
+    }
+
+    const { getAuth, onAuthStateChanged } = await import('firebase/auth');
+    const auth = getAuth();
+
+    const user = await new Promise<any>((resolve) => {
+      const unsubscribe = onAuthStateChanged(auth, (authUser) => {
+        unsubscribe();
+        resolve(authUser);
+      });
+    });
+
+    if (!user) {
+      console.warn('No authenticated user found. Cannot create bulk ticket without authentication.');
+      throw new Error('User not authenticated');
+    }
+
+    const token = await user.getIdToken();
+
+    const response = await fetch(`${TICKET_APIGATEWAY_URL}/venues-events/bulk-tickets/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(ticketData)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error creating bulk ticket:', error);
+    throw error;
+  }
+}
+
+export interface BulkTicket {
+  id: number;
+  event_id: number;
+  venue_id: number;
+  seat_type: string;
+  price: number;
+  total_seats: number;
+  available_seats: number;
+  created_at: string;
+  seat_prefix: string;
+}
+
+export async function getEventBulkTickets(eventId: number): Promise<BulkTicket[]> {
+  try {
+    if (typeof window === 'undefined') {
+      throw new Error('This function can only be called on the client side');
+    }
+
+    const { getAuth, onAuthStateChanged } = await import('firebase/auth');
+    const auth = getAuth();
+
+    const user = await new Promise<any>((resolve) => {
+      const unsubscribe = onAuthStateChanged(auth, (authUser) => {
+        unsubscribe();
+        resolve(authUser);
+      });
+    });
+
+    if (!user) {
+      console.warn('No authenticated user found. Cannot fetch bulk tickets without authentication.');
+      throw new Error('User not authenticated');
+    }
+
+    const token = await user.getIdToken();
+
+    const response = await fetch(`${TICKET_APIGATEWAY_URL}/venues-events/events/${eventId}/bulk-tickets`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching event bulk tickets:', error);
+    throw error;
+  }
+}
+
+export interface BulkTicketPrice {
+  section: string;
+  price: number;
+  bulk_ticket_id: number;
+}
+
+export async function getBulkTicketPrices(venueId: number, eventId: number): Promise<BulkTicketPrice[]> {
+  try {
+    if (typeof window === 'undefined') {
+      throw new Error('This function can only be called on the client side');
+    }
+
+    const { getAuth, onAuthStateChanged } = await import('firebase/auth');
+    const auth = getAuth();
+
+    const user = await new Promise<any>((resolve) => {
+      const unsubscribe = onAuthStateChanged(auth, (authUser) => {
+        unsubscribe();
+        resolve(authUser);
+      });
+    });
+
+    if (!user) {
+      console.warn('No authenticated user found. Cannot fetch bulk ticket prices without authentication.');
+      throw new Error('User not authenticated');
+    }
+
+    const token = await user.getIdToken();
+
+    const response = await fetch(`${TICKET_APIGATEWAY_URL}/tickets/bulk-ticket/prices`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        venue_id: venueId,
+        event_id: eventId
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching bulk ticket prices:', error);
     throw error;
   }
 }

@@ -1,29 +1,35 @@
 "use client"
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { useAuth } from '@/components/auth/auth-provider';
+import { Button } from '@/components/ui/button';
 import { Loading } from '@/components/ui/loading';
 import { ErrorDisplay } from '@/components/ui/error-display';
-import { 
-  User, 
-  Calendar, 
-  MapPin, 
-  Clock, 
-  Ticket, 
-  Download,
-  Share2,
+import { mockEvents } from '@/lib/mock-data';
+import TicketCard, { TicketCardData, TicketCardStatus } from '@/components/ui/userprofile/ticket-card';
+import { getUserTickets, UserTicketResponse } from '@/lib/api_ticket';
+import {
+  User,
+  LogOut,
   Settings,
+  Ticket,
+  Calendar,
+  Clock,
+  MapPin,
+  ArrowLeft,
   Heart,
   History,
-  LogOut,
-  ArrowLeft
+  Download,
+  Share2,
+  Users,
+  ChevronRight,
+  Bell,
+  Shield,
+  ArrowUpRight
 } from 'lucide-react';
-import { mockEvents, mockTickets } from '@/lib/mock-data';
-import { db } from '@/lib/firebase';
-import { setDoc, doc, serverTimestamp, getDoc } from 'firebase/firestore';
 
 export default function ProfilePage() {
   const { userProfile, firebaseUser, logout, isLoading } = useAuth();
@@ -35,6 +41,10 @@ export default function ProfilePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasExistingRequest, setHasExistingRequest] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [userTickets, setUserTickets] = useState<TicketCardData[]>([]);
+  const [ticketsLoading, setTicketsLoading] = useState(true);
+  const [ticketsError, setTicketsError] = useState('');
+  const [ticketsReloadKey, setTicketsReloadKey] = useState(0);
 
 
   const isCustomer = userProfile?.role === 'customer';
@@ -135,6 +145,102 @@ export default function ProfilePage() {
     }
   };
 
+  const normalizeTicketStatus = useCallback((status: string): TicketCardStatus => {
+    const normalized = status?.toLowerCase?.() ?? '';
+
+    if (['active', 'valid', 'pending'].includes(normalized)) {
+      return 'active';
+    }
+
+    if (['used', 'redeemed', 'completed'].includes(normalized)) {
+      return 'used';
+    }
+
+    if (['cancelled', 'canceled', 'refunded', 'void'].includes(normalized)) {
+      return 'cancelled';
+    }
+
+    return 'active';
+  }, []);
+
+  const mapTicketToCardData = useCallback((ticket: UserTicketResponse): TicketCardData => {
+    const eventId = ticket?.bulk_ticket?.event_id ?? ticket.id;
+    const matchedEvent = mockEvents.find(event => event.id === String(eventId));
+
+    const eventDetails = matchedEvent
+      ? {
+          id: matchedEvent.id,
+          title: matchedEvent.title,
+          date: matchedEvent.date,
+          time: matchedEvent.time,
+          venue: matchedEvent.venue,
+        }
+      : {
+          id: eventId,
+          title: `Event ${eventId}`,
+          date: ticket.created_at,
+          time: '19:00',
+          venue: 'To be announced',
+        };
+
+    return {
+      id: ticket.id,
+      eventId: eventDetails.id,
+      status: normalizeTicketStatus(ticket.status),
+      purchaseDate: ticket.created_at,
+      price: Number(ticket.price_paid ?? matchedEvent?.price ?? 0),
+      event: eventDetails,
+    };
+  }, [normalizeTicketStatus]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchTickets = async () => {
+      if (!firebaseUser) {
+        if (isMounted) {
+          setUserTickets([]);
+          setTicketsLoading(false);
+          setTicketsError('');
+        }
+        return;
+      }
+
+      setTicketsLoading(true);
+      setTicketsError('');
+
+      try {
+        const apiTickets = await getUserTickets();
+        if (!isMounted) return;
+
+        const mappedTickets = apiTickets.map(mapTicketToCardData);
+        setUserTickets(mappedTickets);
+      } catch (error) {
+        console.error('Failed to load tickets:', error);
+        if (isMounted) {
+          setTicketsError('Unable to load your tickets right now. Please try again.');
+          setUserTickets([]);
+        }
+      } finally {
+        if (isMounted) {
+          setTicketsLoading(false);
+        }
+      }
+    };
+
+    fetchTickets();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [firebaseUser, ticketsReloadKey, mapTicketToCardData]);
+
+  const handleRetryTickets = () => {
+    setTicketsError('');
+    setTicketsLoading(true);
+    setTicketsReloadKey(previous => previous + 1);
+  };
+
 
   // Show loading if auth is still loading
   if (isLoading) {
@@ -162,12 +268,6 @@ export default function ProfilePage() {
       </div>
     );
   }
-
-  const userTickets = mockTickets.map(ticket => ({
-    ...ticket,
-    event: mockEvents.find(e => e.id === ticket.eventId)!
-  }));
-
   const favoriteEvents = mockEvents.slice(0, 3);
   const recentlyViewed = mockEvents.slice(3, 6);
 
@@ -410,61 +510,22 @@ export default function ProfilePage() {
                   </Button>
                 </div>
                 
-                {userTickets.length > 0 ? (
+                {ticketsLoading ? (
+                  <div className="py-12 flex flex-col items-center justify-center">
+                    <Loading size="md" text="Loading your tickets..." />
+                  </div>
+                ) : ticketsError ? (
+                  <div className="text-center py-12 space-y-4">
+                    <Ticket className="h-16 w-16 text-red-500 mx-auto" />
+                    <p className="text-sm text-red-600">{ticketsError}</p>
+                    <Button variant="outline" size="sm" onClick={handleRetryTickets}>
+                      Try Again
+                    </Button>
+                  </div>
+                ) : userTickets.length > 0 ? (
                   <div className="space-y-4">
                     {userTickets.map(ticket => (
-                      <div key={ticket.id} className="bg-card rounded-lg border p-6">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between mb-2">
-                              <h3 className="text-lg font-semibold">{ticket.event.title}</h3>
-                              <span className={`px-2 py-1 text-xs rounded-full ${
-                                ticket.status === 'active' 
-                                  ? 'bg-green-100 text-green-800' 
-                                  : ticket.status === 'used'
-                                  ? 'bg-gray-100 text-gray-800'
-                                  : 'bg-red-100 text-red-800'
-                              }`}>
-                                {ticket.status}
-                              </span>
-                            </div>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                              <div className="flex items-center text-sm text-muted-foreground">
-                                <Calendar className="h-4 w-4 mr-2" />
-                                {new Date(ticket.event.date).toLocaleDateString()}
-                              </div>
-                              <div className="flex items-center text-sm text-muted-foreground">
-                                <Clock className="h-4 w-4 mr-2" />
-                                {ticket.event.time}
-                              </div>
-                              <div className="flex items-center text-sm text-muted-foreground">
-                                <MapPin className="h-4 w-4 mr-2" />
-                                {ticket.event.venue}
-                              </div>
-                            </div>
-                            
-                            <div className="flex items-center justify-between">
-                              <div className="text-sm">
-                                <span className="text-muted-foreground">Purchased: </span>
-                                <span>{new Date(ticket.purchaseDate).toLocaleDateString()}</span>
-                                <span className="text-muted-foreground ml-4">Price: </span>
-                                <span className="font-medium">${ticket.price}</span>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <Button variant="outline" size="sm">
-                                  <Download className="h-4 w-4 mr-2" />
-                                  Download
-                                </Button>
-                                <Button variant="outline" size="sm">
-                                  <Share2 className="h-4 w-4 mr-2" />
-                                  Share
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                      <TicketCard key={ticket.id} ticket={ticket} />
                     ))}
                   </div>
                 ) : (
