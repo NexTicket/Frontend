@@ -1170,10 +1170,10 @@ function NewEventPageInner() {
                   {/* Time Selection */}
                   <div className="bg-background/50 rounded-lg p-6 border">
                     <h4 className="font-semibold mb-2">Event Times</h4>
-                    <p className="text-sm text-blue-500 mb-4 flex items-start">
-                      <span className="mr-2">ℹ️</span>
-                      <span>Please maintain at least a 1-hour gap between events when selecting your time slot to allow for venue setup and cleanup.</span>
-                    </p>
+                    <div className="bg-blue-600 text-white rounded-lg p-3 mb-4 flex items-start">
+                      <span className="mr-2 text-lg">ℹ️</span>
+                      <span className="text-sm">Please maintain at least a 1-hour gap between events when selecting your time slot to allow for venue setup and cleanup.</span>
+                    </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
