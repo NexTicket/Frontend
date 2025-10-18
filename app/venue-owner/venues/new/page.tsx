@@ -25,7 +25,8 @@ import {
   X,
   RotateCcw,
   Square,
-  Circle
+  Circle,
+  Info
 } from 'lucide-react';
 import Link from 'next/link';
 import { Dropdown } from '@/components/ui/dropdown';
@@ -214,6 +215,7 @@ export default function CreateVenue() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [formData, setFormData] = useState<VenueFormData>({
     name: '',
     location: '',
@@ -715,20 +717,18 @@ export default function CreateVenue() {
           // Use the single image upload function
           const uploadResponse = await uploadVenueImage(newVenueId.toString(), imageFiles[0]);
           console.log('✅ Image uploaded successfully:', uploadResponse);
-          
-          // Show success message
-          alert(`✅ Venue "${createResponse.data.name}" created successfully with image!`);
         } catch (imageError) {
           console.warn('⚠️ Venue created but image upload failed:', imageError);
-          alert(`⚠️ Venue "${createResponse.data.name}" was created successfully, but image upload failed. You can add images later by editing the venue.`);
         }
-      } else {
-        // Success without images
-        alert(`✅ Venue "${createResponse.data.name}" created successfully!`);
       }
       
-      // Navigate to venues page
-      router.push('/venue-owner/venues');
+      // Show success modal
+      setShowSuccessModal(true);
+      
+      // Navigate to venues page after 3 seconds
+      setTimeout(() => {
+        router.push('/venue-owner/venues');
+      }, 3000);
       
     } catch (error: any) {
       console.error('❌ Error creating venue:', error);
@@ -1803,6 +1803,39 @@ export default function CreateVenue() {
           </div>
         </div>
       </div>
+      
+      {/* Success Modal - Blue Theme */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-card rounded-2xl p-8 max-w-md mx-4 shadow-2xl border border-blue-500/20"
+          >
+            <div className="text-center">
+              <div className="mx-auto w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mb-4">
+                <Check className="h-8 w-8 text-blue-500" />
+              </div>
+              <h3 className="text-2xl font-bold mb-2 text-foreground">Venue Created Successfully!</h3>
+              <p className="text-muted-foreground mb-4">
+                Your venue has been created and is now available for event bookings.
+              </p>
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mb-4">
+                <p className="text-sm text-foreground flex items-center justify-center gap-2">
+                  <Info className="h-4 w-4 text-blue-500" />
+                  Redirecting to your venues in a moment...
+                </p>
+              </div>
+              <Button
+                onClick={() => router.push('/venue-owner/venues')}
+                className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+              >
+                Go to Venues Now
+              </Button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

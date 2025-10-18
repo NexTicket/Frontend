@@ -1666,31 +1666,31 @@ function NewEventPageInner() {
         </motion.div>
         </AnimatePresence>
         
-        {/* Success Modal */}
+        {/* Success Modal - Blue Theme */}
         {showSuccessModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="bg-card rounded-2xl p-8 max-w-md mx-4 shadow-2xl border border-green-500/20"
+              className="bg-card rounded-2xl p-8 max-w-md mx-4 shadow-2xl border border-blue-500/20"
             >
               <div className="text-center">
-                <div className="mx-auto w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mb-4">
-                  <Check className="h-8 w-8 text-green-500" />
+                <div className="mx-auto w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mb-4">
+                  <Check className="h-8 w-8 text-blue-500" />
                 </div>
                 <h3 className="text-2xl font-bold mb-2 text-foreground">Event Created Successfully!</h3>
                 <p className="text-muted-foreground mb-4">
                   Your event has been created. The system has verified the venue availability and all details.
                 </p>
                 <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mb-4">
-                  <p className="text-sm text-foreground flex items-center gap-2">
+                  <p className="text-sm text-foreground flex items-center justify-center gap-2">
                     <Info className="h-4 w-4 text-blue-500" />
                     Redirecting to your dashboard in a moment...
                   </p>
                 </div>
                 <Button
                   onClick={() => router.push("/organizer/dashboard")}
-                  className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
+                  className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
                 >
                   Go to Dashboard Now
                 </Button>
