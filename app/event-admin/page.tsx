@@ -26,13 +26,6 @@ import {
 } from 'lucide-react';
 import { fetchMyAssignedEvents } from '@/lib/api';
 
-// Theme to match other admin pages
-const darkBg = "#181A20";
-const blueHeader = "#1877F2";
-const cardBg = "#23262F";
-const greenBorder = "#CBF83E" + '50';
-const cardShadow = "0 2px 16px 0 rgba(57,253,72,0.08)";
-
 // Animation variants
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -120,11 +113,10 @@ export default function EventAdminDashboard() {
   // Check if user is authorized
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: darkBg }}>
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <Loading
           size="lg"
           text="Loading..."
-          className="text-white"
         />
       </div>
     );
@@ -132,10 +124,10 @@ export default function EventAdminDashboard() {
 
   if (!userProfile || userProfile.role !== 'event_admin') {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: darkBg }}>
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <div className="text-lg mb-4" style={{ color: '#fff' }}>Access Denied</div>
-          <p style={{ color: '#ABA8A9' }}>You do not have permission to access this page.</p>
+          <div className="text-lg mb-4 text-foreground">Access Denied</div>
+          <p className="text-muted-foreground">You do not have permission to access this page.</p>
         </div>
       </div>
     );
@@ -223,25 +215,24 @@ export default function EventAdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: darkBg }}>
+    <div className="min-h-screen bg-background">
       {/* Subtle Background Elements */}
-      <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-20" style={{ backgroundColor: '#ABA8A9' }}></div>
-      <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-15" style={{ backgroundColor: '#D8DFEE' }}></div>
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl opacity-10" style={{ backgroundColor: '#ABA8A9' }}></div>
+      <div className="absolute top-0 right-0 w-80 h-80 bg-muted/20 rounded-full blur-3xl"></div>
+      <div className="absolute bottom-0 left-0 w-80 h-80 bg-accent/15 rounded-full blur-3xl"></div>
+      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-muted/10 rounded-full blur-3xl"></div>
 
       {/* Header */}
       <div className="relative z-10">
         <div className="max-w-7xl mx-auto px-6 pt-8">
-          <div className="rounded-2xl p-6 shadow-lg" style={{ backgroundColor: blueHeader, borderColor: greenBorder, boxShadow: cardShadow }}>
+          <div className="bg-primary rounded-2xl p-6 shadow-lg border border-border">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold mb-2" style={{ color: '#fff' }}>Event Admin Dashboard</h1>
-                <p className="text-lg" style={{ color: '#fff' }}>Manage your assigned events and team</p>
+                <h1 className="text-3xl font-bold mb-2 text-primary-foreground">Event Admin Dashboard</h1>
+                <p className="text-lg text-primary-foreground/90">Manage your assigned events and team</p>
               </div>
               <div className="flex items-center space-x-4">
                 <div className="text-right">
-                  <p className="text-sm" style={{ color: '#CBF83E' }}>Welcome back</p>
-                  <p className="font-medium" style={{ color: '#fff' }}>{userProfile?.firstName} {userProfile?.lastName}</p>
+                  <p className="font-medium text-primary-foreground">{userProfile?.firstName} {userProfile?.lastName}</p>
                 </div>
               </div>
             </div>
@@ -252,7 +243,7 @@ export default function EventAdminDashboard() {
       <div className="relative z-10 max-w-7xl mx-auto px-6 py-8">
         {/* Navigation Tabs */}
         <div className="mb-8">
-          <div className="flex space-x-1 rounded-2xl p-1" style={{ backgroundColor: cardBg }}>
+          <div className="flex space-x-1 bg-card rounded-2xl p-1 border-2 border-border">
             {[
               { id: 'overview', label: 'Overview', icon: BarChart3 },
               { id: 'events', label: 'My Events', icon: CalendarDays },
@@ -263,13 +254,9 @@ export default function EventAdminDashboard() {
                 onClick={() => setActiveTab(tab.id as any)}
                 className={`flex items-center space-x-2 px-6 py-3 rounded-xl font-medium text-sm transition-all duration-200 ${
                   activeTab === tab.id
-                    ? 'text-black shadow-md'
-                    : 'hover:bg-opacity-20 hover:bg-white'
+                    ? 'bg-primary text-primary-foreground shadow-md'
+                    : 'text-foreground hover:bg-muted/50'
                 }`}
-                style={{
-                  backgroundColor: activeTab === tab.id ? '#CBF83E' : 'transparent',
-                  color: activeTab === tab.id ? '#000' : '#fff'
-                }}
               >
                 <tab.icon className="w-5 h-5" />
                 <span>{tab.label}</span>
@@ -288,84 +275,81 @@ export default function EventAdminDashboard() {
           >
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <motion.div variants={itemVariants} className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
+              <motion.div variants={itemVariants} className="bg-card backdrop-blur-xl border border-border rounded-2xl p-6 shadow-xl">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium" style={{ color: '#ABA8A9' }}>Total Events</p>
-                    <p className="text-3xl font-bold" style={{ color: '#CBF83E' }}>{totalEvents}</p>
+                    <p className="text-sm font-medium text-muted-foreground">Total Events</p>
+                    <p className="text-3xl font-bold text-foreground">{totalEvents}</p>
                   </div>
-                  <CalendarDays className="w-8 h-8" style={{ color: '#fff' }} />
+                  <CalendarDays className="w-8 h-8 text-foreground" />
                 </div>
               </motion.div>
 
-              <motion.div variants={itemVariants} className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
+              <motion.div variants={itemVariants} className="bg-card backdrop-blur-xl border border-border rounded-2xl p-6 shadow-xl">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium" style={{ color: '#ABA8A9' }}>Active Today</p>
-                    <p className="text-3xl font-bold" style={{ color: '#0D6EFD' }}>{activeEvents}</p>
+                    <p className="text-sm font-medium text-muted-foreground">Active Today</p>
+                    <p className="text-3xl font-bold text-blue-600">{activeEvents}</p>
                   </div>
-                  <CheckCircle className="w-8 h-8" style={{ color: '#0D6EFD' }} />
+                  <CheckCircle className="w-8 h-8 text-blue-600" />
                 </div>
               </motion.div>
 
-              <motion.div variants={itemVariants} className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
+              <motion.div variants={itemVariants} className="bg-card backdrop-blur-xl border border-border rounded-2xl p-6 shadow-xl">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium" style={{ color: '#ABA8A9' }}>Upcoming</p>
-                    <p className="text-3xl font-bold" style={{ color: '#ff6b35' }}>{upcomingEvents}</p>
+                    <p className="text-sm font-medium text-muted-foreground">Upcoming</p>
+                    <p className="text-3xl font-bold text-orange-500">{upcomingEvents}</p>
                   </div>
-                  <Clock className="w-8 h-8" style={{ color: '#ff6b35' }} />
+                  <Clock className="w-8 h-8 text-orange-500" />
                 </div>
               </motion.div>
 
-              <motion.div variants={itemVariants} className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
+              <motion.div variants={itemVariants} className="bg-card backdrop-blur-xl border border-border rounded-2xl p-6 shadow-xl">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium" style={{ color: '#ABA8A9' }}>Completed</p>
-                    <p className="text-3xl font-bold" style={{ color: '#fff' }}>{completedEvents}</p>
+                    <p className="text-sm font-medium text-muted-foreground">Completed</p>
+                    <p className="text-3xl font-bold text-foreground">{completedEvents}</p>
                   </div>
-                  <XCircle className="w-8 h-8" style={{ color: '#fff' }} />
+                  <XCircle className="w-8 h-8 text-foreground" />
                 </div>
               </motion.div>
             </div>
 
             {/* Quick Actions */}
-            <motion.div variants={itemVariants} className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
-              <h3 className="text-lg font-medium mb-4 flex items-center" style={{ color: '#fff' }}>
+            <motion.div variants={itemVariants} className="bg-card backdrop-blur-xl border border-border rounded-2xl p-6 shadow-xl">
+              <h3 className="text-lg font-medium mb-4 flex items-center text-foreground">
                 <TrendingUp className="w-5 h-5 mr-2" />
                 Quick Actions
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <button
                   onClick={() => setActiveTab('events')}
-                  className="flex items-center justify-between p-4 rounded-xl transition-all duration-200 hover:shadow-md"
-                  style={{ backgroundColor: '#1f222a', border: `1px solid ${greenBorder}` }}
+                  className="flex items-center justify-between p-4 bg-muted/50 border border-border rounded-xl transition-all duration-200 hover:shadow-md hover:bg-muted"
                 >
                   <div className="flex items-center">
-                    <Eye className="w-5 h-5 mr-3" style={{ color: '#CBF83E' }} />
-                    <span style={{ color: '#fff' }}>View All Events</span>
+                    <Eye className="w-5 h-5 mr-3 text-primary" />
+                    <span className="text-foreground">View All Events</span>
                   </div>
-                  <ChevronRight className="w-4 h-4" style={{ color: '#ABA8A9' }} />
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 </button>
                 <button
-                  className="flex items-center justify-between p-4 rounded-xl transition-all duration-200 hover:shadow-md"
-                  style={{ backgroundColor: '#1f222a', border: `1px solid ${greenBorder}` }}
+                  className="flex items-center justify-between p-4 bg-muted/50 border border-border rounded-xl transition-all duration-200 hover:shadow-md hover:bg-muted"
                 >
                   <div className="flex items-center">
-                    <Settings className="w-5 h-5 mr-3" style={{ color: '#CBF83E' }} />
-                    <span style={{ color: '#fff' }}>Event Settings</span>
+                    <Settings className="w-5 h-5 mr-3 text-primary" />
+                    <span className="text-foreground">Event Settings</span>
                   </div>
-                  <ChevronRight className="w-4 h-4" style={{ color: '#ABA8A9' }} />
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 </button>
                 <button
-                  className="flex items-center justify-between p-4 rounded-xl transition-all duration-200 hover:shadow-md"
-                  style={{ backgroundColor: '#1f222a', border: `1px solid ${greenBorder}` }}
+                  className="flex items-center justify-between p-4 bg-muted/50 border border-border rounded-xl transition-all duration-200 hover:shadow-md hover:bg-muted"
                 >
                   <div className="flex items-center">
-                    <Users className="w-5 h-5 mr-3" style={{ color: '#CBF83E' }} />
-                    <span style={{ color: '#fff' }}>Manage Team</span>
+                    <Users className="w-5 h-5 mr-3 text-primary" />
+                    <span className="text-foreground">Manage Team</span>
                   </div>
-                  <ChevronRight className="w-4 h-4" style={{ color: '#ABA8A9' }} />
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 </button>
               </div>
             </motion.div>
@@ -385,14 +369,13 @@ export default function EventAdminDashboard() {
                 <Loading
                   size="md"
                   text="Loading your assigned events..."
-                  className="text-white"
                 />
               </div>
             ) : assignedEvents.length === 0 ? (
               <div className="text-center py-12">
-                <CalendarDays className="w-16 h-16 mx-auto mb-4" style={{ color: '#ABA8A9' }} />
-                <h3 className="text-lg font-medium mb-2" style={{ color: '#fff' }}>No Assigned Events</h3>
-                <p style={{ color: '#ABA8A9' }}>You have not been assigned to any events yet.</p>
+                <CalendarDays className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+                <h3 className="text-lg font-medium mb-2 text-foreground">No Assigned Events</h3>
+                <p className="text-muted-foreground">You have not been assigned to any events yet.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -400,14 +383,13 @@ export default function EventAdminDashboard() {
                   <motion.div 
                     key={event.id} 
                     variants={itemVariants}
-                    className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 cursor-pointer"
-                    style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}
+                    className="bg-card backdrop-blur-xl border border-border rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 cursor-pointer"
                     onClick={() => handleEventClick(event)}
                   >
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex-1">
-                        <h3 className="text-lg font-semibold mb-1" style={{ color: '#fff' }}>{event.title}</h3>
-                        <p className="text-sm" style={{ color: '#ABA8A9' }}>{event.description}</p>
+                        <h3 className="text-lg font-semibold mb-1 text-foreground">{event.title}</h3>
+                        <p className="text-sm text-muted-foreground">{event.description}</p>
                       </div>
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(getEventStatus(event))}`}>
                         {getEventStatus(event)}
@@ -415,20 +397,20 @@ export default function EventAdminDashboard() {
                     </div>
 
                     <div className="space-y-3 mb-6">
-                      <div className="flex items-center text-sm" style={{ color: '#ABA8A9' }}>
-                        <Calendar className="w-4 h-4 mr-2 flex-shrink-0" style={{ color: '#fff' }} />
+                      <div className="flex items-center text-sm text-muted-foreground">
+                        <Calendar className="w-4 h-4 mr-2 flex-shrink-0 text-foreground" />
                         <span>{formatDate(event.startDate)}</span>
                       </div>
-                      <div className="flex items-center text-sm" style={{ color: '#ABA8A9' }}>
-                        <Clock className="w-4 h-4 mr-2 flex-shrink-0" style={{ color: '#fff' }} />
+                      <div className="flex items-center text-sm text-muted-foreground">
+                        <Clock className="w-4 h-4 mr-2 flex-shrink-0 text-foreground" />
                         <span>{formatTime(event.startTime)} - {formatTime(event.endTime)}</span>
                       </div>
-                      <div className="flex items-center text-sm" style={{ color: '#ABA8A9' }}>
-                        <MapPin className="w-4 h-4 mr-2 flex-shrink-0" style={{ color: '#fff' }} />
+                      <div className="flex items-center text-sm text-muted-foreground">
+                        <MapPin className="w-4 h-4 mr-2 flex-shrink-0 text-foreground" />
                         <span>{event.venue?.name || 'Venue TBD'}</span>
                       </div>
-                      <div className="flex items-center text-sm" style={{ color: '#ABA8A9' }}>
-                        <Users className="w-4 h-4 mr-2 flex-shrink-0" style={{ color: '#fff' }} />
+                      <div className="flex items-center text-sm text-muted-foreground">
+                        <Users className="w-4 h-4 mr-2 flex-shrink-0 text-foreground" />
                         <span>{event.capacity} capacity</span>
                       </div>
                     </div>
@@ -436,8 +418,7 @@ export default function EventAdminDashboard() {
                     <div className="flex space-x-2">
                       <Button 
                         size="sm" 
-                        className="flex-1 transition-all duration-200 hover:shadow-md"
-                        style={{ background: '#0D6EFD', color: '#fff' }}
+                        className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-200 hover:shadow-md"
                         onClick={(e) => {
                           e.stopPropagation();
                           openEventDetail(event.id);
@@ -449,8 +430,7 @@ export default function EventAdminDashboard() {
                       <Button 
                         size="sm" 
                         variant="outline"
-                        className="transition-all duration-200 hover:shadow-md"
-                        style={{ borderColor: greenBorder, color: '#fff', backgroundColor: 'transparent' }}
+                        className="border-border transition-all duration-200 hover:shadow-md"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleEditEvent(event);
@@ -474,12 +454,12 @@ export default function EventAdminDashboard() {
             animate="visible"
             className="space-y-6"
           >
-            <motion.div variants={itemVariants} className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl" style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}>
-              <h3 className="text-lg font-medium mb-4" style={{ color: '#fff' }}>Event Analytics</h3>
+            <motion.div variants={itemVariants} className="bg-card backdrop-blur-xl border border-border rounded-2xl p-6 shadow-xl">
+              <h3 className="text-lg font-medium mb-4 text-foreground">Event Analytics</h3>
               <div className="text-center py-12">
-                <BarChart3 className="w-16 h-16 mx-auto mb-4" style={{ color: '#ABA8A9' }} />
-                <h3 className="text-lg font-medium mb-2" style={{ color: '#fff' }}>Analytics Coming Soon</h3>
-                <p style={{ color: '#ABA8A9' }}>Detailed analytics and reporting features will be available here.</p>
+                <BarChart3 className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+                <h3 className="text-lg font-medium mb-2 text-foreground">Analytics Coming Soon</h3>
+                <p className="text-muted-foreground">Detailed analytics and reporting features will be available here.</p>
               </div>
             </motion.div>
           </motion.div>
