@@ -94,8 +94,6 @@ function NewEventPageInner() {
   const [loadingVenues, setLoadingVenues] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [eventAdminEmail, setEventAdminEmail] = useState("");
-  const [checkInEmails, setCheckInEmails] = useState<string[]>([""]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   // Staff selection states
@@ -1325,16 +1323,6 @@ function NewEventPageInner() {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  {/* Debug Info */}
-                  {process.env.NODE_ENV === 'development' && (
-                    <div className="bg-muted/20 rounded-lg p-3 border border-border/20 text-xs space-y-1">
-                      <p className="text-muted-foreground">🔍 Debug Info:</p>
-                      <p className="text-muted-foreground">Available Event Admins: {availableEventAdmins.length}</p>
-                      <p className="text-muted-foreground">Available Checkin Officers: {availableCheckinOfficers.length}</p>
-                      <p className="text-muted-foreground">Loading Staff: {loadingStaff ? 'Yes' : 'No'}</p>
-                    </div>
-                  )}
-
                   {/* Event Admin Selection */}
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-2">Event Admin</label>
@@ -1416,22 +1404,27 @@ function NewEventPageInner() {
 
                   {/* Selected Staff Summary */}
                   {(selectedEventAdmin || selectedCheckinOfficers.length > 0) && (
-                    <div className="bg-background/50 rounded-lg p-4 border">
+                    <div className="bg-blue-500/10 rounded-lg p-4 border border-blue-500/30">
                       <h4 className="font-medium text-foreground mb-3">Selected Staff</h4>
                       <div className="space-y-2">
                         {selectedEventAdmin && (
                           <div className="flex items-center justify-between">
                             <span className="text-sm text-muted-foreground">Event Admin:</span>
-                            <span className="text-sm text-foreground">
+                            <span className="text-sm text-foreground font-medium">
                               {availableEventAdmins.find(a => a.uid === selectedEventAdmin)?.displayName || 
                                availableEventAdmins.find(a => a.uid === selectedEventAdmin)?.email}
                             </span>
                           </div>
                         )}
                         {selectedCheckinOfficers.length > 0 && (
-                          <div className="flex items-center justify-between">
+                          <div className="space-y-1">
                             <span className="text-sm text-muted-foreground">Check-in Officers:</span>
-                            <span className="text-sm text-foreground">{selectedCheckinOfficers.length} selected</span>
+                            <div className="text-sm text-foreground font-medium">
+                              {selectedCheckinOfficers.map(officerId => {
+                                const officer = availableCheckinOfficers.find(o => o.uid === officerId);
+                                return officer ? (officer.displayName || officer.email) : null;
+                              }).filter(Boolean).join(', ')}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -1469,11 +1462,23 @@ function NewEventPageInner() {
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground">Event Admin</div>
-                    <div className="font-medium text-foreground">{eventAdminEmail || '-'}</div>
+                    <div className="font-medium text-foreground">
+                      {selectedEventAdmin 
+                        ? (availableEventAdmins.find(a => a.uid === selectedEventAdmin)?.displayName || 
+                           availableEventAdmins.find(a => a.uid === selectedEventAdmin)?.email || '-')
+                        : '-'}
+                    </div>
                   </div>
                   <div className="md:col-span-2">
                     <div className="text-sm text-muted-foreground">Check-in Officers</div>
-                    <div className="font-medium text-foreground">{checkInEmails.filter(Boolean).join(', ') || '-'}</div>
+                    <div className="font-medium text-foreground">
+                      {selectedCheckinOfficers.length > 0 
+                        ? selectedCheckinOfficers.map(officerId => {
+                            const officer = availableCheckinOfficers.find(o => o.uid === officerId);
+                            return officer ? (officer.displayName || officer.email) : null;
+                          }).filter(Boolean).join(', ')
+                        : '-'}
+                    </div>
                   </div>
                 </div>
                 {form.description && (
