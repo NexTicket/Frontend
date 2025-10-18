@@ -8,7 +8,7 @@ import { Dropdown } from "@/components/ui/dropdown";
 import { createEvent, fetchVenues, uploadEventImage, fetchVenueSeatMap, fetchVenueById, fetchFilteredVenues, fetchVenueAvailability, fetchFirebaseUsers } from "@/lib/api";
 import { useAuth } from "@/components/auth/auth-provider";
 import dynamic from "next/dynamic";
-import { ArrowLeft, ArrowRight, Image as ImageIcon, X, MapPin, Users, Building2, Grid3X3, Eye, Check } from "lucide-react";
+import { ArrowLeft, ArrowRight, Image as ImageIcon, X, MapPin, Users, Building2, Grid3X3, Eye, Check, Clock, Info, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -94,8 +94,8 @@ function NewEventPageInner() {
   const [loadingVenues, setLoadingVenues] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [eventAdminEmail, setEventAdminEmail] = useState("");
-  const [checkInEmails, setCheckInEmails] = useState<string[]>([""]);
+  const [warning, setWarning] = useState<string | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   // Staff selection states
@@ -297,7 +297,10 @@ function NewEventPageInner() {
 
   // Separate function to load availability lazily
   const loadVenueAvailability = useCallback(async (venueId: string | number) => {
-    if (!form.startDateDate || !form.startHour || !form.startMinute) return;
+    if (!form.startDateDate) {
+      console.log('⚠️ Cannot load availability: No start date selected');
+      return;
+    }
     
     try {
       setLoadingAvailability(true);
@@ -313,7 +316,7 @@ function NewEventPageInner() {
       }
       
       // Check if venue is available for the entire period with the selected times
-      const eventStartTime = `${form.startHour.padStart(2,'0')}:${form.startMinute.padStart(2,'0')}`;
+      const eventStartTime = form.startHour && form.startMinute ? `${form.startHour.padStart(2,'0')}:${form.startMinute.padStart(2,'0')}` : null;
       const eventEndTime = form.endHour && form.endMinute ? `${form.endHour.padStart(2,'0')}:${form.endMinute.padStart(2,'0')}` : null;
       
       // Fetch availability for each date in parallel
@@ -332,25 +335,31 @@ function NewEventPageInner() {
         const events = dayData.events || [];
         const availableSlots = dayData.availableSlots || [];
         
-        // Check if our event time conflicts with existing events
-        const hasConflict = events.some((event: any) => {
-          if (!event.startTime) return false;
-          const eventStart = event.startTime;
-          const eventEnd = event.endTime || '23:59';
-          
-          // Check for time overlap
-          const ourStart = eventStartTime;
-          const ourEnd = eventEndTime || '23:59';
-          
-          return !(ourEnd <= eventStart || ourStart >= eventEnd);
-        });
+        // Only check conflicts if we have event times set
+        let hasConflict = false;
+        let isTimeSlotAvailable = true;
         
-        // Check if our time slot is available
-        const isTimeSlotAvailable = !hasConflict && (availableSlots.length === 0 || availableSlots.some((slot: any) => {
-          const slotStart = slot.start;
-          const slotEnd = slot.end;
-          return eventStartTime >= slotStart && (!eventEndTime || eventEndTime <= slotEnd);
-        }));
+        if (eventStartTime) {
+          // Check if our event time conflicts with existing events
+          hasConflict = events.some((event: any) => {
+            if (!event.startTime) return false;
+            const eventStart = event.startTime;
+            const eventEnd = event.endTime || '23:59';
+            
+            // Check for time overlap
+            const ourStart = eventStartTime;
+            const ourEnd = eventEndTime || '23:59';
+            
+            return !(ourEnd <= eventStart || ourStart >= eventEnd);
+          });
+          
+          // Check if our time slot is available
+          isTimeSlotAvailable = !hasConflict && (availableSlots.length === 0 || availableSlots.some((slot: any) => {
+            const slotStart = slot.start;
+            const slotEnd = slot.end;
+            return eventStartTime >= slotStart && (!eventEndTime || eventEndTime <= slotEnd);
+          }));
+        }
         
         return {
           date,
@@ -358,7 +367,7 @@ function NewEventPageInner() {
           availableSlots,
           isAvailableForEvent: isTimeSlotAvailable,
           conflictEvents: hasConflict ? events.filter((event: any) => {
-            if (!event.startTime) return false;
+            if (!event.startTime || !eventStartTime) return false;
             const eventStart = event.startTime;
             const eventEnd = event.endTime || '23:59';
             const ourStart = eventStartTime;
@@ -383,6 +392,14 @@ function NewEventPageInner() {
       loadVenueDetails(form.venueId);
     }
   }, [form.venueId, form.startDateDate, form.endDateDate, loadVenueDetails]);
+
+  // Reload venue availability when times change (if already on step 3)
+  useEffect(() => {
+    if (form.venueId && form.startDateDate && form.startHour && form.startMinute && currentStep === 3) {
+      console.log('🔄 Reloading availability due to time change');
+      loadVenueAvailability(form.venueId);
+    }
+  }, [form.startHour, form.startMinute, form.endHour, form.endMinute, form.venueId, form.startDateDate, currentStep, loadVenueAvailability]);
 
   const onChange = (k: string, v: string) => {
     console.log('🎯 Form onChange:', { key: k, value: v, currentForm: form });
@@ -411,16 +428,34 @@ function NewEventPageInner() {
         setError("Please select start time for your event.");
         return;
       }
-      if (form.endHour && form.endMinute) {
-        const startTime = `${form.startHour.padStart(2,'0')}:${form.startMinute.padStart(2,'0')}`;
-        const endTime = `${form.endHour.padStart(2,'0')}:${form.endMinute.padStart(2,'0')}`;
-        if (startTime >= endTime) {
-          setError("End time must be after start time.");
-          return;
+      if (!form.endHour || !form.endMinute) {
+        setError("Please select end time for your event.");
+        return;
+      }
+      // Validate that end time is after start time
+      const startMinutes = parseInt(form.startHour) * 60 + parseInt(form.startMinute);
+      const endMinutes = parseInt(form.endHour) * 60 + parseInt(form.endMinute);
+      if (endMinutes <= startMinutes) {
+        setError("End time must be after start time.");
+        return;
+      }
+      
+      // Warn about venue availability conflicts (but don't block)
+      if (venueAvailability && venueAvailability.dailyAvailability) {
+        const hasConflict = venueAvailability.dailyAvailability.some(day => !day.isAvailableForEvent);
+        if (hasConflict) {
+          const conflictDates = venueAvailability.dailyAvailability
+            .filter(day => !day.isAvailableForEvent)
+            .map(day => new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }))
+            .join(', ');
+          setWarning(`⚠️ Note: The venue may have conflicts on: ${conflictDates}. The system will verify final availability when you submit.`);
+        } else {
+          setWarning(null);
         }
       }
     }
     setError(null);
+    setWarning(null);
     setCurrentStep(s => Math.min(totalSteps, s + 1));
   };
 
@@ -505,8 +540,16 @@ function NewEventPageInner() {
       } catch (e) {
         console.warn('Poster upload failed, continuing', e);
       }
-      router.push("/organizer/dashboard");
-          } catch (err) {
+      
+      // Show success modal
+      setShowSuccessModal(true);
+      
+      // Redirect after 3 seconds
+      setTimeout(() => {
+        router.push("/organizer/dashboard");
+      }, 3000);
+      
+    } catch (err) {
         console.error('❌ Event creation failed:', err);
         setError(`Failed to create event: ${err instanceof Error ? err.message : 'Unknown error'}`);
       } finally {
@@ -774,6 +817,10 @@ function NewEventPageInner() {
                   venues.map((v: VenueCard) => {
                     const selected = String(form.venueId) === String(v.id);
                     const img = v.featuredImage || v.image || (Array.isArray(v.images) ? v.images[0] : '');
+                    
+                    // Check availability for this venue (only if dates and times are set)
+                    const canCheckAvailability = form.startDateDate && form.startHour && form.startMinute;
+                    
                     return (
                       <div
                         key={v.id}
@@ -783,6 +830,10 @@ function NewEventPageInner() {
                         onClick={() => {
                           console.log('🎯 Venue card clicked:', { venueId: v.id, venueIdType: typeof v.id });
                           onChange('venueId', String(v.id));
+                          // Auto-fetch availability if dates are set
+                          if (canCheckAvailability) {
+                            loadVenueAvailability(v.id);
+                          }
                         }}
                       >
                         <div className="w-full h-32 overflow-hidden rounded-lg border mb-3 flex items-center justify-center bg-background/50">
@@ -804,7 +855,7 @@ function NewEventPageInner() {
                               try {
                                 await loadVenueDetails(v.id);
                                 // Automatically fetch availability if dates are set
-                                if (form.startDateDate) {
+                                if (canCheckAvailability) {
                                   setAvailabilityLoaded(true);
                                   loadVenueAvailability(v.id);
                                 }
@@ -871,9 +922,9 @@ function NewEventPageInner() {
                         variant="ghost" 
                         size="sm"
                         onClick={() => setShowVenueModal(false)}
-                        className="hover:bg-muted/50"
+                        className="hover:bg-red-500/20 text-red-500 hover:text-red-600"
                       >
-                        <X className="h-4 w-4" />
+                        <X className="h-5 w-5" />
                       </Button>
                     </div>
 
@@ -947,8 +998,9 @@ function NewEventPageInner() {
                               ) : null}
 
                               {/* Stage */}
-                              <div className="w-fit mx-auto mb-4 rounded-lg px-4 py-1 text-sm text-center text-white font-semibold bg-gradient-to-r from-primary to-blue-600">
-                                🎭 STAGE
+                              <div className="w-fit mx-auto mb-4 rounded-lg px-6 py-2 text-sm text-center text-white font-semibold bg-gradient-to-r from-primary to-blue-600 flex items-center gap-2">
+                                <Building2 className="h-4 w-4" />
+                                STAGE
                               </div>
 
                               {/* Seat Grid - Simplified */}
@@ -957,13 +1009,13 @@ function NewEventPageInner() {
                                   <div 
                                     className="grid gap-1"
                                     style={{
-                                      gridTemplateColumns: `repeat(${Math.min(Number(seatMapData.columns) || 10, 20)}, 1fr)`
+                                      gridTemplateColumns: `repeat(${Number(seatMapData.columns) || 10}, 1fr)`
                                     }}
                                   >
                                     {Array.from({ 
-                                      length: Math.min((Number(seatMapData.rows) || 10) * (Number(seatMapData.columns) || 10), 200) 
+                                      length: (Number(seatMapData.rows) || 10) * (Number(seatMapData.columns) || 10) 
                                     }).map((_, index) => {
-                                      const columns = Math.min(Number(seatMapData.columns) || 10, 20);
+                                      const columns = Number(seatMapData.columns) || 10;
                                       const row = Math.floor(index / columns);
                                       const col = index % columns;
                                       
@@ -1044,55 +1096,91 @@ function NewEventPageInner() {
                             <p className="text-muted-foreground mt-2">Checking availability...</p>
                           </div>
                         ) : venueAvailability && availabilityLoaded ? (
-                          <div className="space-y-3 max-h-48 overflow-y-auto">
+                          <div className="space-y-4">
+                            {/* Blue Instruction Box */}
+                            <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 flex items-start gap-3">
+                              <div className="bg-blue-500 rounded-full p-2 flex-shrink-0">
+                                <Info className="h-5 w-5 text-white" />
+                              </div>
+                              <div>
+                                <p className="text-sm text-gray-900 font-bold mb-1">Important:</p>
+                                <p className="text-sm text-gray-800 font-medium">
+                                  When selecting your event time, please maintain at least a <strong>1-hour gap</strong> between events shown below. This allows time for venue setup, cleanup, and guest transition.
+                                </p>
+                              </div>
+                            </div>
+
                             {/* Show availability for each day in the range */}
-                            {venueAvailability.dailyAvailability && venueAvailability.dailyAvailability.length > 0 ? (
-                              venueAvailability.dailyAvailability.map((day, dayIndex: number) => (
-                                <div key={dayIndex} className="border border-border/20 rounded-lg p-3 bg-background/50">
-                                  <div className="flex justify-between items-center mb-2">
-                                    <h5 className="font-medium text-foreground">
-                                      {new Date(day.date).toLocaleDateString('en-US', { 
-                                        weekday: 'short', 
-                                        month: 'short', 
-                                        day: 'numeric' 
-                                      })}
-                                    </h5>
-                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                      day.isAvailableForEvent ? 'bg-green-500/20 text-green-600' : 'bg-red-500/20 text-red-600'
-                                    }`}>
-                                      {day.isAvailableForEvent ? 'Available' : 'Conflict'}
-                                    </span>
-                                  </div>
-                                  
-                                  {day.events && day.events.length > 0 ? (
-                                    <div className="space-y-1">
-                                      {day.events.slice(0, 2).map((event, eventIndex: number) => (
-                                        <div key={eventIndex} className="flex justify-between items-center p-2 bg-muted/20 rounded text-sm">
-                                          <span className="font-medium text-foreground truncate">{event.title}</span>
-                                          <span className="text-muted-foreground text-xs">
-                                            {event.startTime} - {event.endTime || 'EOD'}
-                                          </span>
-                                        </div>
-                                      ))}
-                                      {day.events.length > 2 && (
-                                        <div className="text-xs text-muted-foreground pl-2">
-                                          +{day.events.length - 2} more events
-                                        </div>
-                                      )}
+                            <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
+                              {venueAvailability.dailyAvailability && venueAvailability.dailyAvailability.length > 0 ? (
+                                venueAvailability.dailyAvailability.map((day, dayIndex: number) => (
+                                  <div key={dayIndex} className="border border-border/20 rounded-lg p-4 bg-background/50">
+                                    <div className="flex justify-between items-center mb-3">
+                                      <h5 className="font-semibold text-foreground">
+                                        {new Date(day.date).toLocaleDateString('en-US', { 
+                                          weekday: 'long', 
+                                          month: 'long', 
+                                          day: 'numeric',
+                                          year: 'numeric'
+                                        })}
+                                      </h5>
+                                      <span className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 ${
+                                        day.isAvailableForEvent ? 'bg-green-500/20 text-green-600' : 'bg-red-500/20 text-red-600'
+                                      }`}>
+                                        {day.isAvailableForEvent ? (
+                                          <>
+                                            <Check className="h-3 w-3" />
+                                            Available
+                                          </>
+                                        ) : (
+                                          <>
+                                            <X className="h-3 w-3" />
+                                            Conflict
+                                          </>
+                                        )}
+                                      </span>
                                     </div>
-                                  ) : (
-                                    <p className="text-green-600 text-sm">✅ Fully available</p>
-                                  )}
+                                    
+                                    {day.events && day.events.length > 0 ? (
+                                      <div className="space-y-2">
+                                        <p className="text-xs font-medium text-muted-foreground uppercase mb-2">Booked Time Slots:</p>
+                                        {day.events.map((event, eventIndex: number) => (
+                                          <div key={eventIndex} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-border/10">
+                                            <div className="flex-1 min-w-0 mr-3">
+                                              <p className="font-medium text-foreground truncate">{event.title}</p>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-sm font-semibold whitespace-nowrap">
+                                              <span className="text-blue-600 dark:text-blue-400">{event.startTime || 'N/A'}</span>
+                                              <span className="text-muted-foreground">→</span>
+                                              <span className="text-purple-600 dark:text-purple-400">{event.endTime || 'EOD'}</span>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <div className="text-center py-4 bg-green-500/5 rounded-lg border border-green-500/20">
+                                        <Check className="h-6 w-6 text-green-600 mx-auto mb-2" />
+                                        <p className="text-green-600 font-medium">No events scheduled - Fully available</p>
+                                        <p className="text-xs text-muted-foreground mt-1">You can book any time slot for this date</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="text-center py-6 bg-green-500/5 rounded-lg border border-green-500/20">
+                                  <Check className="h-8 w-8 text-green-600 mx-auto mb-2" />
+                                  <p className="text-green-600 font-medium">Venue appears to be fully available</p>
+                                  <p className="text-xs text-muted-foreground mt-1">No events scheduled for your selected dates</p>
                                 </div>
-                              ))
-                            ) : (
-                              <p className="text-green-600 text-sm">✅ Venue appears to be available for your selected dates</p>
-                            )}
+                              )}
+                            </div>
                           </div>
                         ) : availabilityLoaded ? (
                           <p className="text-muted-foreground text-sm">No availability data available</p>
                         ) : (
-                          <p className="text-muted-foreground text-sm">Click &quot;Check Availability&quot; to see venue availability for your selected dates</p>
+                          <div className="text-center py-6 bg-muted/10 rounded-lg border border-border/20">
+                            <p className="text-muted-foreground text-sm">Click &quot;Check Availability&quot; to see venue availability and booked time slots for your selected dates</p>
+                          </div>
                         )}
                       </div>
 
@@ -1142,7 +1230,16 @@ function NewEventPageInner() {
 
                   {/* Time Selection */}
                   <div className="bg-background/50 rounded-lg p-6 border">
-                    <h4 className="font-semibold mb-4">Event Times</h4>
+                    <h4 className="font-semibold mb-2">Event Times</h4>
+                    <div className="bg-blue-600 text-white rounded-lg p-4 mb-4 flex items-start gap-3">
+                      <div className="bg-white/20 rounded-full p-2 flex-shrink-0">
+                        <Clock className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="font-semibold mb-1">Important:</p>
+                        <p className="text-sm">Please maintain at least a 1-hour gap between events when selecting your time slot to allow for venue setup and cleanup.</p>
+                      </div>
+                    </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
@@ -1184,6 +1281,30 @@ function NewEventPageInner() {
                         </div>
                       </div>
                     </div>
+                    
+                    {/* Time Validation Error */}
+                    {form.startHour && form.startMinute && form.endHour && form.endMinute && (
+                      (() => {
+                        const startMinutes = parseInt(form.startHour) * 60 + parseInt(form.startMinute);
+                        const endMinutes = parseInt(form.endHour) * 60 + parseInt(form.endMinute);
+                        const isInvalid = endMinutes <= startMinutes;
+                        
+                        if (isInvalid) {
+                          return (
+                            <div className="mt-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 flex items-start gap-3">
+                              <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+                              <div>
+                                <p className="text-sm text-red-600 dark:text-red-400 font-semibold">Invalid Time Range</p>
+                                <p className="text-xs text-red-600/80 dark:text-red-400/80 mt-1">
+                                  End time must be after start time. Please adjust your selection.
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()
+                    )}
                     
                     {/* Show selected times */}
                     {(form.startHour && form.startMinute) && (
@@ -1325,16 +1446,6 @@ function NewEventPageInner() {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  {/* Debug Info */}
-                  {process.env.NODE_ENV === 'development' && (
-                    <div className="bg-muted/20 rounded-lg p-3 border border-border/20 text-xs space-y-1">
-                      <p className="text-muted-foreground">🔍 Debug Info:</p>
-                      <p className="text-muted-foreground">Available Event Admins: {availableEventAdmins.length}</p>
-                      <p className="text-muted-foreground">Available Checkin Officers: {availableCheckinOfficers.length}</p>
-                      <p className="text-muted-foreground">Loading Staff: {loadingStaff ? 'Yes' : 'No'}</p>
-                    </div>
-                  )}
-
                   {/* Event Admin Selection */}
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-2">Event Admin</label>
@@ -1416,22 +1527,27 @@ function NewEventPageInner() {
 
                   {/* Selected Staff Summary */}
                   {(selectedEventAdmin || selectedCheckinOfficers.length > 0) && (
-                    <div className="bg-background/50 rounded-lg p-4 border">
+                    <div className="bg-blue-500/10 rounded-lg p-4 border border-blue-500/30">
                       <h4 className="font-medium text-foreground mb-3">Selected Staff</h4>
                       <div className="space-y-2">
                         {selectedEventAdmin && (
                           <div className="flex items-center justify-between">
                             <span className="text-sm text-muted-foreground">Event Admin:</span>
-                            <span className="text-sm text-foreground">
+                            <span className="text-sm text-foreground font-medium">
                               {availableEventAdmins.find(a => a.uid === selectedEventAdmin)?.displayName || 
                                availableEventAdmins.find(a => a.uid === selectedEventAdmin)?.email}
                             </span>
                           </div>
                         )}
                         {selectedCheckinOfficers.length > 0 && (
-                          <div className="flex items-center justify-between">
+                          <div className="space-y-1">
                             <span className="text-sm text-muted-foreground">Check-in Officers:</span>
-                            <span className="text-sm text-foreground">{selectedCheckinOfficers.length} selected</span>
+                            <div className="text-sm text-foreground font-medium">
+                              {selectedCheckinOfficers.map(officerId => {
+                                const officer = availableCheckinOfficers.find(o => o.uid === officerId);
+                                return officer ? (officer.displayName || officer.email) : null;
+                              }).filter(Boolean).join(', ')}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -1469,11 +1585,23 @@ function NewEventPageInner() {
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground">Event Admin</div>
-                    <div className="font-medium text-foreground">{eventAdminEmail || '-'}</div>
+                    <div className="font-medium text-foreground">
+                      {selectedEventAdmin 
+                        ? (availableEventAdmins.find(a => a.uid === selectedEventAdmin)?.displayName || 
+                           availableEventAdmins.find(a => a.uid === selectedEventAdmin)?.email || '-')
+                        : '-'}
+                    </div>
                   </div>
                   <div className="md:col-span-2">
                     <div className="text-sm text-muted-foreground">Check-in Officers</div>
-                    <div className="font-medium text-foreground">{checkInEmails.filter(Boolean).join(', ') || '-'}</div>
+                    <div className="font-medium text-foreground">
+                      {selectedCheckinOfficers.length > 0 
+                        ? selectedCheckinOfficers.map(officerId => {
+                            const officer = availableCheckinOfficers.find(o => o.uid === officerId);
+                            return officer ? (officer.displayName || officer.email) : null;
+                          }).filter(Boolean).join(', ')
+                        : '-'}
+                    </div>
                   </div>
                 </div>
                 {form.description && (
@@ -1496,7 +1624,13 @@ function NewEventPageInner() {
             </div>
           )}
 
-          {error && <div className="text-red-400 mt-4 text-center font-medium p-3 rounded-lg bg-red-500/10 border border-red-500/20">{error}</div>}          {/* Navigation */}
+          {error && <div className="text-red-400 mt-4 text-center font-medium p-3 rounded-lg bg-red-500/10 border border-red-500/20">{error}</div>}
+          {warning && <div className="text-yellow-400 mt-4 text-center font-medium p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center gap-2">
+            <AlertCircle className="h-5 w-5" />
+            {warning}
+          </div>}
+          
+          {/* Navigation */}
           <div className="flex items-center justify-between mt-8">
             <Button
               variant="outline"
@@ -1531,6 +1665,39 @@ function NewEventPageInner() {
           </div>
         </motion.div>
         </AnimatePresence>
+        
+        {/* Success Modal - Blue Theme */}
+        {showSuccessModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-card rounded-2xl p-8 max-w-md mx-4 shadow-2xl border border-blue-500/20"
+            >
+              <div className="text-center">
+                <div className="mx-auto w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mb-4">
+                  <Check className="h-8 w-8 text-blue-500" />
+                </div>
+                <h3 className="text-2xl font-bold mb-2 text-foreground">Event Created Successfully!</h3>
+                <p className="text-muted-foreground mb-4">
+                  Your event has been created. The system has verified the venue availability and all details.
+                </p>
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mb-4">
+                  <p className="text-sm text-foreground flex items-center justify-center gap-2">
+                    <Info className="h-4 w-4 text-blue-500" />
+                    Redirecting to your dashboard in a moment...
+                  </p>
+                </div>
+                <Button
+                  onClick={() => router.push("/organizer/dashboard")}
+                  className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+                >
+                  Go to Dashboard Now
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
       </div>
     </div>
   );

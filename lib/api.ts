@@ -138,15 +138,16 @@ export const updateEventDetails = async (eventId: string | number, eventData: an
 };
 
 export const fetchVenueSeatMap = async (id: number | string) => {
-  const url = getEventServiceUrl(`/api/venues/${id}/seats`);
+  // Use public route for seat map - needed for customers to view available seats
+  const url = `${API_GATEWAY_URL}/public/api/venues/${id}/seats`;
   const res = await publicFetch(url);
   if (!res.ok) throw new Error("Failed to fetch venue seat map");
   return res.json();
 };
 
 export async function fetchVenues() {
-  // Use publicFetch since venues should be accessible to everyone
-  const url = getPublicUrl('/api/venues');
+  // Use public route - accessible to everyone without auth
+  const url = `${API_GATEWAY_URL}/public/api/venues`;
   const res = await publicFetch(url);
   if (!res.ok) throw new Error("Failed to fetch venues");
   return res.json();
@@ -183,9 +184,8 @@ export async function fetchVenueAvailability(venueId: string | number, date: str
   if (startTime) params.append('startTime', startTime);
   if (endTime) params.append('endTime', endTime);
 
-  //////////
   const queryString = params.toString();
-  const url = getEventServiceUrl(`/api/venues/${venueId}/availability?${queryString}`);
+  const url = getVenueServiceUrl(`/api/venues/${venueId}/availability?${queryString}`);
   const res = await publicFetch(url);
   if (!res.ok) throw new Error("Failed to fetch venue availability");
   return res.json();
@@ -324,7 +324,9 @@ export async function fetchEventsByOrganizer(organizerId: string) {
 }
 
 export async function fetchEventsByVenueId(venueId: number | string) {
-  const res = await publicFetch(getEventServiceUrl(`/api/events/venue/${venueId}`));
+  // Use public route - anyone should be able to see events at a venue
+  const url = `${API_GATEWAY_URL}/public/api/events/venue/${venueId}`;
+  const res = await publicFetch(url);
   if (!res.ok) throw new Error("Failed to fetch events for venue");
   return res.json();
 }
