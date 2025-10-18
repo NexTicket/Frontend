@@ -94,6 +94,8 @@ function NewEventPageInner() {
   const [loadingVenues, setLoadingVenues] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   // Staff selection states
@@ -391,6 +393,14 @@ function NewEventPageInner() {
     }
   }, [form.venueId, form.startDateDate, form.endDateDate, loadVenueDetails]);
 
+  // Reload venue availability when times change (if already on step 3)
+  useEffect(() => {
+    if (form.venueId && form.startDateDate && form.startHour && form.startMinute && currentStep === 3) {
+      console.log('🔄 Reloading availability due to time change');
+      loadVenueAvailability(form.venueId);
+    }
+  }, [form.startHour, form.startMinute, form.endHour, form.endMinute, form.venueId, form.startDateDate, currentStep, loadVenueAvailability]);
+
   const onChange = (k: string, v: string) => {
     console.log('🎯 Form onChange:', { key: k, value: v, currentForm: form });
     setForm(prev => ({ ...prev, [k]: v }));
@@ -429,16 +439,23 @@ function NewEventPageInner() {
         setError("End time must be after start time.");
         return;
       }
-      if (form.endHour && form.endMinute) {
-        const startTime = `${form.startHour.padStart(2,'0')}:${form.startMinute.padStart(2,'0')}`;
-        const endTime = `${form.endHour.padStart(2,'0')}:${form.endMinute.padStart(2,'0')}`;
-        if (startTime >= endTime) {
-          setError("End time must be after start time.");
-          return;
+      
+      // Warn about venue availability conflicts (but don't block)
+      if (venueAvailability && venueAvailability.dailyAvailability) {
+        const hasConflict = venueAvailability.dailyAvailability.some(day => !day.isAvailableForEvent);
+        if (hasConflict) {
+          const conflictDates = venueAvailability.dailyAvailability
+            .filter(day => !day.isAvailableForEvent)
+            .map(day => new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }))
+            .join(', ');
+          setWarning(`⚠️ Note: The venue may have conflicts on: ${conflictDates}. The system will verify final availability when you submit.`);
+        } else {
+          setWarning(null);
         }
       }
     }
     setError(null);
+    setWarning(null);
     setCurrentStep(s => Math.min(totalSteps, s + 1));
   };
 
@@ -523,8 +540,16 @@ function NewEventPageInner() {
       } catch (e) {
         console.warn('Poster upload failed, continuing', e);
       }
-      router.push("/organizer/dashboard");
-          } catch (err) {
+      
+      // Show success modal
+      setShowSuccessModal(true);
+      
+      // Redirect after 3 seconds
+      setTimeout(() => {
+        router.push("/organizer/dashboard");
+      }, 3000);
+      
+    } catch (err) {
         console.error('❌ Event creation failed:', err);
         setError(`Failed to create event: ${err instanceof Error ? err.message : 'Unknown error'}`);
       } finally {
@@ -1599,7 +1624,13 @@ function NewEventPageInner() {
             </div>
           )}
 
-          {error && <div className="text-red-400 mt-4 text-center font-medium p-3 rounded-lg bg-red-500/10 border border-red-500/20">{error}</div>}          {/* Navigation */}
+          {error && <div className="text-red-400 mt-4 text-center font-medium p-3 rounded-lg bg-red-500/10 border border-red-500/20">{error}</div>}
+          {warning && <div className="text-yellow-400 mt-4 text-center font-medium p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center gap-2">
+            <AlertCircle className="h-5 w-5" />
+            {warning}
+          </div>}
+          
+          {/* Navigation */}
           <div className="flex items-center justify-between mt-8">
             <Button
               variant="outline"
@@ -1634,6 +1665,39 @@ function NewEventPageInner() {
           </div>
         </motion.div>
         </AnimatePresence>
+        
+        {/* Success Modal */}
+        {showSuccessModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-card rounded-2xl p-8 max-w-md mx-4 shadow-2xl border border-green-500/20"
+            >
+              <div className="text-center">
+                <div className="mx-auto w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mb-4">
+                  <Check className="h-8 w-8 text-green-500" />
+                </div>
+                <h3 className="text-2xl font-bold mb-2 text-foreground">Event Created Successfully!</h3>
+                <p className="text-muted-foreground mb-4">
+                  Your event has been created. The system has verified the venue availability and all details.
+                </p>
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mb-4">
+                  <p className="text-sm text-foreground flex items-center gap-2">
+                    <Info className="h-4 w-4 text-blue-500" />
+                    Redirecting to your dashboard in a moment...
+                  </p>
+                </div>
+                <Button
+                  onClick={() => router.push("/organizer/dashboard")}
+                  className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
+                >
+                  Go to Dashboard Now
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
       </div>
     </div>
   );
