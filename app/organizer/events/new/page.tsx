@@ -772,6 +772,10 @@ function NewEventPageInner() {
                   venues.map((v: VenueCard) => {
                     const selected = String(form.venueId) === String(v.id);
                     const img = v.featuredImage || v.image || (Array.isArray(v.images) ? v.images[0] : '');
+                    
+                    // Check availability for this venue (only if dates and times are set)
+                    const canCheckAvailability = form.startDateDate && form.startHour && form.startMinute;
+                    
                     return (
                       <div
                         key={v.id}
@@ -781,6 +785,10 @@ function NewEventPageInner() {
                         onClick={() => {
                           console.log('🎯 Venue card clicked:', { venueId: v.id, venueIdType: typeof v.id });
                           onChange('venueId', String(v.id));
+                          // Auto-fetch availability if dates are set
+                          if (canCheckAvailability) {
+                            loadVenueAvailability(v.id);
+                          }
                         }}
                       >
                         <div className="w-full h-32 overflow-hidden rounded-lg border mb-3 flex items-center justify-center bg-background/50">
@@ -802,7 +810,7 @@ function NewEventPageInner() {
                               try {
                                 await loadVenueDetails(v.id);
                                 // Automatically fetch availability if dates are set
-                                if (form.startDateDate) {
+                                if (canCheckAvailability) {
                                   setAvailabilityLoaded(true);
                                   loadVenueAvailability(v.id);
                                 }
@@ -955,13 +963,13 @@ function NewEventPageInner() {
                                   <div 
                                     className="grid gap-1"
                                     style={{
-                                      gridTemplateColumns: `repeat(${Math.min(Number(seatMapData.columns) || 10, 20)}, 1fr)`
+                                      gridTemplateColumns: `repeat(${Number(seatMapData.columns) || 10}, 1fr)`
                                     }}
                                   >
                                     {Array.from({ 
-                                      length: Math.min((Number(seatMapData.rows) || 10) * (Number(seatMapData.columns) || 10), 200) 
+                                      length: (Number(seatMapData.rows) || 10) * (Number(seatMapData.columns) || 10) 
                                     }).map((_, index) => {
-                                      const columns = Math.min(Number(seatMapData.columns) || 10, 20);
+                                      const columns = Number(seatMapData.columns) || 10;
                                       const row = Math.floor(index / columns);
                                       const col = index % columns;
                                       
@@ -1140,7 +1148,11 @@ function NewEventPageInner() {
 
                   {/* Time Selection */}
                   <div className="bg-background/50 rounded-lg p-6 border">
-                    <h4 className="font-semibold mb-4">Event Times</h4>
+                    <h4 className="font-semibold mb-2">Event Times</h4>
+                    <p className="text-sm text-blue-500 mb-4 flex items-start">
+                      <span className="mr-2">ℹ️</span>
+                      <span>Please maintain at least a 1-hour gap between events when selecting your time slot to allow for venue setup and cleanup.</span>
+                    </p>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
