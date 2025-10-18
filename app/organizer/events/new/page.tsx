@@ -8,7 +8,7 @@ import { Dropdown } from "@/components/ui/dropdown";
 import { createEvent, fetchVenues, uploadEventImage, fetchVenueSeatMap, fetchVenueById, fetchFilteredVenues, fetchVenueAvailability, fetchFirebaseUsers } from "@/lib/api";
 import { useAuth } from "@/components/auth/auth-provider";
 import dynamic from "next/dynamic";
-import { ArrowLeft, ArrowRight, Image as ImageIcon, X, MapPin, Users, Building2, Grid3X3, Eye, Check } from "lucide-react";
+import { ArrowLeft, ArrowRight, Image as ImageIcon, X, MapPin, Users, Building2, Grid3X3, Eye, Check, Clock, Info, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -953,8 +953,9 @@ function NewEventPageInner() {
                               ) : null}
 
                               {/* Stage */}
-                              <div className="w-fit mx-auto mb-4 rounded-lg px-4 py-1 text-sm text-center text-white font-semibold bg-gradient-to-r from-primary to-blue-600">
-                                🎭 STAGE
+                              <div className="w-fit mx-auto mb-4 rounded-lg px-6 py-2 text-sm text-center text-white font-semibold bg-gradient-to-r from-primary to-blue-600 flex items-center gap-2">
+                                <Building2 className="h-4 w-4" />
+                                STAGE
                               </div>
 
                               {/* Seat Grid - Simplified */}
@@ -1052,13 +1053,16 @@ function NewEventPageInner() {
                         ) : venueAvailability && availabilityLoaded ? (
                           <div className="space-y-4">
                             {/* Blue Instruction Box */}
-                            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-                              <p className="text-sm text-blue-600 dark:text-blue-400 flex items-start">
-                                <span className="mr-2 text-lg">ℹ️</span>
-                                <span>
-                                  <strong>Important:</strong> When selecting your event time, please maintain at least a <strong>1-hour gap</strong> between events shown below. This allows time for venue setup, cleanup, and guest transition.
-                                </span>
-                              </p>
+                            <div className="bg-blue-500/15 border border-blue-500/30 rounded-lg p-4 flex items-start gap-3">
+                              <div className="bg-blue-500/20 rounded-full p-2 flex-shrink-0">
+                                <Info className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                              </div>
+                              <div>
+                                <p className="text-sm text-blue-900 dark:text-blue-100 font-semibold mb-1">Important:</p>
+                                <p className="text-sm text-blue-800 dark:text-blue-200">
+                                  When selecting your event time, please maintain at least a <strong>1-hour gap</strong> between events shown below. This allows time for venue setup, cleanup, and guest transition.
+                                </p>
+                              </div>
                             </div>
 
                             {/* Show availability for each day in the range */}
@@ -1075,10 +1079,20 @@ function NewEventPageInner() {
                                           year: 'numeric'
                                         })}
                                       </h5>
-                                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                                      <span className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 ${
                                         day.isAvailableForEvent ? 'bg-green-500/20 text-green-600' : 'bg-red-500/20 text-red-600'
                                       }`}>
-                                        {day.isAvailableForEvent ? '✓ Available' : '✗ Conflict'}
+                                        {day.isAvailableForEvent ? (
+                                          <>
+                                            <Check className="h-3 w-3" />
+                                            Available
+                                          </>
+                                        ) : (
+                                          <>
+                                            <X className="h-3 w-3" />
+                                            Conflict
+                                          </>
+                                        )}
                                       </span>
                                     </div>
                                     
@@ -1100,7 +1114,8 @@ function NewEventPageInner() {
                                       </div>
                                     ) : (
                                       <div className="text-center py-4 bg-green-500/5 rounded-lg border border-green-500/20">
-                                        <p className="text-green-600 font-medium">✅ No events scheduled - Fully available</p>
+                                        <Check className="h-6 w-6 text-green-600 mx-auto mb-2" />
+                                        <p className="text-green-600 font-medium">No events scheduled - Fully available</p>
                                         <p className="text-xs text-muted-foreground mt-1">You can book any time slot for this date</p>
                                       </div>
                                     )}
@@ -1108,7 +1123,8 @@ function NewEventPageInner() {
                                 ))
                               ) : (
                                 <div className="text-center py-6 bg-green-500/5 rounded-lg border border-green-500/20">
-                                  <p className="text-green-600 font-medium">✅ Venue appears to be fully available</p>
+                                  <Check className="h-8 w-8 text-green-600 mx-auto mb-2" />
+                                  <p className="text-green-600 font-medium">Venue appears to be fully available</p>
                                   <p className="text-xs text-muted-foreground mt-1">No events scheduled for your selected dates</p>
                                 </div>
                               )}
@@ -1170,9 +1186,14 @@ function NewEventPageInner() {
                   {/* Time Selection */}
                   <div className="bg-background/50 rounded-lg p-6 border">
                     <h4 className="font-semibold mb-2">Event Times</h4>
-                    <div className="bg-blue-600 text-white rounded-lg p-3 mb-4 flex items-start">
-                      <span className="mr-2 text-lg">ℹ️</span>
-                      <span className="text-sm">Please maintain at least a 1-hour gap between events when selecting your time slot to allow for venue setup and cleanup.</span>
+                    <div className="bg-blue-600 text-white rounded-lg p-4 mb-4 flex items-start gap-3">
+                      <div className="bg-white/20 rounded-full p-2 flex-shrink-0">
+                        <Clock className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="font-semibold mb-1">Important:</p>
+                        <p className="text-sm">Please maintain at least a 1-hour gap between events when selecting your time slot to allow for venue setup and cleanup.</p>
+                      </div>
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
