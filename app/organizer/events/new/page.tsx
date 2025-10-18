@@ -877,9 +877,9 @@ function NewEventPageInner() {
                         variant="ghost" 
                         size="sm"
                         onClick={() => setShowVenueModal(false)}
-                        className="hover:bg-muted/50"
+                        className="hover:bg-red-500/20 text-red-500 hover:text-red-600"
                       >
-                        <X className="h-4 w-4" />
+                        <X className="h-5 w-5" />
                       </Button>
                     </div>
 
@@ -1050,55 +1050,76 @@ function NewEventPageInner() {
                             <p className="text-muted-foreground mt-2">Checking availability...</p>
                           </div>
                         ) : venueAvailability && availabilityLoaded ? (
-                          <div className="space-y-3 max-h-48 overflow-y-auto">
+                          <div className="space-y-4">
+                            {/* Blue Instruction Box */}
+                            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+                              <p className="text-sm text-blue-600 dark:text-blue-400 flex items-start">
+                                <span className="mr-2 text-lg">ℹ️</span>
+                                <span>
+                                  <strong>Important:</strong> When selecting your event time, please maintain at least a <strong>1-hour gap</strong> between events shown below. This allows time for venue setup, cleanup, and guest transition.
+                                </span>
+                              </p>
+                            </div>
+
                             {/* Show availability for each day in the range */}
-                            {venueAvailability.dailyAvailability && venueAvailability.dailyAvailability.length > 0 ? (
-                              venueAvailability.dailyAvailability.map((day, dayIndex: number) => (
-                                <div key={dayIndex} className="border border-border/20 rounded-lg p-3 bg-background/50">
-                                  <div className="flex justify-between items-center mb-2">
-                                    <h5 className="font-medium text-foreground">
-                                      {new Date(day.date).toLocaleDateString('en-US', { 
-                                        weekday: 'short', 
-                                        month: 'short', 
-                                        day: 'numeric' 
-                                      })}
-                                    </h5>
-                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                      day.isAvailableForEvent ? 'bg-green-500/20 text-green-600' : 'bg-red-500/20 text-red-600'
-                                    }`}>
-                                      {day.isAvailableForEvent ? 'Available' : 'Conflict'}
-                                    </span>
-                                  </div>
-                                  
-                                  {day.events && day.events.length > 0 ? (
-                                    <div className="space-y-1">
-                                      {day.events.slice(0, 2).map((event, eventIndex: number) => (
-                                        <div key={eventIndex} className="flex justify-between items-center p-2 bg-muted/20 rounded text-sm">
-                                          <span className="font-medium text-foreground truncate">{event.title}</span>
-                                          <span className="text-muted-foreground text-xs">
-                                            {event.startTime} - {event.endTime || 'EOD'}
-                                          </span>
-                                        </div>
-                                      ))}
-                                      {day.events.length > 2 && (
-                                        <div className="text-xs text-muted-foreground pl-2">
-                                          +{day.events.length - 2} more events
-                                        </div>
-                                      )}
+                            <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
+                              {venueAvailability.dailyAvailability && venueAvailability.dailyAvailability.length > 0 ? (
+                                venueAvailability.dailyAvailability.map((day, dayIndex: number) => (
+                                  <div key={dayIndex} className="border border-border/20 rounded-lg p-4 bg-background/50">
+                                    <div className="flex justify-between items-center mb-3">
+                                      <h5 className="font-semibold text-foreground">
+                                        {new Date(day.date).toLocaleDateString('en-US', { 
+                                          weekday: 'long', 
+                                          month: 'long', 
+                                          day: 'numeric',
+                                          year: 'numeric'
+                                        })}
+                                      </h5>
+                                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                                        day.isAvailableForEvent ? 'bg-green-500/20 text-green-600' : 'bg-red-500/20 text-red-600'
+                                      }`}>
+                                        {day.isAvailableForEvent ? '✓ Available' : '✗ Conflict'}
+                                      </span>
                                     </div>
-                                  ) : (
-                                    <p className="text-green-600 text-sm">✅ Fully available</p>
-                                  )}
+                                    
+                                    {day.events && day.events.length > 0 ? (
+                                      <div className="space-y-2">
+                                        <p className="text-xs font-medium text-muted-foreground uppercase mb-2">Booked Time Slots:</p>
+                                        {day.events.map((event, eventIndex: number) => (
+                                          <div key={eventIndex} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-border/10">
+                                            <div className="flex-1 min-w-0 mr-3">
+                                              <p className="font-medium text-foreground truncate">{event.title}</p>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-sm font-semibold whitespace-nowrap">
+                                              <span className="text-blue-600 dark:text-blue-400">{event.startTime || 'N/A'}</span>
+                                              <span className="text-muted-foreground">→</span>
+                                              <span className="text-purple-600 dark:text-purple-400">{event.endTime || 'EOD'}</span>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <div className="text-center py-4 bg-green-500/5 rounded-lg border border-green-500/20">
+                                        <p className="text-green-600 font-medium">✅ No events scheduled - Fully available</p>
+                                        <p className="text-xs text-muted-foreground mt-1">You can book any time slot for this date</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="text-center py-6 bg-green-500/5 rounded-lg border border-green-500/20">
+                                  <p className="text-green-600 font-medium">✅ Venue appears to be fully available</p>
+                                  <p className="text-xs text-muted-foreground mt-1">No events scheduled for your selected dates</p>
                                 </div>
-                              ))
-                            ) : (
-                              <p className="text-green-600 text-sm">✅ Venue appears to be available for your selected dates</p>
-                            )}
+                              )}
+                            </div>
                           </div>
                         ) : availabilityLoaded ? (
                           <p className="text-muted-foreground text-sm">No availability data available</p>
                         ) : (
-                          <p className="text-muted-foreground text-sm">Click &quot;Check Availability&quot; to see venue availability for your selected dates</p>
+                          <div className="text-center py-6 bg-muted/10 rounded-lg border border-border/20">
+                            <p className="text-muted-foreground text-sm">Click &quot;Check Availability&quot; to see venue availability and booked time slots for your selected dates</p>
+                          </div>
                         )}
                       </div>
 
