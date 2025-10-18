@@ -2,7 +2,7 @@ import { secureFetch } from "@/utils/secureFetch";
 import { getAuth } from 'firebase/auth';
 
 // Base API Gateway URL
-const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || 'http://localhost:5051';
+const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || 'http://localhost:5050';
 
 // Utility function to construct Event/Venue Service URLs through API Gateway
 function getEventServiceUrl(endpoint: string): string {
@@ -17,7 +17,8 @@ function getUserServiceUrl(endpoint: string): string {
 }
 // Utility function to construct venue service URLs (these might not need /api)
 function getVenueServiceUrl(endpoint: string): string {
-  const rawBase = process.env.NEXT_PUBLIC_EVENT_VENUE_SERVICE_URL || process.env.NEXT_PUBLIC_API_URL || '';
+  // const rawBase = process.env.NEXT_PUBLIC_EVENT_VENUE_SERVICE_URL || process.env.NEXT_PUBLIC_API_URL || 'https://event-and-venue-service-513765269189.asia-south1.run.app/';
+  const rawBase = 'https://event-and-venue-service-513765269189.asia-south1.run.app/';
   const trimmed = rawBase.replace(/\/$/, '');
 
   // For venue service, we assume the endpoint already includes the correct path
@@ -572,7 +573,9 @@ export interface VenueSeatsResponse {
 }
 
 export async function getVenueSeats(venueId: number | string): Promise<VenueSeatsResponse> {
-  const res = await secureFetch(`http://localhost:4000/api/venues/${venueId}/seats`);
+  // Use public route for seat map access
+  const url = `${API_GATEWAY_URL}/public/api/venues/${venueId}/seats`;
+  const res = await publicFetch(url);
   if (!res.ok) throw new Error("Failed to fetch venue seats");
   const response = await res.json();
   
