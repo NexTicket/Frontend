@@ -295,7 +295,10 @@ function NewEventPageInner() {
 
   // Separate function to load availability lazily
   const loadVenueAvailability = useCallback(async (venueId: string | number) => {
-    if (!form.startDateDate || !form.startHour || !form.startMinute) return;
+    if (!form.startDateDate) {
+      console.log('⚠️ Cannot load availability: No start date selected');
+      return;
+    }
     
     try {
       setLoadingAvailability(true);
@@ -311,7 +314,7 @@ function NewEventPageInner() {
       }
       
       // Check if venue is available for the entire period with the selected times
-      const eventStartTime = `${form.startHour.padStart(2,'0')}:${form.startMinute.padStart(2,'0')}`;
+      const eventStartTime = form.startHour && form.startMinute ? `${form.startHour.padStart(2,'0')}:${form.startMinute.padStart(2,'0')}` : null;
       const eventEndTime = form.endHour && form.endMinute ? `${form.endHour.padStart(2,'0')}:${form.endMinute.padStart(2,'0')}` : null;
       
       // Fetch availability for each date in parallel
@@ -330,25 +333,31 @@ function NewEventPageInner() {
         const events = dayData.events || [];
         const availableSlots = dayData.availableSlots || [];
         
-        // Check if our event time conflicts with existing events
-        const hasConflict = events.some((event: any) => {
-          if (!event.startTime) return false;
-          const eventStart = event.startTime;
-          const eventEnd = event.endTime || '23:59';
-          
-          // Check for time overlap
-          const ourStart = eventStartTime;
-          const ourEnd = eventEndTime || '23:59';
-          
-          return !(ourEnd <= eventStart || ourStart >= eventEnd);
-        });
+        // Only check conflicts if we have event times set
+        let hasConflict = false;
+        let isTimeSlotAvailable = true;
         
-        // Check if our time slot is available
-        const isTimeSlotAvailable = !hasConflict && (availableSlots.length === 0 || availableSlots.some((slot: any) => {
-          const slotStart = slot.start;
-          const slotEnd = slot.end;
-          return eventStartTime >= slotStart && (!eventEndTime || eventEndTime <= slotEnd);
-        }));
+        if (eventStartTime) {
+          // Check if our event time conflicts with existing events
+          hasConflict = events.some((event: any) => {
+            if (!event.startTime) return false;
+            const eventStart = event.startTime;
+            const eventEnd = event.endTime || '23:59';
+            
+            // Check for time overlap
+            const ourStart = eventStartTime;
+            const ourEnd = eventEndTime || '23:59';
+            
+            return !(ourEnd <= eventStart || ourStart >= eventEnd);
+          });
+          
+          // Check if our time slot is available
+          isTimeSlotAvailable = !hasConflict && (availableSlots.length === 0 || availableSlots.some((slot: any) => {
+            const slotStart = slot.start;
+            const slotEnd = slot.end;
+            return eventStartTime >= slotStart && (!eventEndTime || eventEndTime <= slotEnd);
+          }));
+        }
         
         return {
           date,
@@ -356,7 +365,7 @@ function NewEventPageInner() {
           availableSlots,
           isAvailableForEvent: isTimeSlotAvailable,
           conflictEvents: hasConflict ? events.filter((event: any) => {
-            if (!event.startTime) return false;
+            if (!event.startTime || !eventStartTime) return false;
             const eventStart = event.startTime;
             const eventEnd = event.endTime || '23:59';
             const ourStart = eventStartTime;
@@ -407,6 +416,17 @@ function NewEventPageInner() {
     } else if (currentStep === 3) {
       if (!form.startHour || !form.startMinute) {
         setError("Please select start time for your event.");
+        return;
+      }
+      if (!form.endHour || !form.endMinute) {
+        setError("Please select end time for your event.");
+        return;
+      }
+      // Validate that end time is after start time
+      const startMinutes = parseInt(form.startHour) * 60 + parseInt(form.startMinute);
+      const endMinutes = parseInt(form.endHour) * 60 + parseInt(form.endMinute);
+      if (endMinutes <= startMinutes) {
+        setError("End time must be after start time.");
         return;
       }
       if (form.endHour && form.endMinute) {
@@ -1236,6 +1256,30 @@ function NewEventPageInner() {
                         </div>
                       </div>
                     </div>
+                    
+                    {/* Time Validation Error */}
+                    {form.startHour && form.startMinute && form.endHour && form.endMinute && (
+                      (() => {
+                        const startMinutes = parseInt(form.startHour) * 60 + parseInt(form.startMinute);
+                        const endMinutes = parseInt(form.endHour) * 60 + parseInt(form.endMinute);
+                        const isInvalid = endMinutes <= startMinutes;
+                        
+                        if (isInvalid) {
+                          return (
+                            <div className="mt-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 flex items-start gap-3">
+                              <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+                              <div>
+                                <p className="text-sm text-red-600 dark:text-red-400 font-semibold">Invalid Time Range</p>
+                                <p className="text-xs text-red-600/80 dark:text-red-400/80 mt-1">
+                                  End time must be after start time. Please adjust your selection.
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()
+                    )}
                     
                     {/* Show selected times */}
                     {(form.startHour && form.startMinute) && (
