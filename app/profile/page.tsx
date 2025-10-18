@@ -6,6 +6,7 @@ import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/components/auth/auth-provider';
 import { Button } from '@/components/ui/button';
+import { Dropdown } from '@/components/ui/dropdown';
 import { Loading } from '@/components/ui/loading';
 import { ErrorDisplay } from '@/components/ui/error-display';
 import { mockEvents } from '@/lib/mock-data';
@@ -406,38 +407,68 @@ export default function ProfilePage() {
               
               <div className="space-y-4 mb-6">
                 <label className="block text-sm font-medium mb-2">Choose Role</label>
-                <select 
-                  value={selectedRole} 
-                  onChange={(e) => setSelectedRole(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                >
-                  <option value="">Select a role...</option>
-                  <option value="organizer">Organizer</option>
-                  <option value="admin">Admin</option>
-                  <option value="venue_owner">Venue Owner</option>
-                  <option value="event_admin">Event Admin</option>
-                  <option value="checkin_officer">Check-in Officer</option>
-                </select>
+                <Dropdown
+                  options={[
+                    { value: 'organizer', label: 'Organizer' },
+                    { value: 'admin', label: 'Admin' },
+                    { value: 'venue_owner', label: 'Venue Owner' },
+                    { value: 'event_admin', label: 'Event Admin' },
+                    { value: 'checkin_officer', label: 'Check-in Officer' }
+                  ]}
+                  value={selectedRole}
+                  onChange={setSelectedRole}
+                  placeholder="Select a role..."
+                  className="w-full"
+                />
                 
                 {selectedRole && (
                   <div className="mt-4 p-4 bg-primary/5 rounded-lg border border-primary/20">
                     <h4 className="font-medium text-sm mb-2">
-                      {selectedRole === 'organizer' ? 'Organizer Role Benefits:' : 'Admin Role Benefits:'}
+                      {selectedRole === 'organizer' && 'Organizer Role Benefits:'}
+                      {selectedRole === 'admin' && 'Admin Role Benefits:'}
+                      {selectedRole === 'venue_owner' && 'Venue Owner Role Benefits:'}
+                      {selectedRole === 'event_admin' && 'Event Admin Role Benefits:'}
+                      {selectedRole === 'checkin_officer' && 'Check-in Officer Role Benefits:'}
                     </h4>
                     <ul className="text-xs text-muted-foreground space-y-1">
-                      {selectedRole === 'organizer' ? (
+                      {selectedRole === 'organizer' && (
                         <>
                           <li>• Create and manage events</li>
                           <li>• Access to analytics dashboard</li>
                           <li>• Revenue tracking</li>
                           <li>• Venue management tools</li>
                         </>
-                      ) : (
+                      )}
+                      {selectedRole === 'admin' && (
                         <>
                           <li>• Full system access</li>
                           <li>• User management</li>
                           <li>• Platform analytics</li>
                           <li>• System configuration</li>
+                        </>
+                      )}
+                      {selectedRole === 'venue_owner' && (
+                        <>
+                          <li>• Create and manage venues</li>
+                          <li>• Seat map configuration</li>
+                          <li>• Booking management</li>
+                          <li>• Venue analytics</li>
+                        </>
+                      )}
+                      {selectedRole === 'event_admin' && (
+                        <>
+                          <li>• Manage assigned events</li>
+                          <li>• View event analytics</li>
+                          <li>• Handle event operations</li>
+                          <li>• Attendee management</li>
+                        </>
+                      )}
+                      {selectedRole === 'checkin_officer' && (
+                        <>
+                          <li>• Check-in attendees</li>
+                          <li>• Scan QR tickets</li>
+                          <li>• Verify entry</li>
+                          <li>• Real-time attendance tracking</li>
                         </>
                       )}
                     </ul>
