@@ -316,7 +316,7 @@ export default function SignupPage() {
                   </motion.div>
                 </motion.div>
                 <motion.h2 
-                  className="text-3xl font-bold text-white mb-4 transition-all duration-300 group-hover:text-blue-100"
+                  className="text-3xl font-bold text-foreground mb-4 transition-all duration-300 group-hover:text-blue-100"
                   animate={{ 
                     textShadow: [
                       '0 0 0px rgba(216, 223, 238, 0)',
@@ -333,7 +333,7 @@ export default function SignupPage() {
                   Welcome to NexTicket
                 </motion.h2>
                 <motion.p 
-                  className="text-white opacity-80 text-lg leading-relaxed transition-opacity duration-300 group-hover:opacity-100"
+                  className="text-foreground opacity-80 text-lg leading-relaxed transition-opacity duration-300 group-hover:opacity-100"
                   initial={{ opacity: 0.8 }}
                   animate={{ opacity: [0.8, 1, 0.8] }}
                   transition={{ 
@@ -409,16 +409,16 @@ export default function SignupPage() {
           className="flex items-center justify-center p-8"
         >
           <motion.div variants={itemVariants} className="w-full max-w-md">
-            <div className="backdrop-blur-xl border rounded-3xl p-8 shadow-2xl" style={{ backgroundColor: '#191C24' + '80', borderColor: '#ABA8A9' + '30' }}>
+            <div className="backdrop-blur-xl border rounded-3xl p-8 shadow-2xl" style={{  borderColor: '#ABA8A9' + '30' }}>
               {/* Header */}
               <div className="text-center mb-8">
-                <Link href="/" className="inline-flex items-center text-white hover:opacity-80 transition-opacity mb-6">
+                <Link href="/" className="inline-flex items-center text-foreground hover:opacity-80 transition-opacity mb-6">
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Back to Home
                 </Link>
-                
-                <h1 className="text-3xl font-bold text-white mb-2">Create Account</h1>
-                <p className="text-white opacity-70">Join NexTicket and start exploring amazing events</p>
+
+                <h1 className="text-3xl font-bold text-foreground mb-2">Create Account</h1>
+                <p className="text-foreground opacity-70">Join NexTicket and start exploring amazing events</p>
               </div>
 
               {/* Form */}
@@ -427,7 +427,7 @@ export default function SignupPage() {
                   <motion.div 
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="flex items-center space-x-2 p-3 rounded-lg" style={{ backgroundColor: '#ef4444' + '20', border: '1px solid #ef4444' + '30' }}
+                    className="flex items-center space-x-2 p-3 rounded-lg" style={{  border: '1px solid #ef4444' + '30' }}
                   >
                     <AlertCircle className="w-5 h-5 text-red-400" />
                     <p className="text-red-300 text-sm">{error}</p>
@@ -445,7 +445,7 @@ export default function SignupPage() {
                       value={formData.firstName}
                       onChange={handleInputChange}
                       required
-                      className="w-full pl-10 pr-4 py-3 rounded-lg border bg-transparent text-white placeholder-gray-400 focus:outline-none focus:border-yellow-400 transition-all"
+                      className="w-full pl-10 pr-4 py-3 rounded-lg border bg-transparent text-foreground placeholder-gray-400 focus:outline-none focus:border-yellow-400 transition-all"
                       style={{ 
                         borderColor: '#ABA8A9' + '30'
                       }}
@@ -460,7 +460,7 @@ export default function SignupPage() {
                       value={formData.lastName}
                       onChange={handleInputChange}
                       required
-                      className="w-full pl-10 pr-4 py-3 rounded-lg border bg-transparent text-white placeholder-gray-400 focus:outline-none focus:border-yellow-400 transition-all"
+                      className="w-full pl-10 pr-4 py-3 rounded-lg border bg-transparent text-foreground placeholder-gray-400 focus:outline-none focus:border-yellow-400 transition-all"
                       style={{ 
                         borderColor: '#ABA8A9' + '30'
                       }}
@@ -478,7 +478,7 @@ export default function SignupPage() {
                     value={formData.email}
                     onChange={handleInputChange}
                     required
-                    className="w-full pl-10 pr-4 py-3 rounded-lg border bg-transparent text-white placeholder-gray-400 focus:outline-none focus:border-yellow-400 transition-all"
+                    className="w-full pl-10 pr-4 py-3 rounded-lg border bg-transparent text-foreground placeholder-gray-400 focus:outline-none focus:border-yellow-400 transition-all"
                     style={{ 
                       borderColor: emailError ? '#ef4444' : '#ABA8A9' + '30'
                     }}
@@ -517,7 +517,7 @@ export default function SignupPage() {
                     value={formData.password}
                     onChange={handleInputChange}
                     required
-                    className="w-full pl-10 pr-12 py-3 rounded-lg border bg-transparent text-white placeholder-gray-400 focus:outline-none focus:border-yellow-400 transition-all"
+                    className="w-full pl-10 pr-12 py-3 rounded-lg border bg-transparent text-foreground placeholder-gray-400 focus:outline-none focus:border-yellow-400 transition-all"
                     style={{ 
                       borderColor: '#ABA8A9' + '30'
                     }}
@@ -525,7 +525,7 @@ export default function SignupPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-foreground transition-colors"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -569,7 +569,7 @@ export default function SignupPage() {
                     value={formData.confirmPassword}
                     onChange={handleInputChange}
                     required
-                    className="w-full pl-10 pr-12 py-3 rounded-lg border bg-transparent text-white placeholder-gray-400 focus:outline-none focus:border-yellow-400 transition-all"
+                    className="w-full pl-10 pr-12 py-3 rounded-lg border bg-transparent text-foreground placeholder-gray-400 focus:outline-none focus:border-yellow-400 transition-all"
                     style={{ 
                       borderColor: formData.confirmPassword !== '' && formData.password !== formData.confirmPassword 
                         ? '#ef4444' 
@@ -579,7 +579,7 @@ export default function SignupPage() {
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-foreground transition-colors"
                   >
                     {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -601,7 +601,7 @@ export default function SignupPage() {
                     type="submit"
                     disabled={loading}
                     className="w-full py-3 text-black font-semibold rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
-                    style={{ backgroundColor: '#0D6EFD' }}
+                    
                   >
                     {loading ? 'Creating Account...' : 'Create Account'}
                   </Button>
@@ -613,7 +613,7 @@ export default function SignupPage() {
                     <div className="w-full border-t" style={{ borderColor: '#ABA8A9' + '30' }}></div>
                   </div>
                   <div className="relative flex justify-center text-sm">
-                    <span className="px-2 text-gray-400" style={{ backgroundColor: '#191C24' }}>Or continue with</span>
+                    <span className="px-2 text-foreground" >Or continue with</span>
                   </div>
                 </motion.div>
 
@@ -622,7 +622,7 @@ export default function SignupPage() {
                   <button
                     type="button"
                     onClick={signInWithGoogle}
-                    className="w-full py-3 px-4 border rounded-lg text-white hover:bg-gray-700 transition-colors flex items-center justify-center space-x-2"
+                    className="w-full py-3 px-4 border rounded-lg text-foreground hover:bg-gray-700 transition-colors flex items-center justify-center space-x-2"
                     style={{ borderColor: '#ABA8A9' + '30' }}
                   >
                     <svg className="w-5 h-5" viewBox="0 0 24 24">

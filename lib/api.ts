@@ -41,7 +41,7 @@ function getTicketServiceUrl(endpoint: string): string {
 // Utility function for public endpoints (no auth required)
 function getPublicUrl(endpoint: string): string {
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-  return `${API_GATEWAY_URL}/public${cleanEndpoint}`;
+  return `${API_GATEWAY_URL}/event_service/public${cleanEndpoint}`;
 }
 
 // Legacy function for backward compatibility - now routes through gateway
@@ -140,7 +140,7 @@ export const updateEventDetails = async (eventId: string | number, eventData: an
 
 export const fetchVenueSeatMap = async (id: number | string) => {
   // Use public route for seat map - needed for customers to view available seats
-  const url = `${API_GATEWAY_URL}/public/api/venues/${id}/seats`;
+  const url = `${API_GATEWAY_URL}/event_service/public/api/venues/${id}/seats`;
   const res = await publicFetch(url);
   if (!res.ok) throw new Error("Failed to fetch venue seat map");
   return res.json();
@@ -194,7 +194,7 @@ export async function fetchVenueAvailability(venueId: string | number, date: str
 
 export const fetchVenueById = async (id: number | string) => {
   // Use public route for venue details - accessible to everyone
-  const url = `${API_GATEWAY_URL}/public/api/venues/getvenuebyid/${id}`;
+  const url = `${API_GATEWAY_URL}/event_service/public/api/venues/getvenuebyid/${id}`;
   const res = await publicFetch(url);
   if (!res.ok) throw new Error("Failed to fetch venue");
   return res.json();
@@ -310,7 +310,7 @@ export async function uploadVenueImages(id: string, imageFiles: File[]) {
 export async function fetchEvents(status?: string) {
   // Use optionalAuthFetch - allows admins to see PENDING events when filtering
   // Public users will only see APPROVED events
-  const url = status ? `${API_GATEWAY_URL}/public/api/events?status=${status}` : `${API_GATEWAY_URL}/public/api/events`;
+  const url = status ? `${API_GATEWAY_URL}/event_service/public/api/events?status=${status}` : `${API_GATEWAY_URL}/event_service/public/api/events`;
   const res = await optionalAuthFetch(url);
   if (!res.ok) throw new Error("Failed to fetch events");
   return res.json();
@@ -326,7 +326,7 @@ export async function fetchEventsByOrganizer(organizerId: string) {
 
 export async function fetchEventsByVenueId(venueId: number | string) {
   // Use public route - anyone should be able to see events at a venue
-  const url = `${API_GATEWAY_URL}/public/api/events/venue/${venueId}`;
+  const url = `${API_GATEWAY_URL}/event_service/public/api/events/venue/${venueId}`;
   const res = await publicFetch(url);
   if (!res.ok) throw new Error("Failed to fetch events for venue");
   return res.json();
@@ -336,7 +336,7 @@ export async function fetchEventById(id: string) {
   // Use optionalAuthFetch - sends auth token if user is logged in
   // This allows admins to see PENDING events while public users see only APPROVED
   // Updated to use RESTful route: /api/events/:id
-  const url = `${API_GATEWAY_URL}/public/api/events/${id}`;
+  const url = `${API_GATEWAY_URL}/event_service/public/api/events/${id}`;
   const res = await optionalAuthFetch(url);
   if (!res.ok) {
     const errorText = await res.text();
@@ -574,7 +574,7 @@ export interface VenueSeatsResponse {
 
 export async function getVenueSeats(venueId: number | string): Promise<VenueSeatsResponse> {
   // Use public route for seat map access
-  const url = `${API_GATEWAY_URL}/public/api/venues/${venueId}/seats`;
+  const url = `${API_GATEWAY_URL}/event_service/public/api/venues/${venueId}/seats`;
   const res = await publicFetch(url);
   if (!res.ok) throw new Error("Failed to fetch venue seats");
   const response = await res.json();

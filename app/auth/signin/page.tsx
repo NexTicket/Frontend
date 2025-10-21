@@ -332,7 +332,7 @@ export default function SignInPage() {
                   <motion.div 
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="flex items-center space-x-2 p-3 rounded-lg" style={{ backgroundColor: '#ef4444' + '20', border: '1px solid #ef4444' + '30' }}
+                    className="flex items-center space-x-2 p-3 rounded-lg" style={{  border: '1px solid #ef4444' + '30' }}
                   >
                     <AlertCircle className="w-5 h-5 text-red-400" />
                     <p className="text-red-300 text-sm">{error}</p>
@@ -349,7 +349,7 @@ export default function SignInPage() {
                     value={formData.email}
                     onChange={handleInputChange}
                     required
-                    className="w-full pl-10 pr-4 py-3 rounded-lg border bg-transparent text-white placeholder-gray-400 focus:outline-none focus:border-yellow-400 transition-all"
+                    className="w-full pl-10 pr-4 py-3 rounded-lg border bg-transparent text-foreground placeholder-gray-400 focus:outline-none focus:border-yellow-400 transition-all"
                     style={{ 
                       borderColor: '#ABA8A9' + '30'
                     }}
@@ -366,7 +366,7 @@ export default function SignInPage() {
                     value={formData.password}
                     onChange={handleInputChange}
                     required
-                    className="w-full pl-10 pr-12 py-3 rounded-lg border bg-transparent text-white placeholder-gray-400 focus:outline-none focus:border-yellow-400 transition-all"
+                    className="w-full pl-10 pr-12 py-3 rounded-lg border bg-transparent text-foreground placeholder-gray-400 focus:outline-none focus:border-yellow-400 transition-all"
                     style={{ 
                       borderColor: '#ABA8A9' + '30'
                     }}
@@ -382,7 +382,7 @@ export default function SignInPage() {
 
                 {/* Remember Me & Forgot Password */}
                 <motion.div variants={itemVariants} className="flex items-center justify-between">
-                  <label className="flex items-center space-x-2 text-white opacity-80 cursor-pointer">
+                  <label className="flex items-center space-x-2 text-foreground opacity-80 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={rememberMe}
@@ -391,7 +391,7 @@ export default function SignInPage() {
                     />
                     <span className="text-sm">Remember me</span>
                   </label>
-                  <button type="button" className="text-sm hover:underline" style={{ color: '#0D6EFD' }}>
+                  <button type="button" className="text-sm hover:underline" >
                     Forgot password?
                   </button>
                 </motion.div>
@@ -402,7 +402,7 @@ export default function SignInPage() {
                     type="submit"
                     disabled={loading}
                     className="w-full py-3 text-black font-semibold rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
-                    style={{ backgroundColor: '#0D6EFD' }}
+                    
                   >
                     {loading ? 'Signing In...' : 'Sign In'}
                   </Button>
@@ -459,7 +459,7 @@ export default function SignInPage() {
                     <div className="w-full border-t" style={{ borderColor: '#ABA8A9' + '30' }}></div>
                   </div>
                   <div className="relative flex justify-center text-sm">
-                    <span className="px-2 text-gray-400" style={{ backgroundColor: '#191C24' }}>Or continue with</span>
+                    <span className="px-2 text-foreground" >Or continue with</span>
                   </div>
                 </motion.div>
 
@@ -468,7 +468,7 @@ export default function SignInPage() {
                   <button
                     type="button"
                     onClick={signInWithGoogle}
-                    className="w-full py-3 px-4 border rounded-lg text-white hover:bg-gray-700 transition-colors flex items-center justify-center space-x-2"
+                    className="w-full py-3 px-4 border rounded-lg text-foreground hover:bg-gray-700 transition-colors flex items-center justify-center space-x-2"
                     style={{ borderColor: '#ABA8A9' + '30' }}
                   >
                     <svg className="w-5 h-5" viewBox="0 0 24 24">
