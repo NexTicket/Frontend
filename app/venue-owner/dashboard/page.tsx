@@ -82,7 +82,7 @@ interface StatCardProps {
 }
 
 // StatCard Component
-const StatCard: React.FC<StatCardProps> = ({ title, value, icon, trend, color, subtitle }) => {
+const StatCard: React.FC<StatCardProps> = ({ title, value, icon, trend, subtitle }) => {
   const TrendIcon = trend && trend > 0 ? TrendingUp : TrendingDown;
   const trendColor = trend && trend > 0 ? 'text-green-500' : 'text-red-500';
 
@@ -90,11 +90,11 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, trend, color, s
     <motion.div
       variants={itemVariants}
       whileHover={{ scale: 1.02, y: -2 }}
-      className="bg-card backdrop-blur-xl border border-border rounded-2xl p-4 shadow-lg hover:shadow-xl transition-all duration-200"
+      className="backdrop-blur-xl border rounded-2xl p-4 shadow-xl hover:shadow-2xl transition-all duration-200 bg-card"
     >
       <div className="flex items-center justify-between">
         <div className="flex-1">
-          <p className="text-sm font-medium mb-1 text-muted-foreground">{title}</p>
+          <p className="text-sm font-medium mb-1 text-card-foreground">{title}</p>
           <div className="text-2xl font-bold mb-1 text-foreground">{value}</div>
           {subtitle && (
             <p className="text-xs text-muted-foreground">{subtitle}</p>
@@ -108,8 +108,10 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, trend, color, s
             </div>
           )}
         </div>
-        <div className="bg-primary/10 rounded-lg p-3 ml-4 text-primary">
-          {icon}
+        <div className="rounded-lg p-3 ml-4 bg-primary/10">
+          <div className="text-primary">
+            {icon}
+          </div>
         </div>
       </div>
     </motion.div>
@@ -286,10 +288,10 @@ export default function VenueOwnerDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Background Elements */}
-      <div className="absolute top-0 right-0 w-80 h-80 bg-primary/5 rounded-full blur-3xl opacity-50"></div>
-      <div className="absolute bottom-0 left-0 w-80 h-80 bg-secondary/5 rounded-full blur-3xl opacity-40"></div>
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-muted/10 rounded-full blur-3xl opacity-30"></div>
+      {/* Simple Background Elements */}
+      <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-20 bg-muted"></div>
+      <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-15 bg-muted"></div>
+      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl opacity-10 bg-muted"></div>
       
       {/* Content Container */}
       <div className="relative z-10 pt-8 px-8">
@@ -299,9 +301,9 @@ export default function VenueOwnerDashboard() {
           variants={containerVariants}
           className="max-w-7xl mx-auto"
         >
-          {/* Header */}
+          {/* Clean Header */}
           <motion.div variants={itemVariants} className="mb-12">
-            <div className="bg-gradient-to-r from-primary to-primary/80 border border-primary/20 rounded-2xl p-6 shadow-lg">
+            <div className="rounded-2xl p-6 shadow-lg bg-primary border-primary">
               <div className="flex items-center justify-between">
                 <div>
                   <motion.h1 
@@ -316,78 +318,56 @@ export default function VenueOwnerDashboard() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2, duration: 0.5 }}
-                    className="text-lg font-normal text-primary-foreground/90"
+                    className="text-lg font-normal text-primary-foreground"
                   >
                     Welcome back! Manage your venues and track performance.
                   </motion.p>
                 </div>
-                {/* <motion.div 
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.3, duration: 0.4 }}
-                  className="flex items-center space-x-3"
-                >
-                  <Button 
-                    onClick={handleRefresh}
-                    disabled={refreshing}
-                    className="px-4 py-2 text-white font-medium rounded-xl hover:opacity-90 transition-opacity shadow-md"
-                    style={{ background: 'linear-gradient(135deg, #0D6EFD, #1565C0)' }}
-                  >
-                    <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                    Refresh
-                  </Button>
-                  <Link href="/venue-owner/venues/new">
-                    <Button className="px-4 py-2 text-white font-medium rounded-xl hover:opacity-90 transition-opacity shadow-md"
-                      style={{ background: 'linear-gradient(135deg, #39FD48, #0D6EFD)' }}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Venue
-                    </Button>
-                  </Link>
-                </motion.div> */}
               </div>
             </div>
           </motion.div>
 
-          <div className="flex h-18 justify-end gap-3">
-  <Button
-    onClick={handleRefresh}
-    disabled={refreshing}
-    className="px-4 py-1 text-white font-medium rounded-xl hover:opacity-90 transition-opacity shadow-md"
-    style={{ background: 'linear-gradient(135deg, #0D6EFD, #1565C0)' }}
-  >
-    <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-    Refresh
-  </Button>
-
-  <Link href="/venue-owner/venues/new">
-                    <Button className="px-4 py-2 text-white font-medium rounded-xl hover:opacity-90 transition-opacity shadow-md"
-                      style={{ background: '#0D6EFD' }}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Venue
-                    </Button>
-                  </Link>
-</div>
+          {/* Quick Action Buttons */}
+          <motion.div variants={itemVariants} className="mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="h-10 backdrop-blur-xl border text-lg rounded-2xl p-8 shadow-xl bg-card hover:bg-card/80 text-card-foreground"
+              >
+                <RefreshCw className={`h-8 w-8 mr-3 ${refreshing ? 'animate-spin' : ''}`} />
+                Refresh Venues
+              </Button>
+              <Link href="/venue-owner/venues/new">
+                <Button className="w-full h-10 backdrop-blur-xl border text-lg rounded-2xl p-8 shadow-xl bg-primary hover:bg-primary/90 text-primary-foreground">
+                  <Plus className="h-8 w-8 mr-3" />
+                  Add New Venue
+                </Button>
+              </Link>
+            </div>
+          </motion.div>
 
           {/* Stats Grid */}
-          <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-            {venueStats.map((stat, index) => (
-              <StatCard key={index} {...stat} />
-            ))}
+          <motion.div variants={itemVariants} className="mb-16">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {venueStats.map((stat, index) => (
+                <StatCard key={index} {...stat} />
+              ))}
+            </div>
           </motion.div>
 
           {/* Main Content Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* My Venues */}
             <motion.div variants={itemVariants} className="lg:col-span-2">
-              <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl" 
-                >
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-semibold" >My Venues</h2>
+              <div className="backdrop-blur-xl border rounded-2xl p-8 shadow-xl bg-card text-card-foreground">
+                <div className="flex items-center justify-between mb-8">
+                  <h2 className="text-3xl font-bold text-foreground">My Venues</h2>
                   <Link href="/venue-owner/venues">
                     <Button 
                       variant="outline" 
                       size="sm"
-                      className=" text-foreground  hover:text-black"
+                      className="transition-all duration-200 hover:shadow-md border-border text-foreground bg-transparent hover:bg-accent/20"
                     >
                       <Eye className="h-4 w-4 mr-2" />
                       View All
@@ -505,9 +485,8 @@ export default function VenueOwnerDashboard() {
 
             {/* Recent Activity */}
             <motion.div variants={itemVariants}>
-              <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl" 
-                >
-                <h2 className="text-2xl font-semibold mb-6 text-foreground">Recent Activity</h2>
+              <div className="backdrop-blur-xl border rounded-2xl p-8 shadow-xl bg-card text-card-foreground">
+                <h2 className="text-2xl font-bold mb-6 text-foreground">Recent Activity</h2>
                 
                 <div className="space-y-4">
                   {recentActivity.map((activity: any, index: number) => (
@@ -516,24 +495,24 @@ export default function VenueOwnerDashboard() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.1 }}
-                      className="flex items-start space-x-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                      className="flex items-start space-x-3 p-4 rounded-xl transition-colors duration-200 hover:bg-accent/20 bg-card border border-border"
                     >
-                      <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-primary/10">
                         {activity.type === 'booking' ? (
-                          <Calendar className="h-4 w-4 text-primary" />
+                          <Calendar className="h-5 w-5 text-primary" />
                         ) : (
-                          <Activity className="h-4 w-4 text-primary" />
+                          <Activity className="h-5 w-5 text-primary" />
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-foreground">
                           {activity.type === 'booking' ? (
                             <>
-                              New booking at <span className="text-primary">{activity.venue}</span>
+                              New booking at <span className="text-primary font-semibold">{activity.venue}</span>
                             </>
                           ) : (
                             <>
-                              {activity.description} at <span className="text-primary">{activity.venue}</span>
+                              {activity.description} at <span className="text-primary font-semibold">{activity.venue}</span>
                             </>
                           )}
                         </p>
