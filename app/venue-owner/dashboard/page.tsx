@@ -333,14 +333,14 @@ export default function VenueOwnerDashboard() {
               <Button
                 onClick={handleRefresh}
                 disabled={refreshing}
-                className="h-10 backdrop-blur-xl border text-lg rounded-2xl p-8 shadow-xl bg-card hover:bg-card/80 text-card-foreground"
+                className="h-auto backdrop-blur-xl border text-base rounded-2xl py-4 px-6 shadow-xl bg-card hover:bg-card/80 text-card-foreground"
               >
-                <RefreshCw className={`h-8 w-8 mr-3 ${refreshing ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`h-5 w-5 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
                 Refresh Venues
               </Button>
               <Link href="/venue-owner/venues/new">
-                <Button className="w-full h-10 backdrop-blur-xl border text-lg rounded-2xl p-8 shadow-xl bg-primary hover:bg-primary/90 text-primary-foreground">
-                  <Plus className="h-8 w-8 mr-3" />
+                <Button className="w-full h-auto backdrop-blur-xl border text-base rounded-2xl py-4 px-6 shadow-xl bg-primary hover:bg-primary/90 text-primary-foreground">
+                  <Plus className="h-5 w-5 mr-2" />
                   Add New Venue
                 </Button>
               </Link>

@@ -443,7 +443,7 @@ export default function CheckinOfficerDashboard() {
           initial="hidden"
           animate="visible"
           variants={containerVariants}
-          className="max-w-7xl mx-auto"
+          className="max-w-7xl mx-auto pb-16"
         >
           {/* Clean Header */}
           <motion.div variants={itemVariants} className="mb-12">
@@ -643,10 +643,10 @@ export default function CheckinOfficerDashboard() {
                   <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 bg-primary/20">
                     <QrCode className="w-8 h-8 text-primary" />
                   </div>
-                  <h3 className="text-lg font-medium mb-2 text-foreground">Quick Scan</h3>
+                  <h3 className="text-lg font-semibold mb-2 text-foreground">Quick Scan</h3>
                   <p className="text-sm mb-4 text-muted-foreground">Start scanning tickets for active events</p>
                   <Button 
-                    className="w-full text-white bg-blue-600 hover:bg-blue-700"
+                    className="w-full text-primary-foreground bg-primary hover:bg-primary/90 text-base font-medium"
                     onClick={openScannerModal}
                   >
                     Start Scanning
@@ -659,11 +659,11 @@ export default function CheckinOfficerDashboard() {
                   <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 bg-primary/20">
                     <Users className="w-8 h-8 text-primary" />
                   </div>
-                  <h3 className="text-lg font-medium mb-2 text-foreground">View Attendees</h3>
+                  <h3 className="text-lg font-semibold mb-2 text-foreground">View Attendees</h3>
                   <p className="text-sm mb-4 text-muted-foreground">Browse attendee list and check-in status</p>
                   <Button 
                     variant="outline" 
-                    className="w-full transition-all duration-200 hover:shadow-md border-primary text-foreground hover:bg-primary/10"
+                    className="w-full transition-all duration-200 hover:shadow-md border-border text-foreground hover:bg-accent/20 text-base font-medium"
                     onClick={() => setActiveTab('attendees')}
                   >
                     View List
@@ -676,11 +676,11 @@ export default function CheckinOfficerDashboard() {
                   <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 bg-primary/20">
                     <Download className="w-8 h-8 text-primary" />
                   </div>
-                  <h3 className="text-lg font-medium mb-2 text-foreground">Export Data</h3>
+                  <h3 className="text-lg font-semibold mb-2 text-foreground">Export Data</h3>
                   <p className="text-sm mb-4 text-muted-foreground">Download check-in reports and logs</p>
                   <Button 
                     variant="outline" 
-                    className="w-full transition-all duration-200 hover:shadow-md border-primary text-foreground hover:bg-primary/10"
+                    className="w-full transition-all duration-200 hover:shadow-md border-border text-foreground hover:bg-accent/20 text-base font-medium"
                   >
                     Export
                   </Button>

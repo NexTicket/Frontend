@@ -227,7 +227,7 @@ export default function EventAdminDashboard() {
           initial="hidden"
           animate="visible"
           variants={containerVariants}
-          className="max-w-7xl mx-auto"
+          className="max-w-7xl mx-auto pb-16"
         >
           {/* Clean Header */}
           <motion.div variants={itemVariants} className="mb-12">
