@@ -119,6 +119,41 @@ export default function AdminUsers() {
     // Get current user authentication
     const { firebaseUser, refreshUserToken } = useAuth();
 
+    // 🔍 DEBUG: Check if current admin has proper Firebase custom claims
+    useEffect(() => {
+        const checkAdminClaims = async () => {
+            if (firebaseUser) {
+                try {
+                    const token = await firebaseUser.getIdToken();
+                    const tokenResult = await firebaseUser.getIdTokenResult();
+                    
+                    console.log('🔍 ADMIN TOKEN CHECK:', {
+                        email: firebaseUser.email,
+                        uid: firebaseUser.uid,
+                        customClaims: tokenResult.claims,
+                        hasRoleClaim: 'role' in tokenResult.claims,
+                        roleClaim: tokenResult.claims.role,
+                        isAdmin: tokenResult.claims.role === 'admin'
+                    });
+                    
+                    // ⚠️ CRITICAL WARNING: If admin doesn't have custom claims
+                    if (!tokenResult.claims.role || tokenResult.claims.role !== 'admin') {
+                        console.error('❌❌❌ CRITICAL: Current admin user does NOT have proper Firebase custom claims!');
+                        console.error('❌ Your token is missing "role: admin" claim');
+                        console.error('❌ You will NOT be able to approve role requests!');
+                        console.error('❌ Use the "Bootstrap Admin" button to fix this, or ask another admin to approve your admin role.');
+                        
+                        setError('⚠️ WARNING: Your admin account is missing Firebase custom claims. You may not be able to approve role requests. Use "Bootstrap Admin" button below to fix this.');
+                    }
+                } catch (error) {
+                    console.error('Error checking admin claims:', error);
+                }
+            }
+        };
+        
+        checkAdminClaims();
+    }, [firebaseUser]);
+
     // Function to fetch all users and role requests from Firebase - memoized to prevent unnecessary re-renders
     const fetchAllData = useCallback(async () => {
         if (!firebaseUser) {
@@ -292,14 +327,34 @@ export default function AdminUsers() {
             // 3. Set custom claims via API call to backend
             console.log('📝 Step 3: Setting Firebase custom claims...');
             try {
-                await setUserClaims(request.userId, {
+                const claimsResponse = await setUserClaims(request.userId, {
                     role: request.requestedRole,
                 });
                 console.log(`✅ Step 3 complete: Firebase custom claims set: ${request.userId} → ${request.requestedRole}`);
+                console.log('✅ Claims response:', claimsResponse);
             } catch (claimsError: any) {
-                console.error('❌ Step 3 failed: Custom claims error:', claimsError);
-                // Continue with tenant creation even if claims fail
-                console.warn('⚠️ Continuing with tenant creation despite claims failure');
+                console.error('❌ Step 3 FAILED: Custom claims error:', claimsError);
+                console.error('❌ Error details:', {
+                    message: claimsError.message,
+                    stack: claimsError.stack,
+                    response: claimsError.response
+                });
+                
+                // 🚨 CRITICAL: This is a FAILURE - custom claims NOT set!
+                // User's Firebase token will NOT have the 'role' field
+                // They will appear as 'customer' in API Gateway
+                // They will get 401 errors when trying to use their role-specific features
+                
+                // Show error to admin
+                const errorMsg = claimsError.message?.includes('403') || claimsError.message?.includes('Access denied')
+                    ? '❌ CRITICAL ERROR: You (the admin) do not have proper admin permissions in Firebase! Your own Firebase token is missing custom claims. Please check with a super admin or use the bootstrap admin endpoint first.'
+                    : `❌ CRITICAL ERROR: Failed to set Firebase custom claims for ${request.userEmail}. Error: ${claimsError.message}. User will NOT be able to use their new role until this is fixed!`;
+                
+                setError(errorMsg);
+                setProcessingId(null);
+                
+                // STOP the approval process - don't continue if claims failed!
+                throw new Error(`Custom claims failed: ${claimsError.message}`);
             }
 
             // 4. Handle role-specific setup
@@ -649,18 +704,19 @@ export default function AdminUsers() {
                     </div>
                 )}
 
-                {/* Bootstrap Admin Card
+                {/* Bootstrap Admin Card - CRITICAL for fixing admin custom claims */}
                 {firebaseUser && (
-                    <div className="mb-6 bg-white rounded-2xl p-6 shadow-lg border border-orange-100">
+                    <div className="mb-6 bg-orange-50 dark:bg-orange-950/30 rounded-2xl p-6 shadow-lg border border-orange-200 dark:border-orange-800">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center">
-                                <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
-                                    <Shield className="w-6 h-6 text-orange-600" />
+                                <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900 rounded-xl flex items-center justify-center">
+                                    <Shield className="w-6 h-6 text-orange-600 dark:text-orange-400" />
                                 </div>
                                 <div className="ml-4">
-                                    <h3 className="text-lg font-semibold text-gray-900">Admin Setup</h3>
-                                    <p className="text-sm text-gray-600">
-                                        Set admin role for {firebaseUser.email} if getting permission errors
+                                    <h3 className="text-lg font-semibold text-foreground">Fix Admin Permissions</h3>
+                                    <p className="text-sm text-muted-foreground">
+                                        Click this if you're getting "Access denied" errors when approving roles.<br/>
+                                        This sets Firebase custom claims for: <strong>{firebaseUser.email}</strong>
                                     </p>
                                 </div>
                             </div>
@@ -675,12 +731,12 @@ export default function AdminUsers() {
                                         Setting...
                                     </div>
                                 ) : (
-                                    'Set Admin Role'
+                                    'Bootstrap My Admin Role'
                                 )}
                             </Button>
                         </div>
                     </div>
-                )} */}
+                )}
 
                 {/* Tab Navigation */}
                 <div className="flex items-center justify-between mb-8">

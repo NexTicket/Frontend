@@ -51,47 +51,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
 
   // Determine user role based on email or other criteria
+  // NOTE: By default, ALL new users start as 'customer'
+  // Users must request role upgrades, and admin approves them
+  // This ensures Firebase custom claims are properly set via the admin approval flow
   const determineUserRole = (email: string): 'admin' | 'organizer' | 'customer' | 'venue_owner' | 'event_admin' | 'checkin_officer' => {
-    // Admin emails (you can modify this list)
+    // Only auto-assign admin role for specific admin emails
+    // All other roles (organizer, venue_owner, etc.) must be requested and approved by admin
     const adminEmails = ['admin@nexticket.com', 'admin@company.com'];
-    
-    // Event Admin emails
-    const eventAdminEmails = ['eventadmin@nexticket.com', 'event-admin@nexticket.com'];
-    
-    // Check-in Officer emails
-    const checkinOfficerEmails = ['checkin@nexticket.com', 'checkin-officer@nexticket.com'];
-    
-    // Organizer domain patterns (you can modify these)
-    const organizerDomains = ['organizer@nexticket.com'];
-    const organizerPatterns = ['@events.', '@venue.', '@entertainment.'];
-    
-    // Venue owner patterns
-    const venueOwnerDomains = ['venue@nexticket.com'];
-    const venueOwnerPatterns = ['@venue-owner.'];
     
     if (adminEmails.includes(email.toLowerCase())) {
       return 'admin';
     }
     
-    if (eventAdminEmails.includes(email.toLowerCase())) {
-      return 'event_admin';
-    }
-    
-    if (checkinOfficerEmails.includes(email.toLowerCase())) {
-      return 'checkin_officer';
-    }
-    
-    if (organizerDomains.includes(email.toLowerCase()) || 
-        organizerPatterns.some(pattern => email.toLowerCase().includes(pattern))) {
-      return 'organizer';
-    }
-    
-    if (venueOwnerDomains.includes(email.toLowerCase()) || 
-        venueOwnerPatterns.some(pattern => email.toLowerCase().includes(pattern))) {
-      return 'venue_owner';
-    }
-    
-    // Default to customer
+    // Default: ALL users start as 'customer'
+    // They can request role upgrades (organizer, venue_owner, etc.) via the profile page
+    // Admin approves the request, which sets Firebase custom claims properly
     return 'customer';
   };
 
