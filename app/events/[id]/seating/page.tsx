@@ -94,10 +94,16 @@ export default function SeatingPage({ params }: SeatingPageProps) {
         setSeatMap(venueData.seatMap);
 
         // Fetch bulk ticket prices
-        console.log('Fetching bulk ticket prices for venue:', eventData.venueId, 'event:', eventData.id);
-        const pricesData = await getBulkTicketPrices(eventData.venueId, eventData.id);
-        console.log('Bulk ticket prices received:', pricesData);
-        setBulkTicketPrices(pricesData);
+        let pricesData: BulkTicketPrice[] = [];
+        try {
+          console.log('Fetching bulk ticket prices for venue:', eventData.venueId, 'event:', eventData.id);
+          pricesData = await getBulkTicketPrices(eventData.venueId, eventData.id);
+          console.log('Bulk ticket prices received:', pricesData);
+          setBulkTicketPrices(pricesData);
+        } catch (priceError) {
+          console.warn('Failed to fetch bulk ticket prices, using default price of 1000:', priceError);
+          // Continue with default prices
+        }
 
         // Create a map of section to price and bulk_ticket_id
         const priceMap = new Map<string, { price: number; bulkTicketId: number }>();
@@ -114,7 +120,7 @@ export default function SeatingPage({ params }: SeatingPageProps) {
           // Get price for this section from bulk ticket prices
           const sectionPriceInfo = priceMap.get(section.name.toLowerCase()) || 
                                    priceMap.get(section.id.toLowerCase());
-          const seatPrice = sectionPriceInfo?.price || (100 * section.price_multiplier); // Fallback to calculated price
+          const seatPrice = sectionPriceInfo?.price || 1000; // Default to 1000 if no bulk price found
           const bulkTicketId = sectionPriceInfo?.bulkTicketId;
 
           for (let row = 0; row < section.rows; row++) {
@@ -308,7 +314,7 @@ export default function SeatingPage({ params }: SeatingPageProps) {
                                 backgroundColor: section.color + '20',
                                 color: section.color
                               }}>
-                                LKR {sectionSeats[0]?.price?.toFixed(0) || (100 * section.price_multiplier).toFixed(0)} per seat
+                                LKR {sectionSeats[0]?.price?.toFixed(0) || '1000'} per seat
                               </span>
                             </div>
                             <div className="space-y-2">
