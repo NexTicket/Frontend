@@ -387,16 +387,12 @@ export async function getBulkTicketPrices(venueId: number, eventId: number): Pro
 
     const token = await user.getIdToken();
 
-    const response = await fetch(`${TICKET_APIGATEWAY_URL}/tickets/bulk-ticket/prices`, {
-      method: 'POST',
+    const response = await fetch(`${TICKET_APIGATEWAY_URL}/tickets/bulk-ticket/prices?venue_id=${venueId}&event_id=${eventId}`, {
+      method: 'GET',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        venue_id: venueId,
-        event_id: eventId
-      })
+      }
     });
 
     if (!response.ok) {
