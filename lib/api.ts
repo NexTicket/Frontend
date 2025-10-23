@@ -148,7 +148,7 @@ export const fetchVenueSeatMap = async (id: number | string) => {
 
 export async function fetchVenues() {
   // Use public route - accessible to everyone without auth
-  const url = `${API_GATEWAY_URL}/public/api/venues`;
+  const url = `${API_GATEWAY_URL}/event_service/public/api/venues`;
   const res = await optionalAuthFetch(url);
   if (!res.ok) throw new Error("Failed to fetch venues");
   return res.json();
@@ -186,7 +186,7 @@ export async function fetchVenueAvailability(venueId: string | number, date: str
   if (endTime) params.append('endTime', endTime);
 
   const queryString = params.toString();
-  const url = getVenueServiceUrl(`/api/venues/${venueId}/availability?${queryString}`);
+  const url = getVenueServiceUrl(`/venues/${venueId}/availability?${queryString}`);
   const res = await publicFetch(url);
   if (!res.ok) throw new Error("Failed to fetch venue availability");
   return res.json();
