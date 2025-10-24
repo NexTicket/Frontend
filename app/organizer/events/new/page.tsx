@@ -604,7 +604,7 @@ function NewEventPageInner() {
             </Button>
           </Link>
           
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary via-purple-500 to-pink-500 bg-clip-text text-transparent mb-2">
+          <h1 className="text-4xl font-bold text-primary mb-2">
             Create New Event
           </h1>
           <p className="text-muted-foreground">Set up your event with our advanced event management system</p>
@@ -1646,7 +1646,7 @@ function NewEventPageInner() {
               {currentStep < totalSteps ? (
                 <Button
                   onClick={nextStep}
-                  className="flex items-center bg-gradient-to-r from-primary to-purple-600"
+                  className="flex items-center bg-primary hover:bg-primary/90"
                 >
                   Next
                   <ArrowRight className="h-4 w-4 ml-2" />

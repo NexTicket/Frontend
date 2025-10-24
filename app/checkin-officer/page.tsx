@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/components/auth/auth-provider';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -18,14 +18,13 @@ import {
   RefreshCw,
   Download,
   Scan,
-  User,
-  Clock4,
-  ArrowLeft,
-  Settings
+  Clock4
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { fetchMyCheckinEvents } from '@/lib/api';
+import { fetchMyCheckinEvents, fetchEventAttendees } from '@/lib/api';
+import { secureFetch } from '@/utils/secureFetch';
 import RouteGuard from '@/components/auth/routeGuard';
+import jsQR from 'jsqr';
 
 // Animation variants
 const containerVariants = {
@@ -76,12 +75,9 @@ interface CheckinRecord {
 
 interface Attendee {
   id: string;
-  name: string;
-  email: string;
-  ticketId: string;
+  order_id: string;
   ticketType: string;
-  status: 'pending' | 'checked_in';
-  checkedInAt?: string;
+  status: string;
 }
 
 const mockAssignedEvents: AssignedEvent[] = [
@@ -159,36 +155,28 @@ const mockRecentCheckins: CheckinRecord[] = [
 const mockAttendees: Attendee[] = [
   {
     id: '1',
-    name: 'John Smith',
-    email: 'john@email.com',
-    ticketId: 'TIK-2024-001',
+    order_id: 'BT-1',
     ticketType: 'VIP',
-    status: 'checked_in',
-    checkedInAt: '2024-07-20T14:30:00Z'
+    status: 'Available'
   },
   {
     id: '2',
-    name: 'Sarah Johnson',
-    email: 'sarah@email.com',
-    ticketId: 'TIK-2024-002',
+    order_id: 'BT-2',
     ticketType: 'General',
-    status: 'checked_in',
-    checkedInAt: '2024-07-20T14:25:00Z'
+    status: 'Available'
   },
   {
     id: '3',
-    name: 'Mike Wilson',
-    email: 'mike@email.com',
-    ticketId: 'TIK-2024-003',
-    ticketType: 'Early Bird',
-    status: 'pending'
+    order_id: 'BT-3',
+    ticketType: 'Balcony',
+    status: 'Available'
   }
 ];
 
 export default function CheckinOfficerDashboard() {
   const { userProfile, firebaseUser, isLoading } = useAuth();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'overview' | 'events' | 'checkin' | 'attendees'>('overview');
+  const [activeTab, setActiveTab] = useState<'events' | 'checkin' | 'attendees'>('events');
   const [selectedEvent, setSelectedEvent] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -198,6 +186,15 @@ export default function CheckinOfficerDashboard() {
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [assignedEvents, setAssignedEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [scanning, setScanning] = useState(false);
+  const [scanResult, setScanResult] = useState<any>(null);
+  const [checkinLoading, setCheckinLoading] = useState(false);
+  const [attendees, setAttendees] = useState<any[]>([]);
+  const [loadingAttendees, setLoadingAttendees] = useState(false);
+  const [eventCheckinCounts, setEventCheckinCounts] = useState<{[key: string]: number}>({});
+  const [scanCooldown, setScanCooldown] = useState(0);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // Fetch assigned events for checkin officer
   useEffect(() => {
@@ -278,19 +275,39 @@ export default function CheckinOfficerDashboard() {
   const openScannerModal = () => {
     setScannerModalOpen(true);
     setCameraError(null);
+    setScanResult(null);
+    setScanning(false);
     // Show warning and try to access camera
     setTimeout(() => {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        navigator.mediaDevices.getUserMedia({ video: true })
+        // Request camera with specific constraints for better QR scanning
+        navigator.mediaDevices.getUserMedia({ 
+          video: { 
+            facingMode: 'environment', // Use back camera on mobile
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          } 
+        })
           .then(stream => {
             setCameraStream(stream);
             setCameraError(null);
           })
           .catch(err => {
-            setCameraError('Unable to access camera. Please allow camera permission and ensure a camera is connected.');
+            console.error('Camera access error:', err);
+            let errorMessage = 'Unable to access camera. ';
+            if (err.name === 'NotAllowedError') {
+              errorMessage += 'Please allow camera permission and try again.';
+            } else if (err.name === 'NotFoundError') {
+              errorMessage += 'No camera found. Please connect a camera and try again.';
+            } else if (err.name === 'NotReadableError') {
+              errorMessage += 'Camera is already in use by another application.';
+            } else {
+              errorMessage += 'Please check your camera settings and try again.';
+            }
+            setCameraError(errorMessage);
           });
       } else {
-        setCameraError('Camera access is not supported in this browser.');
+        setCameraError('Camera access is not supported in this browser. Please use a modern browser like Chrome, Firefox, or Safari.');
       }
     }, 300); // slight delay to allow modal to render
   };
@@ -303,49 +320,268 @@ export default function CheckinOfficerDashboard() {
     }
   }, [scannerModalOpen, cameraStream]);
 
-  // Open check-in page in a detached new tab to avoid opener-controlled redirects
-  const openCheckin = (eventId: string) => {
-    if (typeof window === 'undefined') return;
-    const targetPath = `/checkin/${eventId}`;
-    const fullUrl = `${window.location.origin}${targetPath}?detached=1`;
-
-    // Open an about:blank window and write a small intermediate document that
-    // immediately navigates to the real URL from inside the new tab.
-    // This helps prevent the opener or cross-tab listeners from later controlling it.
-    const newWin = window.open('about:blank', '_blank', 'noopener,noreferrer');
-    if (!newWin) return;
+  const loadAttendeesForEvent = useCallback(async (eventId: string) => {
+    setLoadingAttendees(true);
     try {
-      // extra safety: detach opener
-      newWin.opener = null;
-
-      const html = `<!doctype html>
-        <html>
-          <head>
-            <meta http-equiv="refresh" content="0;url=${fullUrl}">
-            <meta name="referrer" content="no-referrer">
-            <title>Opening Check-in</title>
-            <script>
-              // attempt fast client-side redirect from inside the new tab
-              try {
-                window.location.replace(${JSON.stringify(fullUrl)});
-              } catch (e) {
-                // fallback to meta refresh above
-              }
-            </script>
-          </head>
-          <body>
-            <p>Opening check-in...</p>
-          </body>
-        </html>`;
-
-      newWin.document.open();
-      newWin.document.write(html);
-      newWin.document.close();
-    } catch (e) {
-      // fallback: set location on the new window
-      try { newWin.location.href = fullUrl; } catch (err) { /* ignore */ }
+      console.log('🎯 Fetching bulk tickets for event:', eventId);
+      const data = await fetchEventAttendees(eventId);
+      console.log('📦 Raw API response:', data);
+      console.log('📊 Data type:', typeof data, 'Is Array:', Array.isArray(data));
+      
+      // Handle different response formats
+      let bulkTickets = data;
+      if (data && typeof data === 'object') {
+        if (data.data) bulkTickets = data.data;
+        else if (data.bulk_tickets) bulkTickets = data.bulk_tickets;
+        else if (Array.isArray(data)) bulkTickets = data;
+      }
+      
+      // Map bulk tickets to attendee format
+      // Status logic: If any tickets are sold but not checked in, show "pending"
+      // If all sold tickets are checked in, show "checked-in"
+      // If no tickets sold yet, show availability
+      const attendeeList = Array.isArray(bulkTickets) ? bulkTickets.map((bt: any) => {
+        const soldCount = bt.total_seats - bt.available_seats;
+        const checkedInCount = bt.checked_in_count || 0;
+        let status = '';
+        
+        if (soldCount === 0) {
+          // No tickets sold yet
+          status = `${bt.available_seats} available`;
+        } else if (checkedInCount === soldCount && soldCount > 0) {
+          // All sold tickets are checked in
+          status = 'Checked-in';
+        } else if (checkedInCount > 0) {
+          // Some tickets checked in
+          status = `${checkedInCount}/${soldCount} checked-in`;
+        } else if (bt.available_seats === 0) {
+          // All tickets sold but none checked in yet
+          status = 'Pending Check-in';
+        } else {
+          // Partially sold
+          status = `${soldCount} sold, ${bt.available_seats} available`;
+        }
+        
+        return {
+          id: bt.id.toString(),
+          order_id: bt.id.toString(),
+          ticketType: bt.seat_type,
+          status: status,
+          totalSeats: bt.total_seats,
+          availableSeats: bt.available_seats,
+          soldSeats: soldCount,
+          checkedInCount: checkedInCount
+        };
+      }) : [];
+      
+      setAttendees(attendeeList);
+      console.log('👥 Loaded bulk tickets as attendees:', attendeeList);
+    } catch (error) {
+      console.error('❌ Failed to load bulk tickets:', error);
+      setAttendees([]);
+    } finally {
+      setLoadingAttendees(false);
     }
-  };
+  }, []);
+
+  const handleQRCodeScanned = useCallback(async (qrData: string) => {
+    setCheckinLoading(true);
+    console.log('🎫 Processing QR code scan...', qrData);
+    
+    try {
+      // Parse QR code data
+      let qrInfo;
+      try {
+        qrInfo = JSON.parse(qrData);
+        console.log('📋 Parsed QR data:', qrInfo);
+      } catch (parseError) {
+        console.error('❌ Invalid QR code format:', parseError);
+        setScanResult({ 
+          success: false, 
+          error: 'Invalid QR code format. Please scan a valid ticket QR code.' 
+        });
+        return;
+      }
+      
+      // Validate required fields
+      if (!qrInfo.ticket_id && !qrInfo.id) {
+        setScanResult({ success: false, error: 'QR code missing ticket ID' });
+        return;
+      }
+      if (!qrInfo.venue_id) {
+        setScanResult({ success: false, error: 'QR code missing venue ID' });
+        return;
+      }
+      if (!qrInfo.firebase_uid && !qrInfo.user_id) {
+        setScanResult({ success: false, error: 'QR code missing user ID' });
+        return;
+      }
+      
+      // Send structured data to match backend expectations
+      const checkInData = {
+        ticket_id: qrInfo.ticket_id || qrInfo.id,
+        event_id: parseInt(qrInfo.event_id || selectedEvent),
+        venue_id: parseInt(qrInfo.venue_id),
+        seat: qrInfo.seat || qrInfo.seat_info,
+        firebase_uid: qrInfo.firebase_uid || qrInfo.user_id,
+        order_ref: qrInfo.order_ref || qrInfo.order_reference
+      };
+
+      console.log('📤 Sending check-in request:', checkInData);
+
+      // Use secureFetch with authentication
+      // URL format: /ticket_service/tickets/check-in (no /api prefix)
+      const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || 'http://localhost:5051';
+      const checkInUrl = `${API_GATEWAY_URL}/ticket_service/tickets/check-in`;
+      console.log('🔗 Check-in URL:', checkInUrl);
+      
+      const response = await secureFetch(checkInUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(checkInData),
+      });
+
+      console.log('📥 Response status:', response.status, response.statusText);
+      
+      // Check if response is JSON before parsing
+      let result;
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        result = await response.json();
+      } else {
+        // Non-JSON response (likely HTML error page)
+        const text = await response.text();
+        console.error('❌ Non-JSON response:', text.substring(0, 200));
+        result = { 
+          detail: `Server error: ${response.status} ${response.statusText}. Check API Gateway and ticket service logs.` 
+        };
+      }
+      
+      console.log('📥 Check-in response:', result);
+
+      if (response.ok) {
+        console.log('✅ Check-in successful!');
+        const currentEvent = assignedEvents.find(e => e.id.toString() === selectedEvent);
+        
+        // Format the seat as a string to avoid rendering object in React
+        const formattedSeat = result.seat 
+          ? `${result.seat.section} R${result.seat.row_id} C${result.seat.col_id}` 
+          : 'Unknown';
+        
+        const successData = {
+          ...result, // Spread first
+          message: result.message || 'Check-in successful!',
+          ticket_id: result.ticket_id,
+          seat: formattedSeat, // Override with formatted string
+          checked_in_at: result.checked_in_at,
+          attendee_name: result.attendee_name || 'Guest',
+          event_name: result.event_name || currentEvent?.name || 'Event'
+        };
+        
+        setScanResult({ 
+          success: true,
+          ...successData
+        });
+        
+        // Increment check-in count for this event
+        const eventId = result.event_id?.toString() || selectedEvent;
+        if (eventId) {
+          setEventCheckinCounts(prev => ({
+            ...prev,
+            [eventId]: (prev[eventId] || 0) + 1
+          }));
+        }
+        
+        // Start 5-second cooldown to prevent rapid re-scans
+        setScanCooldown(5);
+        const cooldownInterval = setInterval(() => {
+          setScanCooldown(prev => {
+            if (prev <= 1) {
+              clearInterval(cooldownInterval);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+        
+        // Refresh attendees list to show updated status
+        if (selectedEvent) {
+          await loadAttendeesForEvent(selectedEvent);
+        }
+      } else {
+        console.error('❌ Check-in failed:', result);
+        setScanResult({ 
+          success: false, 
+          error: result.detail || result.message || 'Check-in failed. Please try again.' 
+        });
+      }
+    } catch (error) {
+      console.error('❌ QR scan error:', error);
+      setScanResult({ 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to process check-in. Please try again.' 
+      });
+    } finally {
+      setCheckinLoading(false);
+    }
+  }, [selectedEvent, loadAttendeesForEvent, assignedEvents]);
+
+  // QR scanning logic
+  const startScanning = useCallback(async () => {
+    if (!videoRef.current || !canvasRef.current) return;
+
+    setScanning(true);
+    setScanResult(null);
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const context = canvas.getContext('2d');
+
+    if (!context) return;
+
+    const scan = () => {
+      if (!scanning || !video.videoWidth || !video.videoHeight) return;
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+      if (code && scanCooldown === 0) {
+        setScanning(false);
+        handleQRCodeScanned(code.data);
+        return;
+      }
+
+      requestAnimationFrame(scan);
+    };
+
+    scan();
+  }, [scanning, handleQRCodeScanned, scanCooldown]);
+
+  // Assign camera stream to video element when available
+  useEffect(() => {
+    if (cameraStream && videoRef.current && scannerModalOpen) {
+      videoRef.current.srcObject = cameraStream;
+      videoRef.current.play().then(() => {
+        startScanning();
+      }).catch(err => {
+        console.error('Error playing video:', err);
+        setCameraError('Failed to start camera preview');
+      });
+    }
+  }, [cameraStream, scannerModalOpen, startScanning]);
+
+  // Load attendees when selected event changes or when on attendees tab
+  useEffect(() => {
+    if (selectedEvent && activeTab === 'attendees') {
+      loadAttendeesForEvent(selectedEvent);
+    }
+  }, [selectedEvent, activeTab, loadAttendeesForEvent]);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -363,22 +599,18 @@ export default function CheckinOfficerDashboard() {
     }
   };
 
-  const getTicketTypeColor = (type: string) => {
-    switch (type.toLowerCase()) {
-      case 'vip': return 'text-purple-600 bg-purple-100';
-      case 'early bird': return 'text-blue-600 bg-blue-100';
-      case 'general': return 'text-gray-600 bg-gray-100';
-      default: return 'text-gray-600 bg-gray-100';
-    }
-  };
-
   const selectedEventData = assignedEvents.find(e => e.id.toString() === selectedEvent);
 
-  const filteredAttendees = mockAttendees.filter(attendee => {
-    const matchesSearch = attendee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         attendee.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         attendee.ticketId.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || attendee.status === statusFilter;
+  const filteredAttendees = attendees.filter(attendee => {
+    // Filter by search term (order_id or ticketType for bulk tickets)
+    const matchesSearch = searchTerm === '' || 
+                         attendee.order_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         attendee.ticketType?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // Filter by status (for bulk tickets, status shows availability)
+    const matchesStatus = statusFilter === 'all' || 
+                         attendee.status?.toLowerCase().includes(statusFilter.toLowerCase());
+    
     return matchesSearch && matchesStatus;
   });
 
@@ -401,7 +633,7 @@ export default function CheckinOfficerDashboard() {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <div className="text-lg mb-4 text-foreground">Access Denied</div>
-          <p className="text-muted-foreground">You don't have permission to access this page.</p>
+          <p className="text-muted-foreground">You don&apos;t have permission to access this page.</p>
         </div>
       </div>
     );
@@ -409,21 +641,18 @@ export default function CheckinOfficerDashboard() {
 
   // Add CSV export helper
   function exportAttendeesCSV(attendees: Attendee[]) {
-    const headers = ['Name', 'Email', 'Ticket ID', 'Ticket Type', 'Status', 'Checked In At'];
+    const headers = ['Order ID', 'Ticket Section', 'Status'];
     const rows = attendees.map(a => [
-      `"${a.name}"`,
-      `"${a.email}"`,
-      `"${a.ticketId}"`,
+      `"${a.order_id}"`,
       `"${a.ticketType}"`,
-      `"${a.status}"`,
-      `"${a.checkedInAt || ''}"`
+      `"${a.status}"`
     ]);
     const csvContent = [headers, ...rows].map(r => r.join(',')).join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'attendees.csv';
+    link.download = 'bulk_tickets.csv';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -476,17 +705,6 @@ export default function CheckinOfficerDashboard() {
         <motion.div variants={itemVariants} className="mb-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Button 
-              onClick={() => setActiveTab('overview')}
-              className={`h-10 backdrop-blur-xl border text-lg rounded-2xl p-8 shadow-xl transition-all duration-200 ${
-                activeTab === 'overview'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-card hover:bg-card/80 text-card-foreground'
-              }`}
-            >
-              <TrendingUp className="h-8 w-8 mr-3" />
-              Overview
-            </Button>
-            <Button 
               onClick={() => setActiveTab('events')}
               className={`h-10 backdrop-blur-xl border text-lg rounded-2xl p-8 shadow-xl transition-all duration-200 ${
                 activeTab === 'events'
@@ -496,6 +714,17 @@ export default function CheckinOfficerDashboard() {
             >
               <Calendar className="h-8 w-8 mr-3" />
               My Events
+            </Button>
+            <Button 
+              onClick={() => setActiveTab('checkin')}
+              className={`h-10 backdrop-blur-xl border text-lg rounded-2xl p-8 shadow-xl transition-all duration-200 ${
+                activeTab === 'checkin'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-card hover:bg-card/80 text-card-foreground'
+              }`}
+            >
+              <Scan className="h-8 w-8 mr-3" />
+              Check-in
             </Button>
             <Button 
               onClick={() => setActiveTab('attendees')}
@@ -595,101 +824,6 @@ export default function CheckinOfficerDashboard() {
         </motion.div>
 
         {/* Content based on active tab */}
-        {activeTab === 'overview' && (
-          <div className="space-y-6">
-            {/* Recent Activity */}
-            <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl bg-card border-border">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-foreground">Recent Check-ins</h3>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs border-primary text-foreground hover:bg-primary/10"
-                >
-                  View All
-                </Button>
-              </div>
-              <div className="space-y-4">
-                {mockRecentCheckins.slice(0, 5).map((record) => (
-                  <div key={record.id} className="flex items-center space-x-4 p-4 rounded-lg transition-colors duration-200 bg-muted/30">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center bg-primary/20">
-                      <CheckCircle2 className="w-5 h-5 text-primary" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-foreground">{record.attendeeName}</p>
-                          <p className="text-xs text-muted-foreground">{record.ticketId} • {record.eventTitle}</p>
-                        </div>
-                        <div className="text-right">
-                          <span className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-primary/20 text-primary">
-                            {record.ticketType}
-                          </span>
-                          <p className="text-xs mt-1 text-muted-foreground">
-                            {new Date(record.checkedInAt).toLocaleTimeString()}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl transition-all duration-300 bg-card border-border">
-                <div className="text-center">
-                  <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 bg-primary/20">
-                    <QrCode className="w-8 h-8 text-primary" />
-                  </div>
-                  <h3 className="text-lg font-semibold mb-2 text-foreground">Quick Scan</h3>
-                  <p className="text-sm mb-4 text-muted-foreground">Start scanning tickets for active events</p>
-                  <Button 
-                    className="w-full text-primary-foreground bg-primary hover:bg-primary/90 text-base font-medium"
-                    onClick={openScannerModal}
-                  >
-                    Start Scanning
-                  </Button>
-                </div>
-              </div>
-
-              <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl transition-all duration-300 bg-card border-border">
-                <div className="text-center">
-                  <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 bg-primary/20">
-                    <Users className="w-8 h-8 text-primary" />
-                  </div>
-                  <h3 className="text-lg font-semibold mb-2 text-foreground">View Attendees</h3>
-                  <p className="text-sm mb-4 text-muted-foreground">Browse attendee list and check-in status</p>
-                  <Button 
-                    variant="outline" 
-                    className="w-full transition-all duration-200 hover:shadow-md border-border text-foreground hover:bg-accent/20 text-base font-medium"
-                    onClick={() => setActiveTab('attendees')}
-                  >
-                    View List
-                  </Button>
-                </div>
-              </div>
-
-              <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl transition-all duration-300 bg-card border-border">
-                <div className="text-center">
-                  <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 bg-primary/20">
-                    <Download className="w-8 h-8 text-primary" />
-                  </div>
-                  <h3 className="text-lg font-semibold mb-2 text-foreground">Export Data</h3>
-                  <p className="text-sm mb-4 text-muted-foreground">Download check-in reports and logs</p>
-                  <Button 
-                    variant="outline" 
-                    className="w-full transition-all duration-200 hover:shadow-md border-border text-foreground hover:bg-accent/20 text-base font-medium"
-                  >
-                    Export
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         {activeTab === 'events' && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {loading ? (
@@ -705,84 +839,91 @@ export default function CheckinOfficerDashboard() {
                 <p className="text-muted-foreground">No assigned events found.</p>
               </div>
             ) : (
-              assignedEvents.map((event) => (
-                <div key={event.id} className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl transition-all duration-300 bg-card border-border">
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <h3 className="text-lg font-medium mb-1 text-foreground">{event.name}</h3>
-                      <p className="text-sm text-muted-foreground">{event.organizer?.name || 'Unknown Organizer'}</p>
+              assignedEvents.map((event) => {
+                const eventId = event.id.toString();
+                const checkinCount = eventCheckinCounts[eventId] || 0;
+                const totalCapacity = event.capacity || 0;
+                const checkinPercentage = totalCapacity > 0 ? Math.round((checkinCount / totalCapacity) * 100) : 0;
+                
+                return (
+                  <div key={event.id} className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl transition-all duration-300 bg-card border-border">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <h3 className="text-lg font-medium mb-1 text-foreground">{event.name}</h3>
+                        <p className="text-sm text-muted-foreground">{event.organizer?.name || 'Unknown Organizer'}</p>
+                      </div>
+                      <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(getEventStatus(event))}`}>
+                        {getEventStatus(event)}
+                      </span>
                     </div>
-                    <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(getEventStatus(event))}`}>
-                      {getEventStatus(event)}
-                    </span>
-                  </div>
 
-                  <div className="space-y-3 mb-6">
-                    <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                      <Calendar className="w-4 h-4 text-primary-foreground" />
-                      <span>{formatDate(event.startDate)} at {formatTime(event.startTime)}</span>
+                    <div className="space-y-3 mb-6">
+                      <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                        <Calendar className="w-4 h-4 text-primary-foreground" />
+                        <span>{formatDate(event.startDate)} at {formatTime(event.startTime)}</span>
+                      </div>
+                      <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                        <MapPin className="w-4 h-4 text-primary-foreground" />
+                        <span>{event.venue?.name || 'Venue TBD'}</span>
+                      </div>
+                      <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                        <Users className="w-4 h-4 text-primary-foreground" />
+                        <span>{checkinCount} / {totalCapacity} checked in</span>
+                      </div>
                     </div>
-                    <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                      <MapPin className="w-4 h-4 text-primary-foreground" />
-                      <span>{event.venue?.name || 'Venue TBD'}</span>
-                    </div>
-                    <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                      <Users className="w-4 h-4 text-primary-foreground" />
-                      <span>0 / {event.capacity} checked in</span>
-                    </div>
-                  </div>
 
-                  <div className="mb-4">
-                    <div className="flex justify-between text-sm mb-1 text-muted-foreground">
-                      <span>Check-in Progress</span>
-                      <span>0%</span>
+                    <div className="mb-4">
+                      <div className="flex justify-between text-sm mb-1 text-muted-foreground">
+                        <span>Check-in Progress</span>
+                        <span>{checkinPercentage}%</span>
+                      </div>
+                      <div className="w-full rounded-full h-2 bg-muted">
+                        <div 
+                          className="h-2 rounded-full bg-primary" 
+                          style={{ width: `${checkinPercentage}%` }}
+                        ></div>
+                      </div>
                     </div>
-                    <div className="w-full rounded-full h-2 bg-muted">
-                      <div 
-                        className="h-2 rounded-full bg-primary" 
-                        style={{ width: '0%' }}
-                      ></div>
+                  {/* TODO : implement the checkin count */}
+                    <div className="mb-4 p-3 rounded-lg" >
+                      <div className="text-sm text-black" >My Check-ins</div>
+                      <div className="text-2xl font-bold" >{checkinCount}</div>
                     </div>
-                  </div>
-                {/* TODO : implement the checkin count */}
-                  <div className="mb-4 p-3 rounded-lg" >
-                    <div className="text-sm text-black" >My Check-ins</div>
-                    <div className="text-2xl font-bold" >0</div>
-                  </div>
 
-                  <div className="flex space-x-2">
-                    {getEventStatus(event) === 'active' ? (
-                      <button
-                        type="button"
-                        onClick={openScannerModal}
-                        className="flex-1 flex items-center justify-center h-10 px-4 py-2 rounded-md font-medium text-primary-foreground shadow-md transition-all duration-200 bg-primary"
+                    <div className="flex space-x-2">
+                      {getEventStatus(event) === 'active' ? (
+                        <button
+                          type="button"
+                          onClick={openScannerModal}
+                          className="flex-1 flex items-center justify-center h-10 px-4 py-2 rounded-md font-medium text-primary-foreground shadow-md transition-all duration-200 bg-primary"
+                        >
+                          <Scan className="w-4 h-4 mr-1" />
+                          Check-in
+                        </button>
+                      ) : (
+                        <button
+                          className="flex-1 flex items-center justify-center h-10 px-4 py-2 rounded-md font-medium text-primary-foreground shadow-md opacity-50 cursor-not-allowed bg-primary"
+                          disabled
+                        >
+                          <Scan className="w-4 h-4 mr-1" />
+                          Check-in
+                        </button>
+                      )}
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        className="transition-all duration-200 hover:shadow-md border-primary text-foreground hover:bg-primary/10"
+                        onClick={() => {
+                          setSelectedEvent(event.id.toString());
+                          setActiveTab('attendees');
+                        }}
                       >
-                        <Scan className="w-4 h-4 mr-1" />
-                        Check-in
-                      </button>
-                    ) : (
-                      <button
-                        className="flex-1 flex items-center justify-center h-10 px-4 py-2 rounded-md font-medium text-primary-foreground shadow-md opacity-50 cursor-not-allowed bg-primary"
-                        disabled
-                      >
-                        <Scan className="w-4 h-4 mr-1" />
-                        Check-in
-                      </button>
-                    )}
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      className="transition-all duration-200 hover:shadow-md border-primary text-foreground hover:bg-primary/10"
-                      onClick={() => {
-                        setSelectedEvent(event.id.toString());
-                        setActiveTab('attendees');
-                      }}
-                    >
-                      <Eye className="w-4 h-4" />
-                    </Button>
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         )}
@@ -820,46 +961,41 @@ export default function CheckinOfficerDashboard() {
             {/* QR Scanner */}
             <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl text-center bg-card border-border">
               <div className="max-w-md mx-auto">
-                {!scannerActive ? (
-                  <>
-                    <div className="w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4 bg-primary/20">
-                      <QrCode className="w-12 h-12 text-primary" />
+                <div className="w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4 bg-primary/20">
+                  <QrCode className="w-12 h-12 text-primary" />
+                </div>
+                <h3 className="text-lg font-medium mb-2 text-foreground">QR Code Scanner</h3>
+                <p className="text-sm mb-6 text-muted-foreground">
+                  Tap the button below to activate the QR code scanner and check in attendees
+                </p>
+                {getEventStatus(selectedEventData) === 'active' ? (
+                  <Button 
+                    size="lg" 
+                    className="w-full text-white bg-blue-600 hover:bg-blue-700"
+                    onClick={openScannerModal}
+                  >
+                    <QrCode className="w-5 h-5 mr-2" />
+                    Open Scanner
+                  </Button>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                      <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                        Check-in is only available for events happening today.
+                      </p>
+                      <p className="text-xs text-yellow-600 dark:text-yellow-300 mt-1">
+                        Event status: {getEventStatus(selectedEventData)}
+                      </p>
                     </div>
-                    <h3 className="text-lg font-medium mb-2 text-foreground">QR Code Scanner</h3>
-                    <p className="text-sm mb-6 text-muted-foreground">
-                      Tap the button below to activate the QR code scanner and check in attendees
-                    </p>
                     <Button 
                       size="lg" 
-                      className="w-full text-white bg-blue-600 hover:bg-blue-700"
-                      onClick={() => setScannerActive(true)}
+                      className="w-full opacity-50 cursor-not-allowed"
+                      disabled
                     >
                       <QrCode className="w-5 h-5 mr-2" />
-                      Activate Scanner
+                      Scanner Unavailable
                     </Button>
-                  </>
-                ) : (
-                  <>
-                    <div className="w-64 h-64 rounded-lg mx-auto mb-4 flex items-center justify-center bg-background border">
-                      <div className="text-center text-foreground">
-                        <QrCode className="w-16 h-16 mx-auto mb-2 animate-pulse" />
-                        <p className="text-sm">Camera Active</p>
-                        <p className="text-xs text-muted-foreground">Point camera at QR code</p>
-                      </div>
-                    </div>
-                    <div className="flex space-x-4">
-                      <Button 
-                        variant="outline" 
-                        className="flex-1 transition-all duration-200 hover:shadow-md border-primary text-foreground hover:bg-primary/10"
-                        onClick={() => setScannerActive(false)}
-                      >
-                        Stop Scanner
-                      </Button>
-                      <Button className="flex-1 text-white bg-blue-600 hover:bg-blue-700">
-                        Manual Entry
-                      </Button>
-                    </div>
-                  </>
+                  </div>
                 )}
               </div>
             </div>
@@ -869,36 +1005,46 @@ export default function CheckinOfficerDashboard() {
         {activeTab === 'attendees' && (
           <div className="backdrop-blur-xl border rounded-2xl shadow-xl overflow-hidden bg-card border-border">
             <div className="p-6 border-b border-border">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold text-foreground">Attendee List</h2>
-                  <p className="text-sm mt-1 text-muted-foreground">
-                    {selectedEventData?.title} - {filteredAttendees.length} attendees
-                  </p>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-4">
+                  <div>
+                    <h2 className="text-xl font-semibold text-foreground">Bulk Tickets</h2>
+                    <p className="text-sm mt-1 text-muted-foreground">
+                      {selectedEventData?.name || selectedEventData?.title} - {loadingAttendees ? 'Loading...' : `${filteredAttendees.length} bulk tickets`}
+                    </p>
+                  </div>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => exportAttendeesCSV(filteredAttendees)}
+                    disabled={loadingAttendees}
                     className="transition-all duration-200 hover:shadow-md border-primary text-foreground hover:bg-primary/10"
                   >
                     <Download className="w-4 h-4 mr-2" />
                     Export
                   </Button>
-                  <Button variant="outline" size="sm" className="transition-all duration-200 hover:shadow-md border-primary text-foreground hover:bg-primary/10">
-                    <RefreshCw className="w-4 h-4 mr-2" />
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => selectedEvent && loadAttendeesForEvent(selectedEvent)}
+                    disabled={loadingAttendees}
+                    className="transition-all duration-200 hover:shadow-md border-primary text-foreground hover:bg-primary/10"
+                  >
+                    <RefreshCw className={`w-4 h-4 mr-2 ${loadingAttendees ? 'animate-spin' : ''}`} />
                     Refresh
                   </Button>
                 </div>
               </div>
-              {/* Attendees filter/search controls */}
+
+              {/* Search and Filter */}
               <div className="flex flex-col md:flex-row gap-4 items-center mt-6">
                 <div className="relative w-full md:w-64">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <input
                     type="text"
-                    placeholder="Search attendees..."
+                    placeholder="Search bulk tickets..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10 pr-4 py-2 rounded-lg w-full bg-background border border-border text-foreground placeholder-muted-foreground"
@@ -910,8 +1056,7 @@ export default function CheckinOfficerDashboard() {
                   className="appearance-none rounded-lg px-4 py-2 pr-8 bg-background border border-border text-foreground"
                 >
                   <option value="all">All Status</option>
-                  <option value="checked_in">Checked In</option>
-                  <option value="pending">Pending</option>
+                  <option value="available">Available</option>
                 </select>
               </div>
             </div>
@@ -920,16 +1065,10 @@ export default function CheckinOfficerDashboard() {
                 <thead>
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-foreground">
-                      Attendee
+                      Order ID
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-foreground">
-                      Ticket
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-foreground">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-foreground">
-                      Check-in Time
+                      Ticket Section
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-foreground">
                       Actions
@@ -937,63 +1076,58 @@ export default function CheckinOfficerDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredAttendees.map((attendee) => (
-                    <tr key={attendee.id} className="transition-colors duration-200 border-b border-border hover:bg-muted/30">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center">
-                          <div className="w-8 h-8 rounded-full flex items-center justify-center mr-3 bg-muted/30">
-                            <User className="w-4 h-4 text-muted-foreground" />
-                          </div>
-                          <div>
-                            <div className="text-sm font-medium text-foreground">{attendee.name}</div>
-                            <div className="text-sm text-muted-foreground">{attendee.email}</div>
-                          </div>
+                  {loadingAttendees ? (
+                    <tr>
+                      <td colSpan={3} className="px-6 py-8 text-center">
+                        <div className="flex items-center justify-center">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mr-2"></div>
+                          Loading bulk tickets...
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-foreground">{attendee.ticketId}</div>
-                        <span className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-primary/20 text-primary">
-                          {attendee.ticketType}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        {attendee.status === 'checked_in' ? (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary/20 text-primary">
-                            <CheckCircle2 className="w-3 h-3 mr-1 text-primary" />
-                            Checked In
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-muted/30 text-foreground">
-                            <Clock4 className="w-3 h-3 mr-1 text-foreground" />
-                            Pending
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-muted-foreground">
-                        {attendee.checkedInAt ? new Date(attendee.checkedInAt).toLocaleString() : 'Not checked in'}
-                      </td>
-                      <td className="px-6 py-4 text-sm font-medium">
-                        {attendee.status === 'pending' ? (
-                          <Button 
-                            size="sm" 
-                            className="text-white bg-blue-600 hover:bg-blue-700"
-                          >
-                            <CheckCircle2 className="w-4 h-4 mr-1" />
-                            Check In
-                          </Button>
-                        ) : (
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            className="transition-all duration-200 hover:shadow-md border-primary text-foreground hover:bg-primary/10"
-                          >
-                            <Eye className="w-4 h-4 mr-1" />
-                            View
-                          </Button>
-                        )}
+                    </tr>
+                  ) : filteredAttendees.length === 0 ? (
+                    <tr>
+                      <td colSpan={3} className="px-6 py-8 text-center text-muted-foreground">
+                        No bulk tickets found for this event.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    filteredAttendees.map((attendee) => {
+                      const isCheckedIn = attendee.status === 'Checked-in' || attendee.status?.toLowerCase().includes('checked');
+                      const isEventActive = selectedEventData && getEventStatus(selectedEventData) === 'active';
+                      const canCheckIn = isEventActive && !isCheckedIn;
+                      
+                      return (
+                        <tr key={attendee.id} className="transition-colors duration-200 border-b border-border hover:bg-muted/30">
+                          <td className="px-6 py-4">
+                            <div className="text-sm font-medium text-foreground">{attendee.order_id}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-primary/20 text-primary">
+                              {attendee.ticketType}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-sm font-medium">
+                            <Button 
+                              size="sm" 
+                              variant="default"
+                              onClick={openScannerModal}
+                              disabled={!canCheckIn}
+                              className={`transition-all duration-200 ${
+                                !canCheckIn 
+                                  ? 'opacity-50 cursor-not-allowed bg-primary' 
+                                  : 'hover:shadow-md bg-primary text-primary-foreground hover:bg-primary/90'
+                              }`}
+                              title={!isEventActive ? 'Event is not active today' : isCheckedIn ? 'Already checked in' : 'Check in attendee'}
+                            >
+                              <QrCode className="w-4 h-4 mr-1" />
+                              Check-in
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
@@ -1001,51 +1135,117 @@ export default function CheckinOfficerDashboard() {
         )}
       </div>
 
-        {/* Scanner Modal */}
-        {scannerModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-            <div className="rounded-xl shadow-2xl p-8 max-w-md w-full text-center relative bg-card border border-border">
-              <button
-                className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
-                onClick={() => setScannerModalOpen(false)}
-                aria-label="Close"
-              >
-                &times;
-              </button>
-              <div className="mx-auto mb-4 w-20 h-20 rounded-full flex items-center justify-center bg-primary/20">
-                <QrCode className="w-10 h-10 text-primary" />
+      {/* Scanner Modal */}
+      {scannerModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="rounded-xl shadow-2xl p-8 max-w-md w-full text-center relative bg-card border border-border">
+            <button
+              className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
+              onClick={() => setScannerModalOpen(false)}
+              aria-label="Close"
+            >
+              &times;
+            </button>
+            <div className="mx-auto mb-4 w-20 h-20 rounded-full flex items-center justify-center bg-primary/20">
+              <QrCode className="w-10 h-10 text-primary" />
+            </div>
+            <h2 className="text-xl font-semibold mb-2 text-foreground">Check-in Scanner</h2>
+            <p className="text-sm mb-4 text-muted-foreground">Scan tickets for event</p>
+            {/* Camera preview or error */}
+            {cameraError ? (
+              <div className="border-2 rounded-lg p-6 mb-4 border-red-300 text-red-500">
+                {cameraError}
               </div>
-              <h2 className="text-xl font-semibold mb-2 text-foreground">Check-in Scanner</h2>
-              <p className="text-sm mb-4 text-muted-foreground">Scan tickets for event</p>
-              {/* Camera preview or error */}
-              {cameraError ? (
-                <div className="border-2 rounded-lg p-6 mb-4 border-red-300 text-red-500">
-                  {cameraError}
-                </div>
-              ) : cameraStream ? (
+            ) : cameraStream ? (
+              <div className="mb-4">
                 <video
                   autoPlay
                   playsInline
                   style={{ width: '100%', borderRadius: '0.5rem', marginBottom: '1rem' }}
-                  ref={video => {
-                    if (video && cameraStream) {
-                      video.srcObject = cameraStream;
-                    }
-                  }}
+                  ref={videoRef}
                 />
-              ) : (
-                <div className="border-2 border-dashed rounded-lg p-6 mb-4 border-muted">
-                  <p className="text-sm text-muted-foreground">Scanner placeholder — integrate camera/QR scanner here.</p>
+                <canvas ref={canvasRef} style={{ display: 'none' }} />
+                {scanning && scanCooldown === 0 && (
+                  <div className="text-center text-sm text-muted-foreground flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                    Scanning for QR codes...
+                  </div>
+                )}
+                {scanCooldown > 0 && (
+                  <div className="text-center text-sm text-orange-600 dark:text-orange-400 flex items-center justify-center">
+                    <Clock4 className="w-4 h-4 mr-2" />
+                    Cooldown: {scanCooldown}s before next scan
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="border-2 border-dashed rounded-lg p-6 mb-4 border-muted">
+                <p className="text-sm text-muted-foreground">Initializing camera...</p>
+              </div>
+            )}
+
+            {/* Scan result */}
+            {scanResult && (
+              <div className={`border-2 rounded-lg p-4 mb-4 ${
+                scanResult.success 
+                  ? 'border-green-300 bg-green-50 text-green-800' 
+                  : 'border-red-300 bg-red-50 text-red-800'
+              }`}>
+                {scanResult.success ? (
+                  <div>
+                    <div className="flex items-center mb-2">
+                      <CheckCircle2 className="w-5 h-5 mr-2" />
+                      <span className="font-semibold">Check-in Successful!</span>
+                    </div>
+                    <p className="text-sm">Attendee: {scanResult.attendee_name}</p>
+                    <p className="text-sm">Event: {scanResult.event_name}</p>
+                    <p className="text-sm">Seat: {scanResult.seat}</p>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="font-semibold mb-2">Check-in Failed</div>
+                    <p className="text-sm">{scanResult.error}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Loading state */}
+            {checkinLoading && (
+              <div className="text-center mb-4">
+                <div className="inline-flex items-center text-sm text-muted-foreground">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                  Processing check-in...
                 </div>
-              )}
-              <Button variant="outline" className="transition-all duration-200 hover:shadow-md border-primary text-foreground hover:bg-primary/10" onClick={() => setScannerModalOpen(false)}>
+              </div>
+            )}
+
+            <div className="flex space-x-2">
+              <Button 
+                variant="outline" 
+                className="flex-1 transition-all duration-200 hover:shadow-md border-primary text-foreground hover:bg-primary/10" 
+                onClick={() => setScannerModalOpen(false)}
+              >
                 Close
               </Button>
+              {scanResult?.success && (
+                <Button 
+                  className="flex-1 bg-green-600 hover:bg-green-700"
+                  onClick={() => {
+                    setScanResult(null);
+                    setScanning(true);
+                    startScanning();
+                  }}
+                >
+                  Scan Next
+                </Button>
+              )}
             </div>
           </div>
-        )}
-        </motion.div>
-      </div>
+        </div>
+      )}
+      </motion.div>
+    </div>
     </div>
   );
 }
