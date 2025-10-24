@@ -10,7 +10,7 @@ import {
 import { motion } from 'framer-motion';
 import { use } from 'react';
 import { getVenueSeats, VenueSeatMap, SeatSection, fetchEventById } from '@/lib/api';
-import { getBulkTicketPrices, BulkTicketPrice } from '@/lib/api_ticket';
+import { getBulkTicketPrices, BulkTicketPrice, getEventSeatStatus, EventSeatStatusResponse } from '@/lib/api_ticket';
 
 // Animation variants for smooth transitions
 const containerVariants = {
@@ -44,6 +44,8 @@ interface Seat {
   price: number;
   isAvailable: boolean;
   isSelected: boolean;
+  isLocked: boolean; // New: indicates if seat is temporarily locked
+  isBooked: boolean; // New: indicates if seat is already sold
   color: string;
   bulkTicketId?: number; // Add bulk ticket ID to seat
 }
@@ -114,9 +116,52 @@ export default function SeatingPage({ params }: SeatingPageProps) {
           });
         });
 
+        // Fetch seat status (booked and locked seats)
+        let seatStatus: EventSeatStatusResponse | null = null;
+        try {
+          console.log('[SeatingPage] Fetching seat status for event:', eventData.id);
+          seatStatus = await getEventSeatStatus(eventData.id);
+          console.log('[SeatingPage] Seat status received:', seatStatus);
+          console.log('[SeatingPage] Booked seats:', seatStatus.booked_seats);
+          console.log('[SeatingPage] Locked seats:', seatStatus.locked_seats);
+        } catch (statusError) {
+          console.warn('[SeatingPage] Failed to fetch seat status:', statusError);
+          // Continue without seat status - all seats will show as available
+        }
+
+        // Create lookup sets for faster checking
+        const bookedSeatsSet = new Set<string>();
+        const lockedSeatsSet = new Set<string>();
+
+        if (seatStatus) {
+          console.log('[SeatingPage] Processing booked seats...');
+          seatStatus.booked_seats.forEach(seat => {
+            // Use lowercase for case-insensitive matching
+            const key = `${seat.section.toLowerCase()}-${seat.row_id}-${seat.col_id}`;
+            console.log('[SeatingPage] Adding booked seat to set:', key, 'from', seat);
+            bookedSeatsSet.add(key);
+          });
+          console.log('[SeatingPage] Booked seats set size:', bookedSeatsSet.size);
+          console.log('[SeatingPage] Booked seats set contents:', Array.from(bookedSeatsSet));
+          
+          console.log('[SeatingPage] Processing locked seats...');
+          seatStatus.locked_seats.forEach(seat => {
+            // Use lowercase for case-insensitive matching
+            const key = `${seat.section.toLowerCase()}-${seat.row_id}-${seat.col_id}`;
+            console.log('[SeatingPage] Adding locked seat to set:', key, 'from', seat);
+            lockedSeatsSet.add(key);
+          });
+          console.log('[SeatingPage] Locked seats set size:', lockedSeatsSet.size);
+        }
+
         // Generate seats from seat map
         const generatedSeats: Seat[] = [];
+        let bookedCount = 0;
+        let lockedCount = 0;
+        
         venueData.seatMap.sections.forEach((section: SeatSection) => {
+          console.log('[SeatingPage] Processing section:', section.id, section.name);
+          
           // Get price for this section from bulk ticket prices
           const sectionPriceInfo = priceMap.get(section.name.toLowerCase()) || 
                                    priceMap.get(section.id.toLowerCase());
@@ -128,14 +173,30 @@ export default function SeatingPage({ params }: SeatingPageProps) {
               const actualRow = section.startRow + row;
               const actualCol = section.startCol + col;
               
+              // Use lowercase section ID for case-insensitive matching
+              const seatKey = `${section.id.toLowerCase()}-${actualRow}-${actualCol}`;
+              const isBooked = bookedSeatsSet.has(seatKey);
+              const isLocked = lockedSeatsSet.has(seatKey);
+              
+              if (isBooked) {
+                bookedCount++;
+                console.log('[SeatingPage] Seat marked as BOOKED:', seatKey);
+              }
+              if (isLocked) {
+                lockedCount++;
+                console.log('[SeatingPage] Seat marked as LOCKED:', seatKey);
+              }
+              
               generatedSeats.push({
-                id: `${section.id}-${actualRow}-${actualCol}`,
+                id: seatKey,
                 section: section.id,
                 sectionName: section.name,
                 row: actualRow,
                 col: actualCol,
                 price: seatPrice,
-                isAvailable: true, // TODO: Check with locked seats from backend
+                isAvailable: !isBooked && !isLocked, // Seat is available if not booked or locked
+                isBooked: isBooked,
+                isLocked: isLocked,
                 isSelected: false,
                 color: section.color,
                 bulkTicketId: bulkTicketId
@@ -144,10 +205,23 @@ export default function SeatingPage({ params }: SeatingPageProps) {
           }
         });
 
+        console.log('[SeatingPage] ====== SEAT GENERATION SUMMARY ======');
+        console.log('[SeatingPage] Total seats generated:', generatedSeats.length);
+        console.log('[SeatingPage] Booked seats found:', bookedCount);
+        console.log('[SeatingPage] Locked seats found:', lockedCount);
+        console.log('[SeatingPage] Available seats:', generatedSeats.length - bookedCount - lockedCount);
+        console.log('[SeatingPage] Sample generated seats:', generatedSeats.slice(0, 5).map(s => ({
+          id: s.id,
+          isBooked: s.isBooked,
+          isLocked: s.isLocked,
+          isAvailable: s.isAvailable
+        })));
+        console.log('[SeatingPage] ====================================');
+
         setSeats(generatedSeats);
         setLoading(false);
       } catch (err: any) {
-        console.error('Error loading event or seat map:', err);
+        console.error('[SeatingPage] Error loading event or seat map:', err);
         setError(err.message || 'Failed to load event or seat map');
         setLoading(false);
       }
@@ -277,7 +351,7 @@ export default function SeatingPage({ params }: SeatingPageProps) {
                     </div>
 
                     {/* Legend */}
-                    <div className="flex items-center justify-center space-x-8 mb-8">
+                    <div className="flex items-center justify-center space-x-6 mb-8 flex-wrap gap-2">
                       <div className="flex items-center space-x-2">
                         <div className="w-4 h-4 rounded bg-green-500"></div>
                         <span className="text-sm text-muted-foreground">Available</span>
@@ -287,8 +361,12 @@ export default function SeatingPage({ params }: SeatingPageProps) {
                         <span className="text-sm text-muted-foreground">Selected</span>
                       </div>
                       <div className="flex items-center space-x-2">
+                        <div className="w-4 h-4 bg-yellow-500 rounded"></div>
+                        <span className="text-sm text-muted-foreground">Locked</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
                         <div className="w-4 h-4 bg-red-500 rounded"></div>
-                        <span className="text-sm" style={{ color: '#ABA8A9' }}>Occupied</span>
+                        <span className="text-sm" style={{ color: '#ABA8A9' }}>Booked</span>
                       </div>
                     </div>
 
@@ -328,31 +406,45 @@ export default function SeatingPage({ params }: SeatingPageProps) {
                                       <span className="text-sm w-12 text-center" style={{ color: '#ABA8A9' }}>
                                         Row {Number(rowNum) + 1}
                                       </span>
-                                      {sortedSeats.map(seat => (
-                                        <button
-                                          key={seat.id}
-                                          onClick={() => handleSeatClick(seat.id)}
-                                          className={`w-8 h-8 rounded text-xs font-medium transition-all duration-200 hover:scale-105 ${
-                                            seat.isSelected
-                                              ? 'ring-2 ring-offset-2 ring-primary'
-                                              : seat.isAvailable
-                                              ? 'hover:opacity-80'
-                                              : 'cursor-not-allowed opacity-60'
-                                          }`}
-                                          style={{
-                                            backgroundColor: seat.isSelected
-                                              ? '#0D6EFD'
-                                              : seat.isAvailable
-                                              ? section.color
-                                              : '#DC2626',
-                                            color: '#fff'
-                                          }}
-                                          disabled={!seat.isAvailable}
-                                          title={`${section.name} - Row ${seat.row + 1}, Seat ${seat.col + 1} - LKR ${seat.price}`}
-                                        >
-                                          {seat.col + 1}
-                                        </button>
-                                      ))}
+                                      {sortedSeats.map(seat => {
+                                        // Determine seat color based on state
+                                        let seatColor = '#22C55E'; // Green for available
+                                        let seatTitle = `${section.name} - Row ${seat.row + 1}, Seat ${seat.col + 1} - LKR ${seat.price}`;
+                                        
+                                        if (seat.isSelected) {
+                                          seatColor = '#0D6EFD'; // Blue for selected
+                                        } else if (seat.isBooked) {
+                                          seatColor = '#DC2626'; // Red for booked
+                                          seatTitle += ' (Booked)';
+                                        } else if (seat.isLocked) {
+                                          seatColor = '#EAB308'; // Yellow for locked
+                                          seatTitle += ' (Locked by another user)';
+                                        } else if (seat.isAvailable) {
+                                          seatColor = section.color; // Section color for available
+                                        }
+                                        
+                                        return (
+                                          <button
+                                            key={seat.id}
+                                            onClick={() => handleSeatClick(seat.id)}
+                                            className={`w-8 h-8 rounded text-xs font-medium transition-all duration-200 hover:scale-105 ${
+                                              seat.isSelected
+                                                ? 'ring-2 ring-offset-2 ring-primary'
+                                                : seat.isAvailable
+                                                ? 'hover:opacity-80'
+                                                : 'cursor-not-allowed opacity-60'
+                                            }`}
+                                            style={{
+                                              backgroundColor: seatColor,
+                                              color: '#fff'
+                                            }}
+                                            disabled={!seat.isAvailable}
+                                            title={seatTitle}
+                                          >
+                                            {seat.col + 1}
+                                          </button>
+                                        );
+                                      })}
                                     </div>
                                   );
                                 })}
