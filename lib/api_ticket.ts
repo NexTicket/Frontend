@@ -348,7 +348,10 @@ export async function getEventBulkTickets(eventId: number): Promise<BulkTicket[]
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      const errorMessage = errorData.message || `HTTP error! status: ${response.status}`;
+      const error: any = new Error(errorMessage);
+      error.status = response.status; // Add status code to error
+      throw error;
     }
 
     const data = await response.json();

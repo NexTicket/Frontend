@@ -43,7 +43,15 @@ export default function BulkTicketsDisplay({ eventId, venueId, onRefresh }: Bulk
       setBulkTickets(tickets);
     } catch (err: any) {
       console.error('Error loading bulk tickets:', err);
-      setError(err.message || 'Failed to load bulk tickets');
+      
+      // Check if it's a 404 error (no tickets created yet)
+      if (err.status === 404 || err.message?.includes('404') || err.message?.includes('not found')) {
+        // This is expected for new events - don't show as error
+        setBulkTickets([]);
+      } else {
+        // Actual error - show error message
+        setError(err.message || 'Failed to load bulk tickets');
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -122,9 +130,17 @@ export default function BulkTicketsDisplay({ eventId, venueId, onRefresh }: Bulk
 
       <div className="space-y-3">
         {bulkTickets.length === 0 ? (
-          <p className="text-center py-4" style={{ color: '#ABA8A9' }}>
-            No bulk tickets created yet
-          </p>
+          <div className="text-center py-8">
+            <div className="mb-3">
+              <Ticket className="w-12 h-12 mx-auto" style={{ color: '#ABA8A9', opacity: 0.5 }} />
+            </div>
+            <p className="text-base font-medium mb-1" style={{ color: '#fff' }}>
+              No Tickets Created Yet
+            </p>
+            <p className="text-sm" style={{ color: '#ABA8A9' }}>
+              Click "Create Tickets" above to add bulk tickets for this event
+            </p>
+          </div>
         ) : (
           bulkTickets.map((ticket) => (
             <div 
