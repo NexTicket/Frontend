@@ -124,7 +124,7 @@ export const fetchCheckinOfficers = async () => {
 
 // API function to update event
 export const updateEventDetails = async (eventId: string | number, eventData: any) => {
-  const url = getEventServiceUrl(`/api/events/update-event/${eventId}`);
+  const url = getEventServiceUrl(`/api/events/${eventId}`);
   const response = await secureFetch(url, {
     method: 'PUT',
     body: JSON.stringify(eventData)
@@ -146,11 +146,11 @@ export const fetchVenueSeatMap = async (id: number | string) => {
   return res.json();
 };
 
-// Fetch all venues
-export const fetchVenues = async () => {
-  const url = getEventServiceUrl('/venues');
-  const res = await secureFetch(url);
-  if (!res.ok) throw new Error('Failed to fetch venues');
+export async function fetchVenues() {
+  // Use public route - accessible to everyone without auth
+  const url = `${API_GATEWAY_URL}/event_service/public/api/venues`;
+  const res = await optionalAuthFetch(url);
+  if (!res.ok) throw new Error("Failed to fetch venues");
   return res.json();
 };
 
@@ -186,7 +186,7 @@ export async function fetchVenueAvailability(venueId: string | number, date: str
   if (endTime) params.append('endTime', endTime);
 
   const queryString = params.toString();
-  const url = getVenueServiceUrl(`/api/venues/${venueId}/availability?${queryString}`);
+  const url = getVenueServiceUrl(`/venues/${venueId}/availability?${queryString}`);
   const res = await publicFetch(url);
   if (!res.ok) throw new Error("Failed to fetch venue availability");
   return res.json();
@@ -333,8 +333,7 @@ export async function fetchEventsByVenueId(venueId: number | string) {
 }
 
 export async function fetchEventById(id: string) {
-  // Use event service with the correct backend route: /api/events/geteventbyid/:id
-  // This route is public in the backend, but we use secureFetch to include auth when available
+  // Use optionalAuthFetch - sends auth token if user is logged in
   // This allows admins to see PENDING events while public users see only APPROVED
   // Updated to use RESTful route: /api/events/:id
   const url = `${API_GATEWAY_URL}/event_service/public/api/events/${id}`;

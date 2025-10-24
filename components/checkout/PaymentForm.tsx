@@ -1,9 +1,10 @@
 "use client"
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { Button } from '@/components/ui/button';
 import { Lock, Clock } from 'lucide-react';
+import { useTheme } from 'next-themes';
 
 interface PaymentFormProps {
   onPaymentSuccess: () => void;
@@ -21,23 +22,6 @@ interface CheckoutData {
   seatCount?: number;
 }
 
-const cardElementOptions = {
-  style: {
-    base: {
-      color: '#fff',
-      backgroundColor: '#191C24',
-      fontFamily: 'ui-sans-serif, system-ui, -apple-system, sans-serif',
-      fontSize: '16px',
-      '::placeholder': {
-        color: '#ABA8A9',
-      },
-    },
-    invalid: {
-      color: '#ef4444',
-    },
-  },
-};
-
 export default function PaymentForm({ onPaymentSuccess, onPaymentError }: PaymentFormProps) {
   const stripe = useStripe();
   const elements = useElements();
@@ -45,6 +29,34 @@ export default function PaymentForm({ onPaymentSuccess, onPaymentError }: Paymen
   const [checkoutData, setCheckoutData] = useState<CheckoutData | null>(null);
   const [countdown, setCountdown] = useState<string>('5:00');
   const [timeLeft, setTimeLeft] = useState<number>(5 * 60); // 5 minutes in seconds
+  const { theme, systemTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  // Wait for component to mount to access theme
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Determine current theme
+  const currentTheme = mounted ? (theme === 'system' ? systemTheme : theme) : 'dark';
+  const isDark = currentTheme === 'dark';
+
+  // Card element options with theme support
+  const cardElementOptions = {
+    style: {
+      base: {
+        color: isDark ? '#ffffff' : '#1f2937',
+        fontFamily: 'ui-sans-serif, system-ui, -apple-system, sans-serif',
+        fontSize: '16px',
+        '::placeholder': {
+          color: isDark ? '#9ca3af' : '#6b7280',
+        },
+      },
+      invalid: {
+        color: '#ef4444',
+      },
+    },
+  };
 
   // Load checkout data from sessionStorage and start countdown
   useEffect(() => {
@@ -155,12 +167,10 @@ export default function PaymentForm({ onPaymentSuccess, onPaymentError }: Paymen
   return (
     <div className="space-y-6">
       {/* Card Element */}
-      <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl" 
-           style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '30', boxShadow: '0 25px 50px -12px rgba(13, 202, 240, 0.1)' }}>
-        <h3 className="text-lg font-semibold mb-4" style={{ color: '#fff' }}>Payment Details</h3>
+      <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl bg-card border-border">
+        <h3 className="text-lg font-semibold mb-4 text-foreground">Payment Details</h3>
         
-        <div className="p-4 border rounded-lg" 
-             style={{ backgroundColor: '#191C24', borderColor: '#39FD48' + '50' }}>
+        <div className="p-4 border rounded-lg bg-background border-border">
           <CardElement options={cardElementOptions} />
         </div>
       </div>
@@ -168,10 +178,10 @@ export default function PaymentForm({ onPaymentSuccess, onPaymentError }: Paymen
       {/* Payment Button */}
       <Button 
         onClick={handlePayment}
-        className="w-full text-white hover:opacity-90 transition-opacity" 
+        className="w-full text-foreground hover:opacity-90 transition-opacity" 
         size="lg"
         disabled={processing || !stripe || !checkoutData}
-        style={{ background: '#0D6EFD' }}
+        
       >
         {processing ? (
           <>
@@ -187,19 +197,19 @@ export default function PaymentForm({ onPaymentSuccess, onPaymentError }: Paymen
       </Button>
       
       {/* Countdown Timer */}
-      <div className="p-3 rounded-lg mb-2" style={{ backgroundColor: '#0D6EFD' + '10' }}>
+      {/* <div className="p-3 rounded-lg mb-2" style={{ backgroundColor: '#0D6EFD' + '10' }}>
         <div className="flex items-center justify-center text-sm">
           <Clock className="h-4 w-4 mr-2" style={{ color: '#0D6EFD' }} />
           <span style={{ color: timeLeft < 60 ? '#ef4444' : '#ABA8A9' }}>
             Complete order within <span className="font-bold">{countdown}</span>
           </span>
         </div>
-      </div>
+      </div> */}
 
       {/* Security Note */}
-      <div className="p-3 rounded-lg" style={{ backgroundColor: '#39FD48' + '10' }}>
-        <div className="flex items-center text-sm" style={{ color: '#ABA8A9' }}>
-          <Lock className="h-4 w-4 mr-2" style={{ color: '#39FD48' }} />
+      <div className="p-3 rounded-lg bg-muted/30">
+        <div className="flex items-center text-sm text-muted-foreground">
+          <Lock className="h-4 w-4 mr-2 text-green-500" />
           <span>Your payment information is secure and encrypted</span>
         </div>
       </div>

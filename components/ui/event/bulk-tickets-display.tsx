@@ -2,23 +2,39 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Ticket, RefreshCw } from 'lucide-react';
+import { Ticket, RefreshCw, MapPin } from 'lucide-react';
 import { BulkTicket, getEventBulkTickets } from '@/lib/api_ticket';
 import { Button } from '@/components/ui/button';
+import { getVenueSeats, type SeatSection } from '@/lib/api';
 
 interface BulkTicketsDisplayProps {
   eventId: number;
+  venueId?: number; // Add venueId to fetch sections
   onRefresh?: () => void;
 }
 
 const cardBg = "#F8F9FA"; // Light gray for cards
 const blueBorder = "#1877F2" + '40'; // Blue border with transparency
 
-export default function BulkTicketsDisplay({ eventId, onRefresh }: BulkTicketsDisplayProps) {
+export default function BulkTicketsDisplay({ eventId, venueId, onRefresh }: BulkTicketsDisplayProps) {
   const [bulkTickets, setBulkTickets] = useState<BulkTicket[]>([]);
+  const [sections, setSections] = useState<SeatSection[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const [refreshing, setRefreshing] = useState(false);
+
+  // Get section name by ID
+  const getSectionName = (sectionId?: string): string => {
+    if (!sectionId) return 'Not assigned';
+    const section = sections.find(s => s.id === sectionId);
+    return section ? section.name : 'Unknown section';
+  };
+
+  // Get section details by ID
+  const getSectionDetails = (sectionId?: string): SeatSection | null => {
+    if (!sectionId) return null;
+    return sections.find(s => s.id === sectionId) || null;
+  };
 
   const loadBulkTickets = async () => {
     try {
@@ -27,12 +43,37 @@ export default function BulkTicketsDisplay({ eventId, onRefresh }: BulkTicketsDi
       setBulkTickets(tickets);
     } catch (err: any) {
       console.error('Error loading bulk tickets:', err);
-      setError(err.message || 'Failed to load bulk tickets');
+      
+      // Check if it's a 404 error (no tickets created yet)
+      if (err.status === 404 || err.message?.includes('404') || err.message?.includes('not found')) {
+        // This is expected for new events - don't show as error
+        setBulkTickets([]);
+      } else {
+        // Actual error - show error message
+        setError(err.message || 'Failed to load bulk tickets');
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
+
+  // Load venue sections if venueId is provided
+  useEffect(() => {
+    const fetchSections = async () => {
+      if (!venueId) return;
+      try {
+        const venueData = await getVenueSeats(venueId);
+        if (venueData.seatMap?.sections) {
+          setSections(venueData.seatMap.sections);
+        }
+      } catch (err) {
+        console.error('Error fetching venue sections:', err);
+      }
+    };
+
+    fetchSections();
+  }, [venueId]);
 
   useEffect(() => {
     loadBulkTickets();
@@ -89,9 +130,17 @@ export default function BulkTicketsDisplay({ eventId, onRefresh }: BulkTicketsDi
 
       <div className="space-y-3">
         {bulkTickets.length === 0 ? (
-          <p className="text-center py-4" style={{ color: '#6B7280' }}>
-            No bulk tickets created yet
-          </p>
+          <div className="text-center py-8">
+            <div className="mb-3">
+              <Ticket className="w-12 h-12 mx-auto" style={{ color: '#ABA8A9', opacity: 0.5 }} />
+            </div>
+            <p className="text-base font-medium mb-1" style={{ color: '#fff' }}>
+              No Tickets Created Yet
+            </p>
+            <p className="text-sm" style={{ color: '#ABA8A9' }}>
+              Click "Create Tickets" above to add bulk tickets for this event
+            </p>
+          </div>
         ) : (
           bulkTickets.map((ticket) => (
             <div 
@@ -102,7 +151,7 @@ export default function BulkTicketsDisplay({ eventId, onRefresh }: BulkTicketsDi
                 borderColor: ticket.seat_type === 'VIP' ? '#F59E0B' : blueBorder
               }}
             >
-              {/* Seat Type Badge */}
+              {/* Seat Type Badge and Section Info */}
               <div className="flex items-center justify-between mb-3">
                 <span 
                   className="px-3 py-1 rounded-full text-xs font-bold"
@@ -121,9 +170,9 @@ export default function BulkTicketsDisplay({ eventId, onRefresh }: BulkTicketsDi
               {/* Ticket Details Grid */}
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <p className="text-xs mb-1" style={{ color: '#6B7280' }}>Price</p>
-                  <p className="text-sm font-semibold" style={{ color: '#000' }}>
-                    ${ticket.price.toFixed(2)}
+                  <p className="text-xs mb-1" style={{ color: '#ABA8A9' }}>Price</p>
+                  <p className="text-sm font-semibold" style={{ color: '#fff' }}>
+                    Rs.{ticket.price.toFixed(2)}
                   </p>
                 </div>
                 <div>

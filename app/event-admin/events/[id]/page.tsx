@@ -608,6 +608,7 @@ export default function EventDetailPage() {
             <BulkTicketsDisplay 
               key={refreshBulkTickets}
               eventId={event.id}
+              venueId={event.venue?.id}
               onRefresh={() => {
                 // Optional: reload event data or show notification
                 console.log('Bulk tickets refreshed');
@@ -687,39 +688,44 @@ export default function EventDetailPage() {
                     No checkin officers assigned
                   </p>
                 ) : (
-                  checkinOfficers.map((officer) => (
-                    <div key={officer.uid} className="flex items-center justify-between p-3 rounded-lg" style={{ backgroundColor: '#fff', border: '1px solid #1877F2' + '20' }}>
-                      <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: '#1877F2' }}>
-                          <span className="text-sm font-medium text-white">
-                            {officer.name.split(' ').map(n => n[0]).join('')}
-                          </span>
+                  checkinOfficers.map((officer) => {
+                    // Get initials from officer name
+                    const initials = officer.name.split(' ').map(n => n[0]).join('');
+                    
+                    return (
+                      <div key={officer.uid} className="flex items-center justify-between p-3 rounded-lg" style={{ backgroundColor: '#1f222a' }}>
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: '#CBF83E' }}>
+                            <span className="text-sm font-medium text-black">
+                              {initials}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium" style={{ color: '#fff' }}>{officer.name}</p>
+                            <p className="text-xs" style={{ color: '#ABA8A9' }}>{officer.email}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm font-medium" style={{ color: '#000' }}>{officer.name}</p>
-                          <p className="text-xs" style={{ color: '#6B7280' }}>{officer.email}</p>
-                        </div>
+                        <Button 
+                          onClick={() => removeCheckinOfficer(officer)}
+                          size="sm"
+                          variant="outline"
+                          disabled={updatingOfficer === officer.uid}
+                          style={{ 
+                            borderColor: '#ff6b35', 
+                            color: '#ff6b35', 
+                            backgroundColor: 'transparent',
+                            opacity: updatingOfficer === officer.uid ? 0.6 : 1 
+                          }}
+                        >
+                          {updatingOfficer === officer.uid ? (
+                            <span className="text-xs">Removing...</span>
+                          ) : (
+                            <UserMinus className="w-3 h-3" />
+                          )}
+                        </Button>
                       </div>
-                      <Button 
-                        onClick={() => removeCheckinOfficer(officer)}
-                        size="sm"
-                        variant="outline"
-                        disabled={updatingOfficer === officer.uid}
-                        style={{ 
-                          borderColor: '#EF4444', 
-                          color: '#EF4444', 
-                          backgroundColor: 'transparent',
-                          opacity: updatingOfficer === officer.uid ? 0.6 : 1 
-                        }}
-                      >
-                        {updatingOfficer === officer.uid ? (
-                          <span className="text-xs">Removing...</span>
-                        ) : (
-                          <UserMinus className="w-3 h-3" />
-                        )}
-                      </Button>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </motion.div>

@@ -61,7 +61,8 @@ export interface UserTicketResponse {
   bulk_ticket: BulkTicketInfo;
 }
 
-const TICKET_APIGATEWAY_URL = (process.env.APIGATEWAY_URL || 'http://localhost:5000')+ '/ticket_service/api';
+const TICKET_APIGATEWAY_URL = (process.env.NEXT_PUBLIC_API_GATEWAY_URL || 'http://localhost:5000')+ '/ticket_service/api';
+const TICKET_PUBLIC_URL = (process.env.NEXT_PUBLIC_API_GATEWAY_URL || 'http://localhost:5000')+ '/ticket_service/public';
 
 export async function getUserLockedSeats(): Promise<UserLockedSeatsResponse> {
   try {
@@ -347,7 +348,10 @@ export async function getEventBulkTickets(eventId: number): Promise<BulkTicket[]
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      const errorMessage = errorData.message || `HTTP error! status: ${response.status}`;
+      const error: any = new Error(errorMessage);
+      error.status = response.status; // Add status code to error
+      throw error;
     }
 
     const data = await response.json();
@@ -387,16 +391,12 @@ export async function getBulkTicketPrices(venueId: number, eventId: number): Pro
 
     const token = await user.getIdToken();
 
-    const response = await fetch(`${TICKET_APIGATEWAY_URL}/tickets/bulk-ticket/prices`, {
-      method: 'POST',
+    const response = await fetch(`${TICKET_APIGATEWAY_URL}/tickets/bulk-ticket/prices?venue_id=${venueId}&event_id=${eventId}`, {
+      method: 'GET',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        venue_id: venueId,
-        event_id: eventId
-      })
+      }
     });
 
     if (!response.ok) {
@@ -408,6 +408,50 @@ export async function getBulkTicketPrices(venueId: number, eventId: number): Pro
     return data;
   } catch (error) {
     console.error('Error fetching bulk ticket prices:', error);
+    throw error;
+  }
+}
+
+export interface SeatInfo {
+  section: string;
+  row_id: number;
+  col_id: number;
+}
+
+export interface EventSeatStatusResponse {
+  event_id: number;
+  booked_seats: SeatInfo[];
+  locked_seats: SeatInfo[];
+}
+
+export async function getEventSeatStatus(eventId: number): Promise<EventSeatStatusResponse> {
+  try {
+    // This endpoint doesn't require authentication as it's public information
+    // Use the public ticket service route to avoid authentication
+    console.log('[getEventSeatStatus] Fetching seat status for event:', eventId);
+    const response = await fetch(`${TICKET_PUBLIC_URL}/api/ticket-locking/event-seat-status/${eventId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+
+    console.log('[getEventSeatStatus] Response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('[getEventSeatStatus] Error response:', errorData);
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('[getEventSeatStatus] Received data:', data);
+    console.log('[getEventSeatStatus] Booked seats count:', data.booked_seats?.length || 0);
+    console.log('[getEventSeatStatus] Locked seats count:', data.locked_seats?.length || 0);
+    console.log('[getEventSeatStatus] Sample booked seats:', data.booked_seats?.slice(0, 3));
+    return data;
+  } catch (error) {
+    console.error('[getEventSeatStatus] Error fetching event seat status:', error);
     throw error;
   }
 }
