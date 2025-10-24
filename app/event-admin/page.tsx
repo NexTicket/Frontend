@@ -216,54 +216,83 @@ export default function EventAdminDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Subtle Background Elements */}
-      <div className="absolute top-0 right-0 w-80 h-80 bg-muted/20 rounded-full blur-3xl"></div>
-      <div className="absolute bottom-0 left-0 w-80 h-80 bg-accent/15 rounded-full blur-3xl"></div>
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-muted/10 rounded-full blur-3xl"></div>
+      {/* Simple Background Elements */}
+      <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-20 bg-muted"></div>
+      <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-15 bg-muted"></div>
+      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl opacity-10 bg-muted"></div>
 
-      {/* Header */}
-      <div className="relative z-10">
-        <div className="max-w-7xl mx-auto px-6 pt-8">
-          <div className="bg-primary rounded-2xl p-6 shadow-lg border border-border">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold mb-2 text-primary-foreground">Event Admin Dashboard</h1>
-                <p className="text-lg text-primary-foreground/90">Manage your assigned events and team</p>
-              </div>
-              <div className="flex items-center space-x-4">
-                <div className="text-right">
-                  <p className="font-medium text-primary-foreground">{userProfile?.firstName} {userProfile?.lastName}</p>
+      {/* Content Container */}
+      <div className="relative z-10 pt-8 px-8">
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={containerVariants}
+          className="max-w-7xl mx-auto pb-16"
+        >
+          {/* Clean Header */}
+          <motion.div variants={itemVariants} className="mb-12">
+            <div className="rounded-2xl p-6 shadow-lg bg-primary border-primary">
+              <div className="flex items-center justify-between">
+                <div>
+                  <motion.h1 
+                    initial={{ opacity: 0, x: -30 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.6, ease: "easeOut" }}
+                    className="text-3xl font-bold mb-2 text-primary-foreground"
+                  >
+                    Event Admin Dashboard
+                  </motion.h1>
+                  <motion.p
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2, duration: 0.5 }}
+                    className="text-lg font-normal text-primary-foreground"
+                  >
+                    Welcome back, {userProfile?.firstName || 'Event Admin'}! 
+                  </motion.p>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
+          </motion.div>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-6 py-8">
         {/* Navigation Tabs */}
-        <div className="mb-8">
-          <div className="flex space-x-1 bg-card rounded-2xl p-1 border-2 border-border">
-            {[
-              { id: 'overview', label: 'Overview', icon: BarChart3 },
-              { id: 'events', label: 'My Events', icon: CalendarDays },
-              { id: 'analytics', label: 'Analytics', icon: Activity }
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center space-x-2 px-6 py-3 rounded-xl font-medium text-sm transition-all duration-200 ${
-                  activeTab === tab.id
-                    ? 'bg-primary text-primary-foreground shadow-md'
-                    : 'text-foreground hover:bg-muted/50'
-                }`}
-              >
-                <tab.icon className="w-5 h-5" />
-                <span>{tab.label}</span>
-              </button>
-            ))}
+        <motion.div variants={itemVariants} className="mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Button 
+              onClick={() => setActiveTab('overview')}
+              className={`h-10 backdrop-blur-xl border text-lg rounded-2xl p-8 shadow-xl transition-all duration-200 ${
+                activeTab === 'overview'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-card hover:bg-card/80 text-card-foreground'
+              }`}
+            >
+              <BarChart3 className="h-8 w-8 mr-3" />
+              Overview
+            </Button>
+            <Button 
+              onClick={() => setActiveTab('events')}
+              className={`h-10 backdrop-blur-xl border text-lg rounded-2xl p-8 shadow-xl transition-all duration-200 ${
+                activeTab === 'events'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-card hover:bg-card/80 text-card-foreground'
+              }`}
+            >
+              <CalendarDays className="h-8 w-8 mr-3" />
+              My Events
+            </Button>
+            <Button 
+              onClick={() => setActiveTab('analytics')}
+              className={`h-10 backdrop-blur-xl border text-lg rounded-2xl p-8 shadow-xl transition-all duration-200 ${
+                activeTab === 'analytics'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-card hover:bg-card/80 text-card-foreground'
+              }`}
+            >
+              <Activity className="h-8 w-8 mr-3" />
+              Analytics
+            </Button>
           </div>
-        </div>
+        </motion.div>
 
         {/* Overview Tab */}
         {activeTab === 'overview' && (
@@ -275,79 +304,103 @@ export default function EventAdminDashboard() {
           >
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <motion.div variants={itemVariants} className="bg-card backdrop-blur-xl border border-border rounded-2xl p-6 shadow-xl">
+              <motion.div 
+                variants={itemVariants}
+                whileHover={{ scale: 1.02, y: -2 }}
+                className="backdrop-blur-xl border rounded-2xl p-4 shadow-xl hover:shadow-2xl transition-all duration-200 bg-card"
+              >
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Total Events</p>
-                    <p className="text-3xl font-bold text-foreground">{totalEvents}</p>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium mb-1 text-card-foreground">Total Events</p>
+                    <div className="text-2xl font-bold mb-1 text-foreground">{totalEvents}</div>
                   </div>
-                  <CalendarDays className="w-8 h-8 text-foreground" />
+                  <div className="rounded-lg p-3 ml-4 bg-primary/10">
+                    <CalendarDays className="w-6 h-6 text-primary" />
+                  </div>
                 </div>
               </motion.div>
 
-              <motion.div variants={itemVariants} className="bg-card backdrop-blur-xl border border-border rounded-2xl p-6 shadow-xl">
+              <motion.div 
+                variants={itemVariants}
+                whileHover={{ scale: 1.02, y: -2 }}
+                className="backdrop-blur-xl border rounded-2xl p-4 shadow-xl hover:shadow-2xl transition-all duration-200 bg-card"
+              >
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Active Today</p>
-                    <p className="text-3xl font-bold text-blue-600">{activeEvents}</p>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium mb-1 text-card-foreground">Active Today</p>
+                    <div className="text-2xl font-bold mb-1 text-foreground">{activeEvents}</div>
                   </div>
-                  <CheckCircle className="w-8 h-8 text-blue-600" />
+                  <div className="rounded-lg p-3 ml-4 bg-primary/10">
+                    <CheckCircle className="w-6 h-6 text-primary" />
+                  </div>
                 </div>
               </motion.div>
 
-              <motion.div variants={itemVariants} className="bg-card backdrop-blur-xl border border-border rounded-2xl p-6 shadow-xl">
+              <motion.div 
+                variants={itemVariants}
+                whileHover={{ scale: 1.02, y: -2 }}
+                className="backdrop-blur-xl border rounded-2xl p-4 shadow-xl hover:shadow-2xl transition-all duration-200 bg-card"
+              >
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Upcoming</p>
-                    <p className="text-3xl font-bold text-orange-500">{upcomingEvents}</p>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium mb-1 text-card-foreground">Upcoming</p>
+                    <div className="text-2xl font-bold mb-1 text-foreground">{upcomingEvents}</div>
                   </div>
-                  <Clock className="w-8 h-8 text-orange-500" />
+                  <div className="rounded-lg p-3 ml-4 bg-primary/10">
+                    <Clock className="w-6 h-6 text-primary" />
+                  </div>
                 </div>
               </motion.div>
 
-              <motion.div variants={itemVariants} className="bg-card backdrop-blur-xl border border-border rounded-2xl p-6 shadow-xl">
+              <motion.div 
+                variants={itemVariants}
+                whileHover={{ scale: 1.02, y: -2 }}
+                className="backdrop-blur-xl border rounded-2xl p-4 shadow-xl hover:shadow-2xl transition-all duration-200 bg-card"
+              >
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Completed</p>
-                    <p className="text-3xl font-bold text-foreground">{completedEvents}</p>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium mb-1 text-card-foreground">Completed</p>
+                    <div className="text-2xl font-bold mb-1 text-foreground">{completedEvents}</div>
                   </div>
-                  <XCircle className="w-8 h-8 text-foreground" />
+                  <div className="rounded-lg p-3 ml-4 bg-primary/10">
+                    <XCircle className="w-6 h-6 text-primary" />
+                  </div>
                 </div>
               </motion.div>
             </div>
 
             {/* Quick Actions */}
-            <motion.div variants={itemVariants} className="bg-card backdrop-blur-xl border border-border rounded-2xl p-6 shadow-xl">
-              <h3 className="text-lg font-medium mb-4 flex items-center text-foreground">
-                <TrendingUp className="w-5 h-5 mr-2" />
+            <motion.div variants={itemVariants} className="backdrop-blur-xl border rounded-2xl p-8 shadow-xl bg-card text-card-foreground">
+              <h3 className="text-2xl font-bold mb-6 flex items-center text-foreground">
+                <TrendingUp className="w-6 h-6 mr-2 text-primary" />
                 Quick Actions
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <button
                   onClick={() => setActiveTab('events')}
-                  className="flex items-center justify-between p-4 bg-muted/50 border border-border rounded-xl transition-all duration-200 hover:shadow-md hover:bg-muted"
+                  className="flex items-center justify-between p-4 rounded-xl transition-all duration-200 hover:shadow-md bg-card border border-border hover:bg-accent/20"
                 >
                   <div className="flex items-center">
                     <Eye className="w-5 h-5 mr-3 text-primary" />
-                    <span className="text-foreground">View All Events</span>
+                    <span className="text-foreground font-medium">View All Events</span>
                   </div>
                   <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 </button>
                 <button
-                  className="flex items-center justify-between p-4 bg-muted/50 border border-border rounded-xl transition-all duration-200 hover:shadow-md hover:bg-muted"
+                  className="flex items-center justify-between p-4 rounded-xl transition-all duration-200 hover:shadow-md bg-card border border-border hover:bg-accent/20"
                 >
                   <div className="flex items-center">
                     <Settings className="w-5 h-5 mr-3 text-primary" />
-                    <span className="text-foreground">Event Settings</span>
+                    <span className="text-foreground font-medium">Event Settings</span>
                   </div>
                   <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 </button>
                 <button
-                  className="flex items-center justify-between p-4 bg-muted/50 border border-border rounded-xl transition-all duration-200 hover:shadow-md hover:bg-muted"
+                  className="flex items-center justify-between p-4 rounded-xl transition-all duration-200 hover:shadow-md bg-card border border-border hover:bg-accent/20"
                 >
                   <div className="flex items-center">
                     <Users className="w-5 h-5 mr-3 text-primary" />
-                    <span className="text-foreground">Manage Team</span>
+                    <span className="text-foreground font-medium">Manage Team</span>
                   </div>
                   <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 </button>
@@ -364,85 +417,97 @@ export default function EventAdminDashboard() {
             animate="visible"
             className="space-y-6"
           >
-            {loading ? (
-              <div className="text-center py-12">
-                <Loading
-                  size="md"
-                  text="Loading your assigned events..."
-                />
+            <div className="backdrop-blur-xl border rounded-2xl p-8 shadow-xl bg-card text-card-foreground">
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-3xl font-bold text-foreground">My Assigned Events</h3>
+                <div className="flex items-center space-x-4">
+                  <div className="text-sm font-medium text-foreground">
+                    {loading ? 'Loading...' : `${assignedEvents.length} events assigned`}
+                  </div>
+                </div>
               </div>
-            ) : assignedEvents.length === 0 ? (
-              <div className="text-center py-12">
-                <CalendarDays className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-lg font-medium mb-2 text-foreground">No Assigned Events</h3>
-                <p className="text-muted-foreground">You have not been assigned to any events yet.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {assignedEvents.map((event, index) => (
-                  <motion.div 
-                    key={event.id} 
-                    variants={itemVariants}
-                    className="bg-card backdrop-blur-xl border border-border rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 cursor-pointer"
-                    onClick={() => handleEventClick(event)}
-                  >
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold mb-1 text-foreground">{event.title}</h3>
-                        <p className="text-sm text-muted-foreground">{event.description}</p>
-                      </div>
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(getEventStatus(event))}`}>
-                        {getEventStatus(event)}
-                      </span>
-                    </div>
 
-                    <div className="space-y-3 mb-6">
-                      <div className="flex items-center text-sm text-muted-foreground">
-                        <Calendar className="w-4 h-4 mr-2 flex-shrink-0 text-foreground" />
-                        <span>{formatDate(event.startDate)}</span>
+              {loading ? (
+                <div className="text-center py-12">
+                  <Loading
+                    size="md"
+                    text="Loading your assigned events..."
+                  />
+                </div>
+              ) : assignedEvents.length === 0 ? (
+                <div className="text-center py-12">
+                  <CalendarDays className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+                  <h3 className="text-lg font-medium mb-2 text-foreground">No Assigned Events</h3>
+                  <p className="text-muted-foreground">You have not been assigned to any events yet.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {assignedEvents.map((event) => (
+                    <motion.div 
+                      key={event.id} 
+                      variants={itemVariants}
+                      whileHover={{ scale: 1.02, y: -2 }}
+                      className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 cursor-pointer bg-card"
+                      onClick={() => handleEventClick(event)}
+                    >
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex-1">
+                          <h3 className="text-lg font-semibold mb-1 text-foreground">{event.title}</h3>
+                          <p className="text-sm text-muted-foreground">{event.description}</p>
+                        </div>
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(getEventStatus(event))}`}>
+                          {getEventStatus(event)}
+                        </span>
                       </div>
-                      <div className="flex items-center text-sm text-muted-foreground">
-                        <Clock className="w-4 h-4 mr-2 flex-shrink-0 text-foreground" />
-                        <span>{formatTime(event.startTime)} - {formatTime(event.endTime)}</span>
-                      </div>
-                      <div className="flex items-center text-sm text-muted-foreground">
-                        <MapPin className="w-4 h-4 mr-2 flex-shrink-0 text-foreground" />
-                        <span>{event.venue?.name || 'Venue TBD'}</span>
-                      </div>
-                      <div className="flex items-center text-sm text-muted-foreground">
-                        <Users className="w-4 h-4 mr-2 flex-shrink-0 text-foreground" />
-                        <span>{event.capacity} capacity</span>
-                      </div>
-                    </div>
 
-                    <div className="flex space-x-2">
-                      <Button 
-                        size="sm" 
-                        className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-200 hover:shadow-md"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openEventDetail(event.id);
-                        }}
-                      >
-                        <Eye className="w-4 h-4 mr-2" />
-                        Manage
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        className="border-border transition-all duration-200 hover:shadow-md"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEditEvent(event);
-                        }}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            )}
+                      <div className="space-y-3 mb-6">
+                        <div className="flex items-center text-sm text-muted-foreground">
+                          <Calendar className="w-4 h-4 mr-2 flex-shrink-0 text-primary" />
+                          <span>{formatDate(event.startDate)}</span>
+                        </div>
+                        <div className="flex items-center text-sm text-muted-foreground">
+                          <Clock className="w-4 h-4 mr-2 flex-shrink-0 text-primary" />
+                          <span>{formatTime(event.startTime)} - {formatTime(event.endTime)}</span>
+                        </div>
+                        <div className="flex items-center text-sm text-muted-foreground">
+                          <MapPin className="w-4 h-4 mr-2 flex-shrink-0 text-primary" />
+                          <span>{event.venue?.name || 'Venue TBD'}</span>
+                        </div>
+                        <div className="flex items-center text-sm text-muted-foreground">
+                          <Users className="w-4 h-4 mr-2 flex-shrink-0 text-primary" />
+                          <span>{event.capacity} capacity</span>
+                        </div>
+                      </div>
+
+                      <div className="flex space-x-2">
+                        <Button 
+                          size="sm" 
+                          className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-200 hover:shadow-md"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEventDetail(event.id);
+                          }}
+                        >
+                          <Eye className="w-4 h-4 mr-2" />
+                          Manage
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          className="border-border transition-all duration-200 hover:shadow-md hover:bg-accent/20"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditEvent(event);
+                          }}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </div>
           </motion.div>
         )}
 
@@ -454,16 +519,17 @@ export default function EventAdminDashboard() {
             animate="visible"
             className="space-y-6"
           >
-            <motion.div variants={itemVariants} className="bg-card backdrop-blur-xl border border-border rounded-2xl p-6 shadow-xl">
-              <h3 className="text-lg font-medium mb-4 text-foreground">Event Analytics</h3>
+            <motion.div variants={itemVariants} className="backdrop-blur-xl border rounded-2xl p-8 shadow-xl bg-card text-card-foreground">
+              <h3 className="text-3xl font-bold mb-8 text-foreground">Event Analytics</h3>
               <div className="text-center py-12">
-                <BarChart3 className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+                <BarChart3 className="w-16 h-16 mx-auto mb-4 text-primary" />
                 <h3 className="text-lg font-medium mb-2 text-foreground">Analytics Coming Soon</h3>
                 <p className="text-muted-foreground">Detailed analytics and reporting features will be available here.</p>
               </div>
             </motion.div>
           </motion.div>
         )}
+        </motion.div>
       </div>
     </div>
   );

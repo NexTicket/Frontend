@@ -333,10 +333,10 @@ export async function fetchEventsByVenueId(venueId: number | string) {
 }
 
 export async function fetchEventById(id: string) {
-  // Use optionalAuthFetch - sends auth token if user is logged in
+  // Use event service with the correct backend route: /api/events/geteventbyid/:id
+  // This route is public in the backend, but we use optionalAuthFetch to include auth when available
   // This allows admins to see PENDING events while public users see only APPROVED
-  // Updated to use RESTful route: /api/events/:id
-  const url = `${API_GATEWAY_URL}/event_service/public/api/events/${id}`;
+  const url = getEventServiceUrl(`/api/events/geteventbyid/${id}`);
   const res = await optionalAuthFetch(url);
   if (!res.ok) {
     const errorText = await res.text();
