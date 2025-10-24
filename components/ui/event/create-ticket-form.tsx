@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { X, Ticket } from 'lucide-react';
+import { X, Ticket, MapPin, Users } from 'lucide-react';
+import { getVenueSeats, type SeatSection } from '@/lib/api';
 
 interface CreateTicketFormProps {
   eventId: number;
@@ -28,8 +29,55 @@ export default function CreateTicketForm({
   const [price, setPrice] = useState<string>('');
   const [totalSeats, setTotalSeats] = useState<string>('');
   const [seatPrefix, setSeatPrefix] = useState<string>('');
+  const [sections, setSections] = useState<SeatSection[]>([]);
+  const [isLoadingSections, setIsLoadingSections] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string>('');
+
+  // Fetch venue sections on mount
+  useEffect(() => {
+    const fetchSections = async () => {
+      setIsLoadingSections(true);
+      try {
+        const venueData = await getVenueSeats(venueId);
+        if (venueData.seatMap?.sections) {
+          setSections(venueData.seatMap.sections);
+        }
+      } catch (err) {
+        console.error('Error fetching venue sections:', err);
+        setError('Failed to load venue sections');
+      } finally {
+        setIsLoadingSections(false);
+      }
+    };
+
+    fetchSections();
+  }, [venueId]);
+
+  // Handle section selection - auto-fill seat prefix and total seats
+  const handleSectionChange = (sectionId: string) => {
+    const section = sections.find(s => s.id === sectionId);
+    if (section) {
+      // Set the section NAME as the seat prefix (this will be saved to database)
+      setSeatPrefix(section.name);
+      
+      // Auto-fill total seats with section capacity
+      const sectionCapacity = section.rows * section.columns;
+      setTotalSeats(sectionCapacity.toString());
+      
+      console.log('[CreateTicketForm] Section selected:', section.name, 'ID:', section.id, 'Capacity:', sectionCapacity);
+    } else {
+      // Clear if no section selected
+      setSeatPrefix('');
+      setTotalSeats('');
+    }
+  };
+
+  // Get selected section details by seat prefix (now matches by name)
+  const getSelectedSectionDetails = () => {
+    if (!seatPrefix) return null;
+    return sections.find(s => s.name === seatPrefix);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,6 +105,16 @@ export default function CreateTicketForm({
     if (!seatPrefix.trim()) {
       setError('Seat prefix is required');
       return;
+    }
+
+    // Validate against section capacity if section is selected
+    const section = getSelectedSectionDetails();
+    if (section) {
+      const sectionCapacity = section.rows * section.columns;
+      if (totalSeatsNum > sectionCapacity) {
+        setError(`Total seats cannot exceed section capacity (${sectionCapacity})`);
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -161,10 +219,72 @@ export default function CreateTicketForm({
           />
         </div>
 
-        {/* Total Seats */}
+        {/* Seat Section Selection (integrates seat prefix and auto-fills total seats) */}
         <div>
           <label className="block text-sm font-medium mb-2" style={{ color: '#ABA8A9' }}>
-            Total Seats (max: {venueCapacity})
+            <MapPin className="w-4 h-4 inline mr-1" />
+            Venue Section *
+          </label>
+          {isLoadingSections ? (
+            <div className="text-center py-4" style={{ color: '#ABA8A9' }}>
+              Loading sections...
+            </div>
+          ) : sections.length > 0 ? (
+            <>
+              <select
+                value={seatPrefix}
+                onChange={(e) => handleSectionChange(e.target.value)}
+                
+                className="w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                style={{
+                  backgroundColor: '#1f222a',
+                  borderColor: greenBorder,
+                  color: '#fff'
+                }}
+              >
+                <option value="">Select a section</option>
+                {sections.map((section) => (
+                  <option key={section.id} value={section.id}>
+                    {section.name} ({section.rows}×{section.columns} = {section.rows * section.columns} seats)
+                  </option>
+                ))}
+              </select>
+              
+              {/* Section Details */}
+              {seatPrefix && getSelectedSectionDetails() && (
+                <div className="mt-2 p-3 rounded-lg" style={{ backgroundColor: '#1f222a', borderLeft: '4px solid #CBF83E' }}>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span style={{ color: '#ABA8A9' }}>Seat Prefix:</span>
+                      <span className="ml-2 font-mono font-medium" style={{ color: '#CBF83E' }}>
+                        {getSelectedSectionDetails()!.name}
+                      </span>
+                    </div>
+                    <div>
+                      <span style={{ color: '#ABA8A9' }}>Capacity:</span>
+                      <span className="ml-2 font-medium" style={{ color: '#fff' }}>
+                        <Users className="w-4 h-4 inline mr-1" />
+                        {getSelectedSectionDetails()!.rows * getSelectedSectionDetails()!.columns} seats
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-2 text-xs" style={{ color: '#ABA8A9' }}>
+                    💡 Total seats will be automatically set to section capacity
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-center py-4 text-sm" style={{ color: '#ABA8A9' }}>
+              No sections available for this venue
+            </div>
+          )}
+        </div>
+
+        {/* Total Seats (Auto-filled from section) */}
+        <div>
+          <label className="block text-sm font-medium mb-2" style={{ color: '#ABA8A9' }}>
+            Total Seats {seatPrefix ? '(auto-filled from section)' : '(max: ' + venueCapacity + ')'}
           </label>
           <input
             type="number"
@@ -173,34 +293,21 @@ export default function CreateTicketForm({
             min="1"
             max={venueCapacity}
             required
+            readOnly={!!seatPrefix}
             className="w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             style={{
-              backgroundColor: '#1f222a',
+              backgroundColor: seatPrefix ? '#1a1d24' : '#1f222a',
               borderColor: greenBorder,
-              color: '#fff'
+              color: '#fff',
+              cursor: seatPrefix ? 'not-allowed' : 'text'
             }}
-            placeholder="Enter number of seats"
+            placeholder="Select a section to auto-fill"
           />
-        </div>
-
-        {/* Seat Prefix */}
-        <div>
-          <label className="block text-sm font-medium mb-2" style={{ color: '#ABA8A9' }}>
-            Seat Prefix
-          </label>
-          <input
-            type="text"
-            value={seatPrefix}
-            onChange={(e) => setSeatPrefix(e.target.value)}
-            required
-            className="w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            style={{
-              backgroundColor: '#1f222a',
-              borderColor: greenBorder,
-              color: '#fff'
-            }}
-            placeholder="e.g., A, B, VIP"
-          />
+          {seatPrefix && (
+            <p className="mt-1 text-xs" style={{ color: '#ABA8A9' }}>
+              ℹ️ Total seats is locked to match the selected section's capacity
+            </p>
+          )}
         </div>
 
         {/* Error Message */}

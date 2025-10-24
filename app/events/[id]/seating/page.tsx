@@ -5,9 +5,13 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { BookingSummary } from '@/components/ui/booking-summary';
 import { 
-  ArrowLeft
+  ArrowLeft,
+  Info,
+  Clock,
+  CheckCircle,
+  X
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { use } from 'react';
 import { getVenueSeats, VenueSeatMap, SeatSection, fetchEventById } from '@/lib/api';
 import { getBulkTicketPrices, BulkTicketPrice, getEventSeatStatus, EventSeatStatusResponse } from '@/lib/api_ticket';
@@ -65,6 +69,7 @@ export default function SeatingPage({ params }: SeatingPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [event, setEvent] = useState<any>(null);
   const [bulkTicketPrices, setBulkTicketPrices] = useState<BulkTicketPrice[]>([]);
+  const [showInfoBanner, setShowInfoBanner] = useState(true);
 
   useEffect(() => {
     const loadEventAndSeatMap = async () => {
@@ -326,6 +331,85 @@ export default function SeatingPage({ params }: SeatingPageProps) {
               </div>
             </div>
           </motion.div>
+
+          {/* Info Banner */}
+          <AnimatePresence>
+            {showInfoBanner && (
+              <motion.div
+                initial={{ opacity: 0, y: -20, height: 0 }}
+                animate={{ opacity: 1, y: 0, height: 'auto' }}
+                exit={{ opacity: 0, y: -20, height: 0 }}
+                transition={{ duration: 0.3 }}
+                className="mb-6"
+              >
+                <div className="relative overflow-hidden rounded-2xl border-2 border-blue-500/50 bg-blue-100 dark:bg-gradient-to-r dark:from-blue-950/40 dark:via-blue-900/30 dark:to-blue-950/40 backdrop-blur-xl p-6 shadow-lg">
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-transparent to-blue-500/10"></div>
+                  
+                  <button
+                    onClick={() => setShowInfoBanner(false)}
+                    className="absolute top-4 right-4 rounded-lg p-1 hover:bg-blue-500/20 transition-colors"
+                  >
+                    <X className="h-5 w-5 text-blue-950 dark:text-blue-950" />
+                  </button>
+
+                  <div className="relative">
+                    <div className="flex items-start gap-4">
+                      <div className="flex-shrink-0">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-500/20 ring-2 ring-blue-500/50">
+                          <Info className="h-6 w-6 text-blue-950 dark:text-blue-950" />
+                        </div>
+                      </div>
+                      
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold text-blue-950 dark:text-blue-950mb-3">
+                          How Booking Works
+                        </h3>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="flex items-start gap-3">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600/40 text-blue-950 dark:text-blue-950 font-semibold text-sm flex-shrink-0">
+                              1
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-blue-950 dark:text-blue-950 mb-1">Select Your Seats</p>
+                              <p className="text-xs text-blue-900 dark:text-blue-950">Choose your preferred seats from the seating chart</p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-start gap-3">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600/40 text-blue-950 dark:text-blue-950 font-semibold text-sm flex-shrink-0">
+                              2
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-blue-950 dark:text-blue-950 mb-1">Proceed to Checkout</p>
+                              <p className="text-xs text-blue-900 dark:text-blue-950/80">Click "Proceed to Checkout" to lock your seats</p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-start gap-3">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600/40 text-blue-950 dark:text-blue-950 font-semibold text-sm flex-shrink-0">
+                              3
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-blue-950 dark:text-blue-950 mb-1">Complete Payment</p>
+                              <p className="text-xs text-blue-900 dark:text-blue-950/80">Finish payment within 5 minutes to secure your tickets</p>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="mt-4 flex items-center gap-2 rounded-lg bg-blue-300 dark:bg-blue-900/10 border border-amber-600/50 dark:border-amber-500/30 px-4 py-3">
+                          <Clock className="h-4 w-4 text-blue-800 dark:text-blue-900 flex-shrink-0" />
+                          <p className="text-xs text-black dark:text-black">
+                            <strong>Important:</strong> Your seats will be reserved for <strong>5 minutes</strong> after checkout. Complete payment within this time or seats will be released.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             {/* Seating Chart */}

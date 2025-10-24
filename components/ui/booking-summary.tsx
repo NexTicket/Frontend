@@ -115,11 +115,13 @@ export function BookingSummary({
           subtotal: totalPrice.toFixed(2),
           serviceFee: serviceFee.toFixed(2),
           expiresAt: response.expires_at,
-          seatCount: selectedSeatsData.length
+          seatCount: selectedSeatsData.length,
+          eventId: eventId // Store eventId for checkout page
         }));
         
-        // Proceed to checkout after successful seat locking
-        window.location.href = checkoutUrl;
+        // Proceed to checkout after successful seat locking with eventId parameter
+        const checkoutUrlWithEvent = eventId ? `${checkoutUrl}?eventId=${eventId}` : checkoutUrl;
+        window.location.href = checkoutUrlWithEvent;
       } else {
         throw new Error('Invalid response from server');
       }
@@ -180,7 +182,7 @@ export function BookingSummary({
             transition={{ duration: 0.3, ease: 'easeOut' }}
             className="fixed top-20 right-4 z-50 max-w-md"
           >
-            <div className="relative overflow-hidden rounded-2xl border border-red-500/30 bg-gradient-to-br from-red-950/95 to-red-900/95 backdrop-blur-xl shadow-2xl shadow-red-500/20">
+            <div className="relative overflow-hidden rounded-2xl border-2 border-red-500/50 bg-red-100 dark:bg-gradient-to-br dark:from-red-950/95 dark:to-red-900/95 backdrop-blur-xl shadow-2xl shadow-red-500/20">
               {/* Animated background gradient */}
               <div className="absolute inset-0 bg-gradient-to-r from-red-500/10 via-transparent to-red-500/10 animate-pulse"></div>
               
@@ -189,36 +191,36 @@ export function BookingSummary({
                   {/* Icon */}
                   <div className="flex-shrink-0">
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-500/20 ring-2 ring-red-500/50">
-                      <AlertCircle className="h-6 w-6 text-red-400" />
+                      <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
                     </div>
                   </div>
                   
                   {/* Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2 mb-2">
-                      <h3 className="text-base font-semibold text-red-100">
+                      <h3 className="text-base font-semibold text-red-900 dark:text-red-100">
                         Seats No Longer Available
                       </h3>
                       <button
                         onClick={() => setErrorToast({ show: false, message: '', conflictedSeats: [] })}
                         className="flex-shrink-0 rounded-lg p-1 hover:bg-red-500/20 transition-colors"
                       >
-                        <XCircle className="h-5 w-5 text-red-300" />
+                        <XCircle className="h-5 w-5 text-red-600 dark:text-red-300" />
                       </button>
                     </div>
                     
-                    <p className="text-sm text-red-200/90 mb-3">
+                    <p className="text-sm text-red-700 dark:text-red-200/90 mb-3">
                       {errorToast.message}
                     </p>
                     
                     {errorToast.conflictedSeats && errorToast.conflictedSeats.length > 0 && (
-                      <div className="rounded-lg bg-red-950/50 border border-red-500/20 p-3 mb-3">
-                        <p className="text-xs font-medium text-red-300 mb-2">Unavailable seats:</p>
+                      <div className="rounded-lg bg-red-100 dark:bg-red-950/50 border border-red-500/20 p-3 mb-3">
+                        <p className="text-xs font-medium text-red-800 dark:text-red-300 mb-2">Unavailable seats:</p>
                         <div className="flex flex-wrap gap-2">
                           {errorToast.conflictedSeats.map((seat, idx) => (
                             <span 
                               key={idx}
-                              className="inline-flex items-center gap-1 rounded-md bg-red-500/20 px-2 py-1 text-xs font-medium text-red-200 ring-1 ring-red-500/30"
+                              className="inline-flex items-center gap-1 rounded-md bg-red-500/20 px-2 py-1 text-xs font-medium text-red-800 dark:text-red-200 ring-1 ring-red-500/30"
                             >
                               <X className="h-3 w-3" />
                               {seat}
@@ -228,7 +230,7 @@ export function BookingSummary({
                       </div>
                     )}
                     
-                    <p className="text-xs text-red-300/80">
+                    <p className="text-xs text-red-700 dark:text-red-300/80">
                       Please select different seats and try again.
                     </p>
                   </div>
