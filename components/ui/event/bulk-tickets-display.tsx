@@ -2,23 +2,39 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Ticket, RefreshCw } from 'lucide-react';
+import { Ticket, RefreshCw, MapPin } from 'lucide-react';
 import { BulkTicket, getEventBulkTickets } from '@/lib/api_ticket';
 import { Button } from '@/components/ui/button';
+import { getVenueSeats, type SeatSection } from '@/lib/api';
 
 interface BulkTicketsDisplayProps {
   eventId: number;
+  venueId?: number; // Add venueId to fetch sections
   onRefresh?: () => void;
 }
 
 const cardBg = "#23262F";
 const greenBorder = "#CBF83E" + '50';
 
-export default function BulkTicketsDisplay({ eventId, onRefresh }: BulkTicketsDisplayProps) {
+export default function BulkTicketsDisplay({ eventId, venueId, onRefresh }: BulkTicketsDisplayProps) {
   const [bulkTickets, setBulkTickets] = useState<BulkTicket[]>([]);
+  const [sections, setSections] = useState<SeatSection[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const [refreshing, setRefreshing] = useState(false);
+
+  // Get section name by ID
+  const getSectionName = (sectionId?: string): string => {
+    if (!sectionId) return 'Not assigned';
+    const section = sections.find(s => s.id === sectionId);
+    return section ? section.name : 'Unknown section';
+  };
+
+  // Get section details by ID
+  const getSectionDetails = (sectionId?: string): SeatSection | null => {
+    if (!sectionId) return null;
+    return sections.find(s => s.id === sectionId) || null;
+  };
 
   const loadBulkTickets = async () => {
     try {
@@ -33,6 +49,23 @@ export default function BulkTicketsDisplay({ eventId, onRefresh }: BulkTicketsDi
       setRefreshing(false);
     }
   };
+
+  // Load venue sections if venueId is provided
+  useEffect(() => {
+    const fetchSections = async () => {
+      if (!venueId) return;
+      try {
+        const venueData = await getVenueSeats(venueId);
+        if (venueData.seatMap?.sections) {
+          setSections(venueData.seatMap.sections);
+        }
+      } catch (err) {
+        console.error('Error fetching venue sections:', err);
+      }
+    };
+
+    fetchSections();
+  }, [venueId]);
 
   useEffect(() => {
     loadBulkTickets();
@@ -102,7 +135,7 @@ export default function BulkTicketsDisplay({ eventId, onRefresh }: BulkTicketsDi
                 borderColor: ticket.seat_type === 'VIP' ? '#FFD700' : greenBorder
               }}
             >
-              {/* Seat Type Badge */}
+              {/* Seat Type Badge and Section Info */}
               <div className="flex items-center justify-between mb-3">
                 <span 
                   className="px-3 py-1 rounded-full text-xs font-bold"
@@ -123,7 +156,7 @@ export default function BulkTicketsDisplay({ eventId, onRefresh }: BulkTicketsDi
                 <div>
                   <p className="text-xs mb-1" style={{ color: '#ABA8A9' }}>Price</p>
                   <p className="text-sm font-semibold" style={{ color: '#fff' }}>
-                    ${ticket.price.toFixed(2)}
+                    Rs.{ticket.price.toFixed(2)}
                   </p>
                 </div>
                 <div>

@@ -124,7 +124,7 @@ export const fetchCheckinOfficers = async () => {
 
 // API function to update event
 export const updateEventDetails = async (eventId: string | number, eventData: any) => {
-  const url = getEventServiceUrl(`/api/events/update-event/${eventId}`);
+  const url = getEventServiceUrl(`/api/events/${eventId}`);
   const response = await secureFetch(url, {
     method: 'PUT',
     body: JSON.stringify(eventData)

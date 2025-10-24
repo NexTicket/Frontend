@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { 
   ArrowLeft, 
@@ -14,8 +15,8 @@ import {
   Check,
   ShoppingCart
 } from 'lucide-react';
-import { mockEvents } from '@/lib/mock-data';
 import { getUserLockedSeats } from '@/lib/api_ticket';
+import { fetchEventById } from '@/lib/api';
 import { motion } from 'framer-motion';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
@@ -48,6 +49,7 @@ const itemVariants = {
 };
 
 export default function CheckoutPage() {
+  const searchParams = useSearchParams();
   const [paymentMethod, setPaymentMethod] = useState('card');
   const [processing, setProcessing] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
@@ -65,9 +67,11 @@ export default function CheckoutPage() {
     price_per_seat: number;
     seat_type: string;
   } | null>(null);
+  const [event, setEvent] = useState<any | null>(null);
+  const [eventLoading, setEventLoading] = useState(true);
+  const [timeRemaining, setTimeRemaining] = useState<number>(0);
+  const [expiresAt, setExpiresAt] = useState<string | null>(null);
   
-  // Default event data
-  const event = mockEvents[0];
   const orderId = 1; // This should come from your order creation logic
   
   // Calculate subtotal based on fetched seats and bulk_ticket_info
@@ -76,24 +80,56 @@ export default function CheckoutPage() {
   const serviceFee = 25;
   const total = subtotal + serviceFee;
 
-  // Fetch user's locked seats when the component mounts
+  // Fetch user's locked seats and event details when the component mounts
   useEffect(() => {
     async function fetchLockedSeats() {
       try {
         setLoading(true);
+        setEventLoading(true);
+        
+        // Try to get eventId from URL params first, then from sessionStorage
+        let eventIdToFetch = searchParams.get('eventId');
+        
+        if (!eventIdToFetch) {
+          const checkoutData = sessionStorage.getItem('checkoutData');
+          if (checkoutData) {
+            const parsedData = JSON.parse(checkoutData);
+            eventIdToFetch = parsedData.eventId;
+          }
+        }
+        
+        // Fetch event details first if we have an eventId
+        if (eventIdToFetch) {
+          try {
+            console.log('Fetching event with ID:', eventIdToFetch);
+            const eventData = await fetchEventById(eventIdToFetch.toString());
+            console.log('Event data fetched:', eventData);
+            
+            // Handle both response formats: { data: event } or direct event object
+            const actualEventData = eventData.data || eventData;
+            setEvent(actualEventData);
+          } catch (eventError) {
+            console.error('Error fetching event details:', eventError);
+          } finally {
+            setEventLoading(false);
+          }
+        } else {
+          console.warn('No eventId found in URL params or sessionStorage');
+          setEventLoading(false);
+        }
+        
+        // Fetch locked seats
         const response = await getUserLockedSeats();
-        console.log('API response:', response);
+        console.log('Locked seats API response:', response);
         
         // Handle the actual response structure from your backend
         if (response && response.seat_ids && response.seat_ids.length > 0) {
           // Extract bulk ticket info if available
-          // Response structure: { bulk_ticket_info: { bulk_ticket_id, price_per_seat, seat_type } }
           let pricePerSeat = 75; // default
           let seatType = 'Standard'; // default
           let bulkTicketId = 1; // default
           
           if (response.bulk_ticket_info) {
-            // Direct access to bulk_ticket_info properties
             pricePerSeat = response.bulk_ticket_info.price_per_seat || 75;
             seatType = response.bulk_ticket_info.seat_type || 'Standard';
             bulkTicketId = response.bulk_ticket_info.bulk_ticket_id || 1;
@@ -108,7 +144,6 @@ export default function CheckoutPage() {
           
           // Transform seat_ids from new structure: {section, row_id, col_id}
           const seatsFromResponse = response.seat_ids.map((seat: any, index: number) => {
-            // seat is now an object with {section, row_id, col_id}
             const section = seat.section || 'Unknown';
             const rowId = seat.row_id ?? 0;
             const colId = seat.col_id ?? 0;
@@ -125,19 +160,62 @@ export default function CheckoutPage() {
           
           console.log('Seats transformed:', seatsFromResponse);
           setSelectedSeats(seatsFromResponse);
+          
+          // Set expiration time for countdown
+          if (response.expires_at) {
+            setExpiresAt(response.expires_at);
+            const expiryTime = new Date(response.expires_at).getTime();
+            const now = Date.now();
+            const remainingSeconds = Math.max(0, Math.floor((expiryTime - now) / 1000));
+            setTimeRemaining(remainingSeconds);
+          }
+          
+          // If we didn't get eventId from URL/sessionStorage, try from response
+          if (!eventIdToFetch && response.event_id) {
+            try {
+              const eventData = await fetchEventById(response.event_id.toString());
+              const actualEventData = eventData.data || eventData;
+              setEvent(actualEventData);
+            } catch (eventError) {
+              console.error('Error fetching event details from response:', eventError);
+            } finally {
+              setEventLoading(false);
+            }
+          }
         } else {
           console.error('Failed to get locked seats - invalid response format:', response);
         }
       } catch (error) {
         console.error('Error fetching locked seats:', error instanceof Error ? error.message : 'Unknown error');
-        // Optionally set an error state here
+        setEventLoading(false);
       } finally {
         setLoading(false);
       }
     }
     
     fetchLockedSeats();
-  }, []);
+  }, [searchParams]);
+
+  // Countdown timer effect
+  useEffect(() => {
+    if (timeRemaining <= 0 || !expiresAt) return;
+
+    const interval = setInterval(() => {
+      const expiryTime = new Date(expiresAt).getTime();
+      const now = Date.now();
+      const remainingSeconds = Math.max(0, Math.floor((expiryTime - now) / 1000));
+      
+      setTimeRemaining(remainingSeconds);
+      
+      if (remainingSeconds <= 0) {
+        clearInterval(interval);
+        // Redirect to event page when time expires
+        window.location.href = `/events/${searchParams.get('eventId')}`;
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [expiresAt, searchParams]);
 
   const handlePaymentSuccess = () => {
     setOrderComplete(true);
@@ -243,6 +321,108 @@ export default function CheckoutPage() {
             <p className="text-muted-foreground">Complete your ticket purchase</p>
           </motion.div>
 
+          {/* Countdown Timer Banner */}
+          {timeRemaining > 0 && (
+            <motion.div
+              variants={itemVariants}
+              className="mb-6"
+            >
+              <div className={`relative overflow-hidden rounded-2xl border-2 p-5 shadow-lg backdrop-blur-xl transition-all duration-300 ${
+                timeRemaining <= 60 
+                  ? 'border-red-500/50 bg-red-100 dark:bg-gradient-to-r dark:from-red-950/40 dark:via-red-900/30 dark:to-red-950/40' 
+                  : timeRemaining <= 180 
+                  ? 'border-amber-500/50 bg-amber-100 dark:bg-gradient-to-r dark:from-amber-950/40 dark:via-amber-900/30 dark:to-amber-950/40'
+                  : 'border-green-500/50 bg-green-100 dark:bg-gradient-to-r dark:from-green-950/40 dark:via-green-900/30 dark:to-green-950/40'
+              }`}>
+                <div className={`absolute inset-0 ${
+                  timeRemaining <= 60 
+                    ? 'bg-gradient-to-r from-red-500/5 via-transparent to-red-500/5' 
+                    : timeRemaining <= 180 
+                    ? 'bg-gradient-to-r from-amber-500/5 via-transparent to-amber-500/5'
+                    : 'bg-gradient-to-r from-green-500/5 via-transparent to-green-500/5'
+                }`}></div>
+                
+                <div className="relative flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className={`flex h-14 w-14 items-center justify-center rounded-full ring-2 ${
+                      timeRemaining <= 60 
+                        ? 'bg-red-500/20 ring-red-500/50' 
+                        : timeRemaining <= 180 
+                        ? 'bg-amber-500/20 ring-amber-500/50'
+                        : 'bg-green-500/20 ring-green-500/50'
+                    }`}>
+                      <Clock className={`h-7 w-7 ${
+                        timeRemaining <= 60 
+                          ? 'text-red-800 dark:text-red-400 animate-pulse' 
+                          : timeRemaining <= 180 
+                          ? 'text-amber-800 dark:text-amber-400'
+                          : 'text-green-800 dark:text-green-400'
+                      }`} />
+                    </div>
+                    
+                    <div>
+                      <h3 className={`text-lg font-semibold ${
+                        timeRemaining <= 60 
+                          ? 'text-red-950 dark:text-red-100' 
+                          : timeRemaining <= 180 
+                          ? 'text-amber-950 dark:text-amber-100'
+                          : 'text-green-950 dark:text-green-100'
+                      }`}>
+                        {timeRemaining <= 60 ? 'Hurry! Time Running Out' : 'Complete Your Payment'}
+                      </h3>
+                      <p className={`text-sm ${
+                        timeRemaining <= 60 
+                          ? 'text-red-900 dark:text-red-200/90' 
+                          : timeRemaining <= 180 
+                          ? 'text-amber-900 dark:text-amber-200/90'
+                          : 'text-green-900 dark:text-green-200/90'
+                      }`}>
+                        Your seats are reserved. Complete payment to secure your tickets.
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="text-right">
+                    <div className={`text-3xl font-bold font-mono ${
+                      timeRemaining <= 60 
+                        ? 'text-red-900 dark:text-red-300' 
+                        : timeRemaining <= 180 
+                        ? 'text-amber-900 dark:text-amber-300'
+                        : 'text-green-900 dark:text-green-300'
+                    }`}>
+                      {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}
+                    </div>
+                    <div className={`text-xs mt-1 ${
+                      timeRemaining <= 60 
+                        ? 'text-red-800 dark:text-red-400/80' 
+                        : timeRemaining <= 180 
+                        ? 'text-amber-800 dark:text-amber-400/80'
+                        : 'text-green-800 dark:text-green-400/80'
+                    }`}>
+                      minutes remaining
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Progress bar */}
+                <div className="mt-4 h-2 rounded-full bg-black/10 dark:bg-black/20 overflow-hidden">
+                  <motion.div
+                    initial={{ width: '100%' }}
+                    animate={{ width: `${(timeRemaining / 300) * 100}%` }}
+                    transition={{ duration: 1 }}
+                    className={`h-full rounded-full ${
+                      timeRemaining <= 60 
+                        ? 'bg-gradient-to-r from-red-500 to-red-400' 
+                        : timeRemaining <= 180 
+                        ? 'bg-gradient-to-r from-amber-500 to-amber-400'
+                        : 'bg-gradient-to-r from-green-500 to-green-400'
+                    }`}
+                  />
+                </div>
+              </div>
+            </motion.div>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Payment Form */}
             <motion.div variants={itemVariants} className="space-y-6">
@@ -316,25 +496,74 @@ export default function CheckoutPage() {
             {/* Order Summary */}
             <motion.div variants={itemVariants} className="space-y-6">
               <div className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl sticky top-8 bg-card border-border">
-                <h3 className="text-lg font-semibold mb-4 text-foreground">Order Summary</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-foreground">Order Summary</h3>
+                  {timeRemaining > 0 && (
+                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${
+                      timeRemaining <= 60 
+                        ? 'bg-red-500/20 border border-red-500/30' 
+                        : timeRemaining <= 180 
+                        ? 'bg-amber-500/20 border border-amber-500/30'
+                        : 'bg-green-500/20 border border-green-500/30'
+                    }`}>
+                      <Clock className={`h-4 w-4 ${
+                        timeRemaining <= 60 
+                          ? 'text-red-800 dark:text-red-400 animate-pulse' 
+                          : timeRemaining <= 180 
+                          ? 'text-amber-800 dark:text-amber-400'
+                          : 'text-green-800 dark:text-green-400'
+                      }`} />
+                      <span className={`text-sm font-semibold font-mono ${
+                        timeRemaining <= 60 
+                          ? 'text-red-950 dark:text-red-300' 
+                          : timeRemaining <= 180 
+                          ? 'text-amber-950 dark:text-amber-300'
+                          : 'text-green-950 dark:text-green-300'
+                      }`}>
+                        {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}
+                      </span>
+                    </div>
+                  )}
+                </div>
                 
                 {/* Event Details */}
                 <div className="border-b pb-4 mb-4 border-border">
-                  <h4 className="font-medium mb-2 text-foreground">{event.title}</h4>
-                  <div className="space-y-1 text-sm text-muted-foreground">
-                    <div className="flex items-center">
-                      <Calendar className="h-4 w-4 mr-2" style={{ color: '#0D6EFD' }} />
-                      {event.date}
+                  {eventLoading ? (
+                    <div className="space-y-2">
+                      <div className="h-5 bg-muted/30 rounded animate-pulse"></div>
+                      <div className="h-4 bg-muted/20 rounded animate-pulse"></div>
+                      <div className="h-4 bg-muted/20 rounded animate-pulse"></div>
+                      <div className="h-4 bg-muted/20 rounded animate-pulse"></div>
                     </div>
-                    <div className="flex items-center">
-                      <Clock className="h-4 w-4 mr-2 text-primary" />
-                      {event.time}
-                    </div>
-                    <div className="flex items-center">
-                      <MapPin className="h-4 w-4 mr-2 text-primary" />
-                      {event.venue}
-                    </div>
-                  </div>
+                  ) : event ? (
+                    <>
+                      <h4 className="font-medium mb-2 text-foreground">{event.title}</h4>
+                      <div className="space-y-1 text-sm text-muted-foreground">
+                        <div className="flex items-center">
+                          <Calendar className="h-4 w-4 mr-2" style={{ color: '#0D6EFD' }} />
+                          {new Date(event.startDate).toLocaleDateString('en-US', { 
+                            weekday: 'short', 
+                            year: 'numeric', 
+                            month: 'short', 
+                            day: 'numeric' 
+                          })}
+                        </div>
+                        <div className="flex items-center">
+                          <Clock className="h-4 w-4 mr-2 text-primary" />
+                          {new Date(event.startDate).toLocaleTimeString('en-US', { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })}
+                        </div>
+                        <div className="flex items-center">
+                          <MapPin className="h-4 w-4 mr-2 text-primary" />
+                          {event.Venue?.name || 'Venue TBA'}
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-muted-foreground text-sm">Event information unavailable</div>
+                  )}
                 </div>
 
                 {/* Selected Seats */}

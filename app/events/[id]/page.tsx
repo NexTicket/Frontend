@@ -19,7 +19,8 @@ import {
   Twitter
 } from 'lucide-react';
 import { mockEvents, mockVenues } from '@/lib/mock-data';
-import { fetchEventById } from '@/lib/api';
+import { fetchEventById, fetchVenueById } from '@/lib/api';
+import { getEventBulkTickets, BulkTicket } from '@/lib/api_ticket';
 
 interface EventDetailPageProps {
   params: Promise<{
@@ -29,9 +30,10 @@ interface EventDetailPageProps {
 
 export default function EventDetailPage({ params }: EventDetailPageProps) {
   const [isLiked, setIsLiked] = useState(false);
-  const [selectedTicketType, setSelectedTicketType] = useState('standard');
   const [activeTab, setActiveTab] = useState('summary');
   const [loadedEvent, setLoadedEvent] = useState<any | null>(null);
+  const [loadedVenue, setLoadedVenue] = useState<any | null>(null);
+  const [bulkTickets, setBulkTickets] = useState<BulkTicket[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -43,10 +45,33 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
       try {
         setLoading(true);
         setError(null);
+        
+        // Fetch event data
         const data = await fetchEventById(id);
-        // Accept several possible shapes
         const evt = (data?.data) || data;
         setLoadedEvent(evt);
+        
+        // Fetch venue data if venue ID exists
+        if (evt?.venueId || evt?.venue?.id) {
+          const venueId = evt.venueId || evt.venue.id;
+          try {
+            const venueData = await fetchVenueById(venueId);
+            const venue = venueData?.data || venueData;
+            setLoadedVenue(venue);
+          } catch (err) {
+            console.error('Failed to fetch venue:', err);
+          }
+        }
+        
+        // Fetch bulk tickets for this event
+        try {
+          const tickets = await getEventBulkTickets(parseInt(id));
+          setBulkTickets(tickets || []);
+        } catch (err) {
+          console.error('Failed to fetch bulk tickets:', err);
+          // Don't show error to user, just log it
+        }
+        
       } catch (e: any) {
         console.error('Failed to fetch event by id', e);
         setError(e?.message || 'Failed to load event');
@@ -60,10 +85,38 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
   
   // Fallback to mock if API fails
   const event = loadedEvent || mockEvents.find(e => String(e.id) === String(id));
-  const venue = event ? (event.venue || mockVenues.find((v: any) => String(v.id) === String(event.venueId))) : null;
+  const venue = loadedVenue || event?.venue || mockVenues.find((v: any) => String(v.id) === String(event?.venueId));
 
   // Check if this is a movie
   const isMovie = event && Array.isArray(event.tags) && event.tags.includes('movie');
+  
+  // Convert bulk tickets to ticket types format for UI
+  const ticketTypes = bulkTickets.length > 0 
+    ? bulkTickets.map(ticket => ({
+        id: ticket.id.toString(), // Use unique bulk ticket ID instead of seat_type
+        bulkTicketId: ticket.id, // Keep bulk ticket ID for reference
+        seatType: ticket.seat_type, // Keep seat type for selection logic
+        name: ticket.seat_type === 'VIP' ? 'VIP Pass' : ticket.seat_type === 'REGULAR' ? 'General Admission' : ticket.seat_type,
+        price: ticket.price,
+        description: ticket.seat_type === 'VIP' 
+          ? 'Premium access with exclusive perks' 
+          : 'Standard entry to the event',
+        available: ticket.available_seats,
+        sectionName: ticket.seat_prefix
+      }))
+    : [
+        // Fallback mock data if no bulk tickets
+        {
+          id: 'general',
+          bulkTicketId: 0,
+          seatType: 'REGULAR',
+          name: 'General Admission',
+          price: (event?.price ? event.price : 100) * 300,
+          description: 'Standard entry to the event',
+          available: event?.availableTickets ?? 0,
+          sectionName: 'General'
+        }
+      ];
 
   if (loading) {
     return (
@@ -88,30 +141,6 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
       </div>
     );
   }
-
-  const ticketTypes = [
-    {
-      id: 'general',
-      name: 'General Admission',
-      price: (event.price ? event.price : 100) * 300, // Convert to LKR (approx 1 USD = 300 LKR)
-      description: 'Standard entry to the event',
-      available: event.availableTickets ?? 0
-    },
-    {
-      id: 'vip',
-      name: 'VIP Pass',
-      price: (event.price ? event.price : 100) * 300 * 2,
-      description: 'Premium access with exclusive perks',
-      available: Math.floor((event.availableTickets ?? 0) * 0.1)
-    },
-    {
-      id: 'student',
-      name: 'Student Discount',
-      price: Math.floor((event.price ? event.price : 100) * 300 * 0.8),
-      description: 'Special pricing for students with valid ID',
-      available: Math.floor((event.availableTickets ?? 0) * 0.3)
-    }
-  ];
 
   return (
     <div className="min-h-screen  text-foreground">
@@ -528,34 +557,6 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                       </div>
                     </div>
 
-                    {/* Price Breakdown */}
-                    <div className="space-y-3 mb-6">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-400">Ticket ({selectedTicketType})</span>
-                        <span className="text-foreground">
-                          LKR {(selectedTicketType === 'premium' ? Math.floor((event.price ? event.price : 100) * 300 * 1.5) : 
-                            selectedTicketType === 'vip' ? (event.price ? event.price : 100) * 300 * 2 : (event.price ? event.price : 100) * 300).toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-400">Convenience Fee</span>
-                        <span className="text-foreground">LKR 900</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-400">Service Tax</span>
-                        <span className="text-foreground">LKR 600</span>
-                      </div>
-                      <div className="border-t border-gray-600 pt-3">
-                        <div className="flex justify-between font-semibold">
-                          <span className="text-foreground">Total Amount</span>
-                          <span className="text-blue-400">
-                            LKR {((selectedTicketType === 'premium' ? Math.floor((event.price ? event.price : 100) * 300 * 1.5) : 
-                              selectedTicketType === 'vip' ? (event.price ? event.price : 100) * 300 * 2 : (event.price ? event.price : 100) * 300) + 1500).toLocaleString()}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
                     {/* Action Buttons */}
                     <div className="space-y-3">
                       <Link href={`/events/${event.id}/seating`}>
@@ -725,7 +726,48 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
               {venue && (
                 <div className="rounded-lg border border-gray-700 p-6 animate-slideInFromRight transition-all duration-500 hover:border-blue-500/30" style={{ animationDelay: '1.3s' }}>
                   <h3 className="text-xl font-semibold mb-4">About the Venue</h3>
+                  
+                  {/* Venue Image */}
+                  {venue.image && (
+                    <div className="mb-4 rounded-lg overflow-hidden">
+                      <Image 
+                        src={venue.image} 
+                        alt={venue.name}
+                        width={600}
+                        height={300}
+                        className="w-full h-48 object-cover"
+                      />
+                    </div>
+                  )}
+                  
+                  {/* Venue Details Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div className="flex items-start">
+                      <MapPin className="h-5 w-5 text-blue-400 mr-2 mt-1 flex-shrink-0" />
+                      <div>
+                        <p className="font-medium text-sm text-gray-400">Location</p>
+                        <p className="text-foreground">{venue.location || 'Address not available'}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start">
+                      <Users className="h-5 w-5 text-blue-400 mr-2 mt-1 flex-shrink-0" />
+                      <div>
+                        <p className="font-medium text-sm text-gray-400">Capacity</p>
+                        <p className="text-foreground">{venue.capacity ? `${venue.capacity.toLocaleString()} people` : 'Not specified'}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Venue Description */}
                   <p className="text-gray-400 mb-4">{venue.description || 'No description provided.'}</p>
+                  
+                  {/* View Full Details Button */}
+                  <Link href={`/venues/${venue.id || venue._id || 'unknown'}`}>
+                    <Button variant="outline" className="w-full transition-all duration-300 hover:scale-105 hover:border-blue-500">
+                      View Full Venue Details
+                    </Button>
+                  </Link>
                 </div>
               )}
             </div>
@@ -733,31 +775,46 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
             {/* Booking Sidebar */}
             <div className="lg:col-span-1">
               <div className=" rounded-lg border border-gray-700 p-6 sticky top-8 animate-slideInFromRight transition-all duration-500 hover:border-blue-500/30" style={{ animationDelay: '0.4s' }}>
-                <h3 className="text-xl font-semibold mb-6">Book Your Tickets</h3>
+                <h3 className="text-xl font-semibold mb-6">Available Tickets</h3>
                 
-                {/* Ticket Types */}
+                {/* No Tickets Available Message */}
+                {bulkTickets.length === 0 && (
+                  <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/50 rounded-lg">
+                    <p className="text-sm text-yellow-400 text-center">
+                      Tickets are not yet available for this event. Please check back later.
+                    </p>
+                  </div>
+                )}
+                
+                {/* Ticket Types - Display Only */}
                 <div className="space-y-4 mb-6">
                   {ticketTypes.map((ticket, index) => (
                     <div
                       key={ticket.id}
-                      className={`p-4 border rounded-lg cursor-pointer transition-all duration-300 hover:scale-105 animate-slideInFromBottom ${
-                        selectedTicketType === ticket.id
-                          ? 'border-blue-500 bg-blue-500/10 shadow-lg shadow-blue-500/20'
-                          : 'border-gray-600 hover:border-blue-500/50'
-                      }`}
-                      onClick={() => setSelectedTicketType(ticket.id)}
+                      className="p-4 border border-gray-600 rounded-lg transition-all duration-300 hover:border-blue-500/50 animate-slideInFromBottom"
                       style={{ animationDelay: `${0.5 + index * 0.1}s` }}
                     >
                       <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium">{ticket.name}</h4>
+                        <div>
+                          <h4 className="font-medium">{ticket.name}</h4>
+                          {ticket.sectionName && (
+                            <p className="text-xs text-blue-400 mt-1">Section: {ticket.sectionName}</p>
+                          )}
+                        </div>
                         <span className="font-bold text-blue-400">LKR {ticket.price.toLocaleString()}</span>
                       </div>
                       <p className="text-sm text-gray-400 mb-2">
                         {ticket.description}
                       </p>
-                      <p className="text-xs text-gray-400">
-                        {ticket.available} available
-                      </p>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-gray-400">{ticket.available} seats available</span>
+                        {ticket.available < 10 && ticket.available > 0 && (
+                          <span className="text-yellow-500">Only {ticket.available} left!</span>
+                        )}
+                        {ticket.available === 0 && (
+                          <span className="text-red-500">Sold Out</span>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -774,18 +831,6 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                   <Button variant="outline" className="w-full border-gray-600 text-gray-300 hover:bg-gray-700 transition-all duration-300 hover:scale-105">
                     Add to Watchlist
                   </Button>
-                </div>
-
-                {/* Price Summary */}
-                <div className="mt-6 pt-6 border-t border-gray-600 animate-fadeIn" style={{ animationDelay: '0.9s' }}>
-                  <div className="flex items-center justify-between text-sm text-gray-400 mb-2">
-                    <span>Service fee</span>
-                    <span>LKR 1,500</span>
-                  </div>
-                  <div className="flex items-center justify-between font-medium">
-                    <span>Total</span>
-                    <span>LKR {((ticketTypes.find(t => t.id === selectedTicketType)?.price || 0) + 1500).toLocaleString()}</span>
-                  </div>
                 </div>
               </div>
             </div>
