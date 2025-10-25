@@ -24,12 +24,12 @@ import { fetchMyAssignedEvents, fetchCheckinOfficers, updateEventDetails } from 
 import CreateTicketForm from '@/components/ui/event/create-ticket-form';
 import BulkTicketsDisplay from '@/components/ui/event/bulk-tickets-display';
 
-// Theme to match other admin pages
-const darkBg = "#181A20";
-const blueHeader = "#1877F2";
-const cardBg = "#23262F";
-const greenBorder = "#CBF83E" + '50';
-const cardShadow = "0 2px 16px 0 rgba(57,253,72,0.08)";
+// Theme to match other admin pages - Blue and White
+const darkBg = "#FFFFFF"; // White background
+const blueHeader = "#1877F2"; // Blue header
+const cardBg = "#F8F9FA"; // Light gray for cards
+const blueBorder = "#1877F2" + '40'; // Blue border with transparency
+const cardShadow = "0 2px 16px 0 rgba(24,119,242,0.08)"; // Blue shadow
 
 interface Event {
   id: number;
@@ -175,7 +175,7 @@ export default function EventDetailPage() {
   if (isLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: darkBg }}>
-        <div className="text-lg" style={{ color: '#fff' }}>Loading event details...</div>
+        <div className="text-lg" style={{ color: '#1877F2' }}>Loading event details...</div>
       </div>
     );
   }
@@ -184,12 +184,12 @@ export default function EventDetailPage() {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: darkBg }}>
         <div className="text-center">
-          <div className="text-lg mb-4" style={{ color: '#fff' }}>Event Not Found</div>
-          <p style={{ color: '#ABA8A9' }}>The event you're looking for doesn't exist.</p>
+          <div className="text-lg mb-4" style={{ color: '#000' }}>Event Not Found</div>
+          <p style={{ color: '#6B7280' }}>The event you're looking for doesn't exist.</p>
           <Button 
             onClick={() => router.push('/event-admin')}
             className="mt-4"
-            style={{ background: '#0D6EFD' }}
+            style={{ background: '#1877F2', color: '#fff' }}
           >
             Back to Dashboard
           </Button>
@@ -383,7 +383,7 @@ export default function EventDetailPage() {
           >
             <div
               className="px-6 py-4 rounded-lg shadow-xl flex items-center space-x-3"
-              style={{ backgroundColor: '#CBF83E', color: '#000' }}
+              style={{ backgroundColor: '#1877F2', color: '#fff' }}
             >
               <CheckCircle className="w-5 h-5" />
               <span className="font-medium">Tickets created successfully!</span>
@@ -393,20 +393,20 @@ export default function EventDetailPage() {
       </AnimatePresence>
 
       {/* Background Elements */}
-      <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-20" style={{ backgroundColor: '#ABA8A9' }}></div>
-      <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-15" style={{ backgroundColor: '#D8DFEE' }}></div>
+      <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-10" style={{ backgroundColor: '#1877F2' }}></div>
+      <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl opacity-10" style={{ backgroundColor: '#1877F2' }}></div>
 
       {/* Header */}
       <div className="relative z-10">
         <div className="max-w-7xl mx-auto px-6 pt-8">
-          <div className="rounded-2xl p-6 shadow-lg" style={{ backgroundColor: blueHeader, borderColor: greenBorder, boxShadow: cardShadow }}>
+          <div className="rounded-2xl p-6 shadow-lg" style={{ backgroundColor: blueHeader, borderColor: '#1877F2', boxShadow: cardShadow }}>
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <Button 
                   onClick={() => router.push('/event-admin')}
                   variant="outline"
                   size="sm"
-                  style={{ borderColor: '#CBF83E', color: '#CBF83E', backgroundColor: 'transparent' }}
+                  style={{ borderColor: '#fff', color: '#fff', backgroundColor: 'transparent' }}
                 >
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Back
@@ -422,7 +422,7 @@ export default function EventDetailPage() {
                 {!editing ? (
                   <Button 
                     onClick={() => setEditing(true)}
-                    style={{ background: '#CBF83E', color: '#000' }}
+                    style={{ background: '#fff', color: '#1877F2' }}
                   >
                     <Edit className="w-4 h-4 mr-2" />
                     Edit Event
@@ -435,14 +435,14 @@ export default function EventDetailPage() {
                         setEditedEvent(event);
                       }}
                       variant="outline"
-                      style={{ borderColor: '#CBF83E', color: '#CBF83E', backgroundColor: 'transparent' }}
+                      style={{ borderColor: '#fff', color: '#fff', backgroundColor: 'transparent' }}
                     >
                       Cancel
                     </Button>
                     <Button 
                       onClick={handleSave}
                       disabled={saving}
-                      style={{ background: '#CBF83E', color: '#000' }}
+                      style={{ background: '#fff', color: '#1877F2' }}
                     >
                       <Save className="w-4 h-4 mr-2" />
                       {saving ? 'Saving...' : 'Save Changes'}
@@ -464,16 +464,16 @@ export default function EventDetailPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl" 
-              style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}
+              style={{ backgroundColor: cardBg, borderColor: '#1877F2' + '40', boxShadow: cardShadow }}
             >
-              <h3 className="text-lg font-medium mb-4 flex items-center" style={{ color: '#fff' }}>
-                <Settings className="w-5 h-5 mr-2" />
+              <h3 className="text-lg font-medium mb-4 flex items-center" style={{ color: '#000' }}>
+                <Settings className="w-5 h-5 mr-2" style={{ color: '#1877F2' }} />
                 Basic Information
               </h3>
               
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: '#ABA8A9' }}>
+                  <label className="block text-sm font-medium mb-2" style={{ color: '#6B7280' }}>
                     Event Title
                   </label>
                   {editing ? (
@@ -483,18 +483,18 @@ export default function EventDetailPage() {
                       onChange={(e) => handleInputChange('title', e.target.value)}
                       className="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       style={{ 
-                        backgroundColor: '#1f222a', 
-                        borderColor: greenBorder, 
-                        color: '#fff'
+                        backgroundColor: '#fff', 
+                        borderColor: '#1877F2' + '40', 
+                        color: '#000'
                       }}
                     />
                   ) : (
-                    <p className="text-lg font-medium" style={{ color: '#fff' }}>{event.title}</p>
+                    <p className="text-lg font-medium" style={{ color: '#000' }}>{event.title}</p>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: '#ABA8A9' }}>
+                  <label className="block text-sm font-medium mb-2" style={{ color: '#6B7280' }}>
                     Description
                   </label>
                   {editing ? (
@@ -504,19 +504,19 @@ export default function EventDetailPage() {
                       rows={3}
                       className="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       style={{ 
-                        backgroundColor: '#1f222a', 
-                        borderColor: greenBorder, 
-                        color: '#fff'
+                        backgroundColor: '#fff', 
+                        borderColor: '#1877F2' + '40', 
+                        color: '#000'
                       }}
                     />
                   ) : (
-                    <p style={{ color: '#fff' }}>{event.description}</p>
+                    <p style={{ color: '#000' }}>{event.description}</p>
                   )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium mb-2" style={{ color: '#ABA8A9' }}>
+                    <label className="block text-sm font-medium mb-2" style={{ color: '#6B7280' }}>
                       Start Date
                     </label>
                     {editing ? (
@@ -526,21 +526,21 @@ export default function EventDetailPage() {
                         onChange={(e) => handleInputChange('startDate', e.target.value + 'T00:00:00.000Z')}
                         className="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         style={{ 
-                          backgroundColor: '#1f222a', 
-                          borderColor: greenBorder, 
-                          color: '#fff'
+                          backgroundColor: '#fff', 
+                          borderColor: '#1877F2' + '40', 
+                          color: '#000'
                         }}
                       />
                     ) : (
-                      <p style={{ color: '#fff' }}>{formatDate(event.startDate)}</p>
+                      <p style={{ color: '#000' }}>{formatDate(event.startDate)}</p>
                     )}
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium mb-2" style={{ color: '#ABA8A9' }}>
+                    <label className="block text-sm font-medium mb-2" style={{ color: '#6B7280' }}>
                       Venue Capacity
                     </label>
-                    <p style={{ color: '#fff' }}>
+                    <p style={{ color: '#000' }}>
                       {event.venue?.capacity ? `${event.venue.capacity} attendees` : 'Not specified'}
                     </p>
                   </div>
@@ -554,24 +554,24 @@ export default function EventDetailPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
               className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl" 
-              style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}
+              style={{ backgroundColor: cardBg, borderColor: '#1877F2' + '40', boxShadow: cardShadow }}
             >
-              <h3 className="text-lg font-medium mb-4 flex items-center" style={{ color: '#fff' }}>
-                <MapPin className="w-5 h-5 mr-2" />
+              <h3 className="text-lg font-medium mb-4 flex items-center" style={{ color: '#000' }}>
+                <MapPin className="w-5 h-5 mr-2" style={{ color: '#1877F2' }} />
                 Venue Information
               </h3>
               
               <div className="space-y-3">
-                <div className="flex items-center text-sm" style={{ color: '#ABA8A9' }}>
-                  <MapPin className="w-4 h-4 mr-2" style={{ color: '#fff' }} />
+                <div className="flex items-center text-sm" style={{ color: '#6B7280' }}>
+                  <MapPin className="w-4 h-4 mr-2" style={{ color: '#1877F2' }} />
                   <span>{event.venue?.name || 'Venue TBD'}</span>
                 </div>
-                <div className="flex items-center text-sm" style={{ color: '#ABA8A9' }}>
-                  <Calendar className="w-4 h-4 mr-2" style={{ color: '#fff' }} />
+                <div className="flex items-center text-sm" style={{ color: '#6B7280' }}>
+                  <Calendar className="w-4 h-4 mr-2" style={{ color: '#1877F2' }} />
                   <span>{formatDate(event.startDate)}</span>
                 </div>
-                <div className="flex items-center text-sm" style={{ color: '#ABA8A9' }}>
-                  <Clock className="w-4 h-4 mr-2" style={{ color: '#fff' }} />
+                <div className="flex items-center text-sm" style={{ color: '#6B7280' }}>
+                  <Clock className="w-4 h-4 mr-2" style={{ color: '#1877F2' }} />
                   <span>{formatTime(event.startTime)} - {formatTime(event.endTime)}</span>
                 </div>
               </div>
@@ -582,7 +582,7 @@ export default function EventDetailPage() {
                   <Button
                     onClick={() => setShowCreateTicket(true)}
                     className="w-full"
-                    style={{ background: '#CBF83E', color: '#000' }}
+                    style={{ background: '#1877F2', color: '#fff' }}
                   >
                     <Ticket className="w-4 h-4 mr-2" />
                     Create Tickets
@@ -624,17 +624,17 @@ export default function EventDetailPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
               className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl" 
-              style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}
+              style={{ backgroundColor: cardBg, borderColor: '#1877F2' + '40', boxShadow: cardShadow }}
             >
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium flex items-center" style={{ color: '#fff' }}>
-                  <Users className="w-5 h-5 mr-2" />
+                <h3 className="text-lg font-medium flex items-center" style={{ color: '#000' }}>
+                  <Users className="w-5 h-5 mr-2" style={{ color: '#1877F2' }} />
                   Checkin Officers
                 </h3>
                 <Button 
                   onClick={() => setShowAddOfficer(!showAddOfficer)}
                   size="sm"
-                  style={{ background: '#CBF83E', color: '#000' }}
+                  style={{ background: '#1877F2', color: '#fff' }}
                 >
                   <Plus className="w-4 h-4" />
                 </Button>
@@ -642,30 +642,30 @@ export default function EventDetailPage() {
 
               {/* Add Officer Section */}
               {showAddOfficer && (
-                <div className="mb-4 p-4 rounded-lg" style={{ backgroundColor: '#1f222a' }}>
-                  <h4 className="text-sm font-medium mb-3" style={{ color: '#fff' }}>Available Officers</h4>
+                <div className="mb-4 p-4 rounded-lg" style={{ backgroundColor: '#fff', border: '1px solid #1877F2' + '20' }}>
+                  <h4 className="text-sm font-medium mb-3" style={{ color: '#000' }}>Available Officers</h4>
                   {loadingOfficers ? (
-                    <div className="text-center py-4" style={{ color: '#ABA8A9' }}>
+                    <div className="text-center py-4" style={{ color: '#6B7280' }}>
                       Loading officers...
                     </div>
                   ) : (
                     <div className="space-y-2">
                       {availableOfficers.length === 0 ? (
-                        <p className="text-center py-2" style={{ color: '#ABA8A9' }}>
+                        <p className="text-center py-2" style={{ color: '#6B7280' }}>
                           No available officers found
                         </p>
                       ) : (
                         availableOfficers.map((officer) => (
                           <div key={officer.uid} className="flex items-center justify-between p-2 rounded-lg" style={{ backgroundColor: cardBg }}>
                             <div>
-                              <p className="text-sm font-medium" style={{ color: '#fff' }}>{officer.name}</p>
-                              <p className="text-xs" style={{ color: '#ABA8A9' }}>{officer.email}</p>
+                              <p className="text-sm font-medium" style={{ color: '#000' }}>{officer.name}</p>
+                              <p className="text-xs" style={{ color: '#6B7280' }}>{officer.email}</p>
                             </div>
                             <Button 
                               onClick={() => addCheckinOfficer(officer)}
                               size="sm"
                               disabled={updatingOfficer === officer.uid}
-                              style={{ background: '#0D6EFD', color: '#fff', opacity: updatingOfficer === officer.uid ? 0.6 : 1 }}
+                              style={{ background: '#1877F2', color: '#fff', opacity: updatingOfficer === officer.uid ? 0.6 : 1 }}
                             >
                               {updatingOfficer === officer.uid ? (
                                 <span className="text-xs">Adding...</span>
@@ -684,7 +684,7 @@ export default function EventDetailPage() {
               {/* Assigned Officers */}
               <div className="space-y-3">
                 {checkinOfficers.length === 0 ? (
-                  <p className="text-center py-4" style={{ color: '#ABA8A9' }}>
+                  <p className="text-center py-4" style={{ color: '#6B7280' }}>
                     No checkin officers assigned
                   </p>
                 ) : (
@@ -736,27 +736,27 @@ export default function EventDetailPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
               className="backdrop-blur-xl border rounded-2xl p-6 shadow-xl" 
-              style={{ backgroundColor: cardBg, borderColor: greenBorder, boxShadow: cardShadow }}
+              style={{ backgroundColor: cardBg, borderColor: '#1877F2' + '40', boxShadow: cardShadow }}
             >
-              <h3 className="text-lg font-medium mb-4 flex items-center" style={{ color: '#fff' }}>
-                <CheckCircle className="w-5 h-5 mr-2" />
+              <h3 className="text-lg font-medium mb-4 flex items-center" style={{ color: '#000' }}>
+                <CheckCircle className="w-5 h-5 mr-2" style={{ color: '#1877F2' }} />
                 Event Status
               </h3>
               
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span style={{ color: '#ABA8A9' }}>Status</span>
+                  <span style={{ color: '#6B7280' }}>Status</span>
                   <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                     {event.status}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span style={{ color: '#ABA8A9' }}>Checkin Officers</span>
-                  <span style={{ color: '#fff' }}>{checkinOfficers.length}</span>
+                  <span style={{ color: '#6B7280' }}>Checkin Officers</span>
+                  <span style={{ color: '#000' }}>{checkinOfficers.length}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span style={{ color: '#ABA8A9' }}>Venue Capacity</span>
-                  <span style={{ color: '#fff' }}>{event.venue?.capacity || 'N/A'}</span>
+                  <span style={{ color: '#6B7280' }}>Venue Capacity</span>
+                  <span style={{ color: '#000' }}>{event.venue?.capacity || 'N/A'}</span>
                 </div>
               </div>
             </motion.div>

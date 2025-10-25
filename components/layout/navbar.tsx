@@ -49,13 +49,17 @@ export function Navbar() {
       case 'admin':
         return [
           { href: '/admin/dashboard', label: 'Admin Panel', icon: Settings },
-          { href: '/admin/staff', label: 'Manage Staff', icon: Calendar },
+          { href: '/admin/events', label: 'Manage events', icon: Calendar },
           { href: '/admin/users', label: 'Manage Users', icon: Users }
         ];
-      // case 'checkin_officer':
-      //   return [
-      //     { href: '/checkin/dashboard', label: 'Check-in Dashboard', icon: QrCode },
-      //   ];
+      case 'checkin_officer':
+        return [
+          { href: '/checkin-officer', label: 'Check-in Dashboard', icon: QrCode },
+        ];
+      case 'event_admin':
+        return [
+          { href: '/event-admin', label: 'Event-admin Dashboard', icon: Crown },
+        ];
       default:
         return [];
     }
