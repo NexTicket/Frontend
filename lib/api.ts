@@ -379,6 +379,7 @@ export async function fetchMyAssignedEvents() {
   const res = await secureFetch(getEventServiceUrl('/api/events/my-assigned-events'));
   if (!res.ok) throw new Error("Failed to fetch assigned events");
   return res.json();
+  
 }
 
 // Fetch events assigned to the current checkin officer
