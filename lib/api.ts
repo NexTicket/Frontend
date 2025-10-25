@@ -13,7 +13,7 @@ function getEventServiceUrl(endpoint: string): string {
 // Utility function to construct User Service URLs through API Gateway
 function getUserServiceUrl(endpoint: string): string {
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-  return `${API_GATEWAY_URL}/user_service${cleanEndpoint}`;
+  return `https://user-service-513765269189.europe-west1.run.app${cleanEndpoint}`;
 }
 // Utility function to construct venue service URLs (these might not need /api)
 function getVenueServiceUrl(endpoint: string): string {
@@ -391,7 +391,7 @@ export async function fetchMyCheckinEvents() {
 
 // Create a new event (status defaults to PENDING on the backend)
 export async function createEvent(eventData: {
-  
+
   title: string;
   description: string;
   category: string; // Should be Prisma enum Category on backend
