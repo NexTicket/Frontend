@@ -376,7 +376,7 @@ export async function rejectEvent(id: string) {
 
 // Fetch events assigned to the current event admin
 export async function fetchMyAssignedEvents() {
-  const res = await secureFetch(getEventServiceUrl('/events/my-assigned-events'));
+  const res = await secureFetch(getEventServiceUrl('api/events/my-assigned-events'));
   if (!res.ok) throw new Error("Failed to fetch assigned events");
   return res.json();
   
@@ -384,22 +384,59 @@ export async function fetchMyAssignedEvents() {
 
 // Fetch events assigned to the current checkin officer
 export async function fetchMyCheckinEvents() {
-  const res = await secureFetch(getEventServiceUrl('/events/my-checkin-events'));
+  const res = await secureFetch(getEventServiceUrl('api/events/my-checkin-events'));
   if (!res.ok) throw new Error("Failed to fetch checkin events");
   return res.json();
 }
 
 // Create a new event (status defaults to PENDING on the backend)
-// Create a new event
-export const createEvent = async (eventData: any) => {
-  const url = getEventServiceUrl('/events');
+export async function createEvent(eventData: {
+  
+  title: string;
+  description: string;
+  category: string; // Should be Prisma enum Category on backend
+  type: 'MOVIE' | 'EVENT' | string;
+  startDate: string; // ISO date or YYYY-MM-DD
+  endDate?: string;  // ISO date or YYYY-MM-DD
+  startTime?: string; // HH:mm
+  endTime?: string;   // HH:mm
+  venueId?: string | number;
+  image?: string;
+}) {
+  const body = {
+    title: eventData.title,
+    description: eventData.description,
+    category: eventData.category,
+    type: eventData.type,
+    startDate: eventData.startDate,
+    endDate: eventData.endDate ?? undefined,
+    startTime: eventData.startTime ?? undefined,
+    endTime: eventData.endTime ?? undefined,
+    venueId: eventData.venueId !== undefined && eventData.venueId !== null ? String(eventData.venueId) : undefined,
+    image: eventData.image ?? undefined
+  };
+
+  console.log('🎯 Creating event with body:', body);
+
+  // Use API Gateway instead of direct connection
+  const url = getEventServiceUrl('/api/events');
+  console.log('🎯 Using API Gateway URL:', url);
+  
   const res = await secureFetch(url, {
     method: 'POST',
-    body: JSON.stringify(eventData),
+    body: JSON.stringify(body)
   });
-  if (!res.ok) throw new Error('Failed to create event');
-  return res.json();
-};
+
+  if (!res.ok) {
+    const text = await res.text();
+    console.error('❌ Event creation failed:', res.status, text);
+    throw new Error(`Failed to create event: ${res.status} ${text}`);
+  }
+
+  const result = await res.json();
+  console.log('✅ Event created successfully:', result);
+  return result;
+}
 
 // Delete event by id
 export async function deleteEvent(id: string) {
