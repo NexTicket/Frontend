@@ -2,7 +2,7 @@ import { secureFetch } from "@/utils/secureFetch";
 import { getAuth } from 'firebase/auth';
 
 // Base API Gateway URL
-const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || 'http://localhost:5050';
+const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || 'http://localhost:5051';
 
 // Utility function to construct Event/Venue Service URLs through API Gateway
 function getEventServiceUrl(endpoint: string): string {
@@ -152,7 +152,7 @@ export async function fetchVenues() {
   const res = await optionalAuthFetch(url);
   if (!res.ok) throw new Error("Failed to fetch venues");
   return res.json();
-}
+};
 
 export async function fetchFilteredVenues(filters: {
   type?: string;
@@ -376,65 +376,29 @@ export async function rejectEvent(id: string) {
 
 // Fetch events assigned to the current event admin
 export async function fetchMyAssignedEvents() {
-  const res = await secureFetch(getEventServiceUrl('/api/events/my-assigned-events'));
+  const res = await secureFetch(getEventServiceUrl('/events/my-assigned-events'));
   if (!res.ok) throw new Error("Failed to fetch assigned events");
   return res.json();
 }
 
 // Fetch events assigned to the current checkin officer
 export async function fetchMyCheckinEvents() {
-  const res = await secureFetch(getEventServiceUrl('/api/events/my-checkin-events'));
+  const res = await secureFetch(getEventServiceUrl('/events/my-checkin-events'));
   if (!res.ok) throw new Error("Failed to fetch checkin events");
   return res.json();
 }
 
 // Create a new event (status defaults to PENDING on the backend)
-export async function createEvent(eventData: {
-  title: string;
-  description: string;
-  category: string; // Should be Prisma enum Category on backend
-  type: 'MOVIE' | 'EVENT' | string;
-  startDate: string; // ISO date or YYYY-MM-DD
-  endDate?: string;  // ISO date or YYYY-MM-DD
-  startTime?: string; // HH:mm
-  endTime?: string;   // HH:mm
-  venueId?: string | number;
-  image?: string;
-}) {
-  const body = {
-    title: eventData.title,
-    description: eventData.description,
-    category: eventData.category,
-    type: eventData.type,
-    startDate: eventData.startDate,
-    endDate: eventData.endDate ?? undefined,
-    startTime: eventData.startTime ?? undefined,
-    endTime: eventData.endTime ?? undefined,
-    venueId: eventData.venueId !== undefined && eventData.venueId !== null ? String(eventData.venueId) : undefined,
-    image: eventData.image ?? undefined
-  };
-
-  console.log('🎯 Creating event with body:', body);
-
-  // Use API Gateway instead of direct connection
-  const url = getEventServiceUrl('/api/events');
-  console.log('🎯 Using API Gateway URL:', url);
-  
+// Create a new event
+export const createEvent = async (eventData: any) => {
+  const url = getEventServiceUrl('/events');
   const res = await secureFetch(url, {
     method: 'POST',
-    body: JSON.stringify(body)
+    body: JSON.stringify(eventData),
   });
-
-  if (!res.ok) {
-    const text = await res.text();
-    console.error('❌ Event creation failed:', res.status, text);
-    throw new Error(`Failed to create event: ${res.status} ${text}`);
-  }
-
-  const result = await res.json();
-  console.log('✅ Event created successfully:', result);
-  return result;
-}
+  if (!res.ok) throw new Error('Failed to create event');
+  return res.json();
+};
 
 // Delete event by id
 export async function deleteEvent(id: string) {
@@ -587,5 +551,16 @@ export async function getVenueSeats(venueId: number | string): Promise<VenueSeat
   
   // Fallback if the response is already in the correct format
   return response;
+}
+
+// Fetch attendees/orders for a specific event (for check-in officers)
+export async function fetchEventAttendees(eventId: string | number) {
+  const res = await secureFetch(getTicketServiceUrl(`/venues-events/events/${eventId}/bulk-tickets`));
+  // Return empty array if no bulk tickets exist (404) instead of throwing error
+  if (res.status === 404) {
+    return [];
+  }
+  if (!res.ok) throw new Error("Failed to fetch event bulk tickets");
+  return res.json();
 }
 
